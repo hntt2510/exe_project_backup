@@ -215,16 +215,23 @@ export interface HomePageResponse {
 }
 
 // Tour Schedule
+export interface TourScheduleStartTime {
+  hour: number;
+  minute: number;
+  second: number;
+  nano: number;
+}
+
 export interface TourSchedule {
   id: number;
   tourId: number;
   tourDate: string;
-  startTime: string;
+  startTime: TourScheduleStartTime | string;
   maxSlots: number;
   bookedSlots: number;
   availableSlots: number;
-  currentPrice: number;
-  discountPercent: number;
+  currentPrice: number | null;
+  discountPercent: number | null;
   status: "SCHEDULED" | "CANCELLED" | "COMPLETED" | "FULL";
 }
 

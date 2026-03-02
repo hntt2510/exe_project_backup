@@ -1,21 +1,29 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Minus, Plus, Clock, AlertCircle } from 'lucide-react';
+import { getTourSchedules } from '../../services/paymentApi';
+import { formatPrice } from '../tour/TourDetail/utils';
+import type { TourSchedule, TourScheduleStartTime } from '../../types';
 import '../../styles/components/tourBookingscss/_booking-details.scss';
 
 export type TourType = 'individual' | 'group' | 'family';
 
 export interface BookingDetailsData {
-  departureDate: Date | null;
+  departureDate: string | null; // "YYYY-MM-DD" string, no timezone issues
   participants: number;
   specialRequirements: string;
   tourType: TourType;
   notes: string;
   agreedToTerms: boolean;
+  tourScheduleId: number | null;
+  selectedStartTime: string | null; // formatted "HH:mm"
+  schedulePrice: number | null; // giá theo khung giờ (currentPrice từ TourSchedule)
 }
 
 interface BookingDetailsProps {
   value: BookingDetailsData;
   onChange: (data: BookingDetailsData) => void;
+  tourId: number;
+  tourPrice: number;
 }
 
 const DAYS_VI = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -33,10 +41,84 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-export default function BookingDetails({ value, onChange }: BookingDetailsProps) {
+/** Format a TourSchedule startTime (object or string) into "HH:mm" */
+function formatScheduleTime(startTime: TourScheduleStartTime | string): string {
+  if (typeof startTime === 'string') {
+    // "15:00:00" → "15:00"
+    const parts = startTime.split(':');
+    return `${parts[0]}:${parts[1]}`;
+  }
+  const h = String(startTime.hour).padStart(2, '0');
+  const m = String(startTime.minute).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+/** Build "YYYY-MM-DD" from year, month (0-based), day — pure arithmetic, no Date object */
+function buildDateStr(year: number, month: number, day: number): string {
+  const mm = String(month + 1).padStart(2, '0');
+  const dd = String(day).padStart(2, '0');
+  return `${year}-${mm}-${dd}`;
+}
+
+/** Parse "YYYY-MM-DD" → { year, month (0-based), day } — no new Date() */
+function parseDateStr(dateStr: string): { year: number; month: number; day: number } {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return { year: y, month: m - 1, day: d };
+}
+
+export default function BookingDetails({ value, onChange, tourId, tourPrice }: BookingDetailsProps) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
+
+  // Schedule state
+  const [allSchedules, setAllSchedules] = useState<TourSchedule[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [schedulesForDate, setSchedulesForDate] = useState<TourSchedule[]>([]);
+
+  // Fetch all schedules for this tour once
+  useEffect(() => {
+    if (!tourId) return;
+    setSchedulesLoading(true);
+    getTourSchedules(tourId)
+      .then((data) => setAllSchedules(data))
+      .catch(() => setAllSchedules([]))
+      .finally(() => setSchedulesLoading(false));
+  }, [tourId]);
+
+  // Compute set of days with available schedules for the current view month
+  const daysWithSchedules = useMemo(() => {
+    const daySet = new Set<number>();
+    allSchedules.forEach((s) => {
+      if (s.status !== 'SCHEDULED') return;
+      const { year, month, day } = parseDateStr(s.tourDate);
+      if (year === viewYear && month === viewMonth) {
+        daySet.add(day);
+      }
+    });
+    return daySet;
+  }, [allSchedules, viewYear, viewMonth]);
+
+  // Filter schedules when date changes — pure string comparison, no timezone
+  useEffect(() => {
+    if (!value.departureDate || allSchedules.length === 0) {
+      setSchedulesForDate([]);
+      return;
+    }
+    const matched = allSchedules.filter((s) => {
+      return s.tourDate === value.departureDate && s.status === 'SCHEDULED';
+    });
+    setSchedulesForDate(matched);
+
+    // Auto-clear schedule selection if date changes and previous selection no longer valid
+    if (value.tourScheduleId) {
+      const stillValid = matched.some((s) => s.id === value.tourScheduleId);
+      if (!stillValid) {
+        onChange({ ...value, tourScheduleId: null, selectedStartTime: null, schedulePrice: null });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value.departureDate, allSchedules]);
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth);
   const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
@@ -61,18 +143,29 @@ export default function BookingDetails({ value, onChange }: BookingDetailsProps)
   };
 
   const handleSelectDate = (day: number) => {
-    const selected = new Date(viewYear, viewMonth, day);
-    if (selected < new Date(today.getFullYear(), today.getMonth(), today.getDate())) return;
-    onChange({ ...value, departureDate: selected });
+    if (isPastDate(day)) return;
+    const dateStr = buildDateStr(viewYear, viewMonth, day);
+    onChange({ ...value, departureDate: dateStr, tourScheduleId: null, selectedStartTime: null, schedulePrice: null });
+  };
+
+  const handleSelectSchedule = (schedule: TourSchedule) => {
+    const time = formatScheduleTime(schedule.startTime);
+    // Compute actual price: use currentPrice if available, otherwise calculate from discount
+    const discount = schedule.discountPercent ?? 0;
+    let price: number;
+    if (schedule.currentPrice != null) {
+      price = schedule.currentPrice;
+    } else if (discount > 0) {
+      price = Math.round(tourPrice * (1 - discount / 100));
+    } else {
+      price = tourPrice;
+    }
+    onChange({ ...value, tourScheduleId: schedule.id, selectedStartTime: time, schedulePrice: price });
   };
 
   const isSelectedDate = (day: number) => {
     if (!value.departureDate) return false;
-    return (
-      value.departureDate.getDate() === day &&
-      value.departureDate.getMonth() === viewMonth &&
-      value.departureDate.getFullYear() === viewYear
-    );
+    return value.departureDate === buildDateStr(viewYear, viewMonth, day);
   };
 
   const isPastDate = (day: number) => {
@@ -109,6 +202,7 @@ export default function BookingDetails({ value, onChange }: BookingDetailsProps)
     const past = isPastDate(day);
     const selected = isSelectedDate(day);
     const todayClass = isToday(day);
+    const hasTour = daysWithSchedules.has(day);
     return (
       <button
         key={day}
@@ -116,7 +210,9 @@ export default function BookingDetails({ value, onChange }: BookingDetailsProps)
         disabled={past}
         className={`booking-calendar__day ${past ? 'booking-calendar__day--disabled' : ''} ${
           selected ? 'booking-calendar__day--selected' : ''
-        } ${todayClass ? 'booking-calendar__day--today' : ''}`}
+        } ${todayClass ? 'booking-calendar__day--today' : ''} ${
+          hasTour && !selected && !past ? 'booking-calendar__day--has-tour' : ''
+        }`}
         onClick={() => handleSelectDate(day)}
       >
         {day}
@@ -156,6 +252,86 @@ export default function BookingDetails({ value, onChange }: BookingDetailsProps)
           </div>
         </div>
       </div>
+
+      {/* Schedule time slot picker */}
+      {value.departureDate !== null && (
+        <div className="booking-details__section">
+          <label className="booking-details__label">
+            Chọn giờ khởi hành <span className="booking-details__required">*</span>
+          </label>
+
+          {schedulesLoading ? (
+            <div className="schedule-picker__loading">
+              <div className="schedule-picker__spinner" />
+              <span>Đang tải lịch khởi hành...</span>
+            </div>
+          ) : schedulesForDate.length === 0 ? (
+            <div className="schedule-picker__empty">
+              <AlertCircle size={16} />
+              <span>Không có lịch khởi hành cho ngày này. Vui lòng chọn ngày khác.</span>
+            </div>
+          ) : (
+            <div className="schedule-picker">
+              {schedulesForDate.map((schedule) => {
+                const isSelected = value.tourScheduleId === schedule.id;
+                const isFull = schedule.bookedSlots >= schedule.maxSlots;
+                const available = schedule.maxSlots - schedule.bookedSlots;
+                const time = formatScheduleTime(schedule.startTime);
+
+                return (
+                  <button
+                    key={schedule.id}
+                    type="button"
+                    disabled={isFull}
+                    className={`schedule-picker__slot ${
+                      isSelected ? 'schedule-picker__slot--selected' : ''
+                    } ${isFull ? 'schedule-picker__slot--full' : ''}`}
+                    onClick={() => handleSelectSchedule(schedule)}
+                  >
+                    <div className="schedule-picker__slot-time">
+                      <Clock size={16} />
+                      <span>{time}</span>
+                    </div>
+                    <div className="schedule-picker__slot-price">
+                      {(() => {
+                        const discount = schedule.discountPercent ?? 0;
+                        const effectivePrice = schedule.currentPrice != null
+                          ? schedule.currentPrice
+                          : discount > 0
+                            ? Math.round(tourPrice * (1 - discount / 100))
+                            : tourPrice;
+                        const hasDiscount = discount > 0 && effectivePrice < tourPrice;
+                        return hasDiscount ? (
+                          <>
+                            <span className="schedule-picker__slot-original-price">
+                              {formatPrice(tourPrice)} VND
+                            </span>
+                            <span className="schedule-picker__slot-current-price">
+                              {formatPrice(effectivePrice)} VND
+                            </span>
+                            <span className="schedule-picker__slot-discount">
+                              -{discount}%
+                            </span>
+                          </>
+                        ) : (
+                          <span className="schedule-picker__slot-normal-price">
+                            {formatPrice(effectivePrice)} VND
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    <div className="schedule-picker__slot-info">
+                      <span className="schedule-picker__slot-seats">
+                        {isFull ? 'Hết chỗ' : `Còn ${available} chỗ`}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Participants */}
       <div className="booking-details__section">

@@ -75,6 +75,31 @@
     margin-bottom: 0.75rem;
   }
 
+  &__price-discount {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-bottom: 0.625rem;
+    padding: 0.5rem 0.75rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+  }
+
+  &__price-original {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    text-decoration: line-through;
+    text-decoration-color: #ef4444;
+    text-decoration-thickness: 1.5px;
+  }
+
+  &__price-sale {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #dc2626;
+  }
+
   &__price-row {
     display: flex;
     align-items: center;

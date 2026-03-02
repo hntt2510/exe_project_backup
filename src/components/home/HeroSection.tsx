@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ArrowRight, Play } from 'lucide-react';
 import '../../styles/components/_hero-section.scss';
 
@@ -30,6 +31,7 @@ const sliderImages = [
 ];
 
 export default function HeroSection() {
+  const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const nextSlide = useCallback(() => {
@@ -106,13 +108,19 @@ export default function HeroSection() {
 
             {/* Buttons */}
             <div className="hero-section__buttons">
-              <button className="hero-section__button hero-section__button--primary">
+              <button 
+                onClick={() => navigate('/tour')}
+                className="hero-section__button hero-section__button--primary"
+              >
                 Khám phá ngay
                 <ArrowRight className="hero-section__button-icon" />
               </button>
-              <button className="hero-section__button hero-section__button--secondary">
+              <button 
+                onClick={() => navigate('/about')}
+                className="hero-section__button hero-section__button--secondary"
+              >
                 <Play className="hero-section__button-icon" />
-                Xem video
+                Về chúng tôi
               </button>
             </div>
           </div>

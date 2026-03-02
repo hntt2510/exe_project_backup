@@ -3,18 +3,17 @@ import { api } from './api';
 
 // ========== Payment Method ==========
 
-export type PaymentMethod = 'VNPAY' | 'MOMO' | 'COD';
+export type PaymentMethod = 'VNPAY' | 'MOMO' | 'CASH';
 
 // ========== Tour Schedules ==========
 
 /**
- * GET /api/tour-schedules/tour/{tourId}
- * Lấy danh sách lịch khởi hành của tour.
- * Vite proxy handles CORS in dev mode.
+ * GET /api/tours/public/{id}/schedules
+ * Lấy danh sách lịch khởi hành của tour (public, không cần auth).
  */
 export const getTourSchedules = async (tourId: number): Promise<TourSchedule[]> => {
   const response = await api.get<ApiResponse<TourSchedule[]>>(
-    `/api/tour-schedules/tour/${tourId}`,
+    `/api/tours/public/${tourId}/schedules`,
   );
   return response.data.data;
 };
@@ -115,6 +114,17 @@ export const createPayment = async (
   const response = await api.post<ApiResponse<CreatePaymentResponse>>(
     '/api/payments/create',
     data,
+  );
+  return response.data.data;
+};
+
+/**
+ * GET /api/bookings/{id}
+ * Lấy thông tin chi tiết booking.
+ */
+export const getBookingById = async (id: number): Promise<BookingResponse> => {
+  const response = await api.get<ApiResponse<BookingResponse>>(
+    `/api/bookings/${id}`,
   );
   return response.data.data;
 };

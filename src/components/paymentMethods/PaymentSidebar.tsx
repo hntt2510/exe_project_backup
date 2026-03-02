@@ -17,7 +17,8 @@ function formatDuration(hours: number): string {
 }
 
 export default function PaymentSidebar({ tour, bookingDetails }: PaymentSidebarProps) {
-  const totalPrice = bookingDetails.participants * tour.price;
+  const unitPrice = bookingDetails.schedulePrice ?? tour.price;
+  const totalPrice = bookingDetails.participants * unitPrice;
 
   return (
     <div className="payment-sidebar">
@@ -41,8 +42,20 @@ export default function PaymentSidebar({ tour, bookingDetails }: PaymentSidebarP
 
         {/* Price breakdown */}
         <div className="payment-sidebar__pricing">
+          {/* Show discount comparison when schedule has lower price */}
+          {bookingDetails.schedulePrice != null && bookingDetails.schedulePrice < tour.price ? (
+            <div className="payment-sidebar__price-discount">
+              <span className="payment-sidebar__price-original">
+                {formatPrice(tour.price)} VND
+              </span>
+              <span className="payment-sidebar__price-sale">
+                {formatPrice(bookingDetails.schedulePrice)} VND
+              </span>
+            </div>
+          ) : null}
+
           <div className="payment-sidebar__price-row">
-            <span>{formatPrice(tour.price)} × {bookingDetails.participants} người</span>
+            <span>{formatPrice(unitPrice)} × {bookingDetails.participants} người</span>
             <strong>{formatPrice(totalPrice)} VND</strong>
           </div>
         </div>

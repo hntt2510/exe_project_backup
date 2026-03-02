@@ -8,14 +8,17 @@ interface ConfirmGuestInfoProps {
   onEditClick: () => void;
 }
 
-function formatDateFull(date: Date | null): string {
-  if (!date) return '—';
+function formatDateFull(dateStr: string | null): string {
+  if (!dateStr) return '—';
+  // Parse "YYYY-MM-DD" without Date object to avoid timezone shift
+  const [y, m, d] = dateStr.split('-').map(Number);
+  // Create date at noon local to avoid DST edge cases
+  const date = new Date(y, m - 1, d, 12, 0, 0);
   const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
   const dayName = dayNames[date.getDay()];
-  const dd = String(date.getDate()).padStart(2, '0');
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const yyyy = date.getFullYear();
-  return `${dayName}, ${dd}/${mm}/${yyyy}`;
+  const dd = String(d).padStart(2, '0');
+  const mm = String(m).padStart(2, '0');
+  return `${dayName}, ${dd}/${mm}/${y}`;
 }
 
 function buildParticipantSummary(participants: number): string {
@@ -45,6 +48,14 @@ export default function ConfirmGuestInfo({
             {formatDateFull(bookingDetails.departureDate)}
           </span>
         </div>
+        {bookingDetails.selectedStartTime && (
+          <div className="confirm-guest-info__row">
+            <span className="confirm-guest-info__key">Giờ tập trung</span>
+            <span className="confirm-guest-info__value">
+              {bookingDetails.selectedStartTime}
+            </span>
+          </div>
+        )}
         <div className="confirm-guest-info__row">
           <span className="confirm-guest-info__key">Số lượng</span>
           <span className="confirm-guest-info__value">

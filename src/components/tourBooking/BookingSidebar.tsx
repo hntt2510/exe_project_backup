@@ -45,16 +45,15 @@ function formatDuration(hours: number): string {
   return `${days} ngày ${nights} đêm`;
 }
 
-function formatDate(date: Date | null): string {
-  if (!date) return '—';
-  const dd = String(date.getDate()).padStart(2, '0');
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const yyyy = date.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return '—';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
 }
 
 export default function BookingSidebar({ tour, province, bookingDetails }: BookingSidebarProps) {
-  const totalPrice = bookingDetails.participants * tour.price;
+  const unitPrice = bookingDetails.schedulePrice ?? tour.price;
+  const totalPrice = bookingDetails.participants * unitPrice;
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
@@ -112,7 +111,11 @@ export default function BookingSidebar({ tour, province, bookingDetails }: Booki
           <div className="booking-sidebar__meta-item">
             <Calendar size={14} />
             <span>Lịch khởi hành</span>
-            <strong>{formatDate(bookingDetails.departureDate)}</strong>
+            <strong>
+              {bookingDetails.selectedStartTime
+                ? `${bookingDetails.selectedStartTime} - ${formatDate(bookingDetails.departureDate)}`
+                : formatDate(bookingDetails.departureDate)}
+            </strong>
           </div>
           <div className="booking-sidebar__meta-item">
             <Clock size={14} />
@@ -129,8 +132,21 @@ export default function BookingSidebar({ tour, province, bookingDetails }: Booki
         {/* Price breakdown */}
         <div className="booking-sidebar__pricing">
           <h4 className="booking-sidebar__pricing-title">Giá tham chiếu</h4>
+
+          {/* Show discount comparison when schedule has lower price */}
+          {bookingDetails.schedulePrice != null && bookingDetails.schedulePrice < tour.price ? (
+            <div className="booking-sidebar__price-discount">
+              <span className="booking-sidebar__price-original">
+                {formatPrice(tour.price)} VND
+              </span>
+              <span className="booking-sidebar__price-sale">
+                {formatPrice(bookingDetails.schedulePrice)} VND
+              </span>
+            </div>
+          ) : null}
+
           <div className="booking-sidebar__price-row">
-            <span>{formatPrice(tour.price)} × {bookingDetails.participants} người</span>
+            <span>{formatPrice(unitPrice)} × {bookingDetails.participants} người</span>
             <strong>{formatPrice(totalPrice)} VND</strong>
           </div>
           <div className="booking-sidebar__price-total">
@@ -138,7 +154,9 @@ export default function BookingSidebar({ tour, province, bookingDetails }: Booki
             <strong>{formatPrice(totalPrice)} VND</strong>
           </div>
           <p className="booking-sidebar__price-note">
-            Giá có thể thay đổi theo ngày khởi hành
+            {bookingDetails.schedulePrice
+              ? 'Giá theo khung giờ đã chọn'
+              : 'Giá có thể thay đổi theo khung giờ khởi hành'}
           </p>
           <a href="#" className="booking-sidebar__refund-link">
             Xem chính sách hoàn huỷ

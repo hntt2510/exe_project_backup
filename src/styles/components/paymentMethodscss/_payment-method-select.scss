@@ -87,7 +87,7 @@
 }
 
 // ============================================
-// Payment Method Info panels (VNPay, MoMo, COD)
+// Payment Method Info panels (VNPay, MoMo, Cash)
 // ============================================
 .payment-method-info {
   // Header
@@ -104,7 +104,7 @@
       color: #a50064; // MoMo pink
     }
 
-    &--cod {
+    &--cash {
       color: $color-gray-700;
     }
   }
@@ -168,7 +168,7 @@
       color: #a50064;
     }
 
-    &--cod {
+    &--cash {
       background: rgba($color-gray-600, 0.1);
       color: $color-gray-600;
     }
@@ -210,7 +210,7 @@
       background: rgba(#a50064, 0.05);
     }
 
-    &--cod {
+    &--cash {
       color: $color-gray-600;
       background: $color-gray-50;
     }

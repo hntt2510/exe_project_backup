@@ -1,0 +1,359 @@
+// ============================================
+// E-Ticket Card - Airline-style ticket design
+// ============================================
+@use '../../../variables' as *;
+
+.e-ticket-card {
+  max-width: 680px;
+  margin: 0 auto 2rem;
+  border-radius: $radius-xl;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: $shadow-lg, 0 0 0 1px rgba(0, 0, 0, 0.04);
+
+  // ---- Header with image ----
+  &__header {
+    display: flex;
+    gap: 0;
+    border-bottom: none;
+
+    @media (max-width: $breakpoint-md) {
+      flex-direction: column;
+    }
+  }
+
+  &__image-wrap {
+    position: relative;
+    width: 240px;
+    min-height: 180px;
+    flex-shrink: 0;
+
+    @media (max-width: $breakpoint-md) {
+      width: 100%;
+      min-height: 200px;
+    }
+  }
+
+  &__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &__image-overlay {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+  }
+
+  &__badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: $radius-full;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    letter-spacing: 0.02em;
+
+    &--confirmed {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    &--pending {
+      background: #fef9c3;
+      color: #854d0e;
+    }
+
+    &--cancelled {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    &--completed {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+  }
+
+  &__header-info {
+    flex: 1;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: linear-gradient(135deg, $color-red-50 0%, #fff 100%);
+  }
+
+  &__tour-title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-bold;
+    color: $color-gray-900;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+  }
+
+  &__meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: $font-size-sm;
+    color: $color-gray-500;
+    margin-bottom: 0.25rem;
+
+    svg {
+      color: $color-primary;
+      flex-shrink: 0;
+    }
+  }
+
+  // ---- Dashed divider with notches ----
+  &__divider {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 24px;
+    background: #fff;
+  }
+
+  &__divider-notch {
+    width: 12px;
+    height: 24px;
+    background: $color-gray-100;
+    flex-shrink: 0;
+
+    &--left {
+      border-radius: 0 12px 12px 0;
+    }
+
+    &--right {
+      border-radius: 12px 0 0 12px;
+    }
+  }
+
+  &__divider-line {
+    flex: 1;
+    border-top: 2px dashed $color-gray-300;
+  }
+
+  // ---- Ticket body ----
+  &__body {
+    padding: 1.5rem 2rem 2rem;
+
+    @media (max-width: $breakpoint-md) {
+      padding: 1.25rem 1rem 1.5rem;
+    }
+  }
+
+  // Booking code
+  &__code-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: $color-red-50;
+    border: 1px dashed $color-primary;
+    border-radius: $radius-md;
+    margin-bottom: 1.5rem;
+
+    @media (max-width: 480px) {
+      flex-direction: column;
+      gap: 0.25rem;
+      text-align: center;
+    }
+  }
+
+  &__code-label {
+    font-size: $font-size-sm;
+    color: $color-gray-600;
+    font-weight: $font-weight-medium;
+  }
+
+  &__code-value {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $color-primary;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.1em;
+  }
+
+  // Detail grid
+  &__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__field {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+  }
+
+  &__field-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: $radius-md;
+    background: $color-red-50;
+    color: $color-primary;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  &__field-label {
+    display: block;
+    font-size: $font-size-xs;
+    color: $color-gray-400;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: $font-weight-medium;
+  }
+
+  &__field-value {
+    display: block;
+    font-size: $font-size-sm;
+    color: $color-gray-900;
+    font-weight: $font-weight-semibold;
+  }
+
+  // Section (contact / payment)
+  &__section {
+    border-top: 1px solid $color-gray-200;
+    padding-top: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  &__section-title {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-bold;
+    color: $color-gray-700;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__info-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__info-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: $font-size-sm;
+
+    svg {
+      color: $color-gray-400;
+      flex-shrink: 0;
+    }
+  }
+
+  &__info-label {
+    color: $color-gray-500;
+    min-width: 100px;
+  }
+
+  &__info-value {
+    color: $color-gray-900;
+    font-weight: $font-weight-medium;
+
+    &--discount {
+      color: #16a34a;
+      font-weight: $font-weight-semibold;
+    }
+  }
+
+  // Payment status chips
+  &__status {
+    &--paid {
+      color: #166534;
+      font-weight: $font-weight-semibold;
+    }
+
+    &--unpaid {
+      color: #854d0e;
+      font-weight: $font-weight-semibold;
+    }
+
+    &--refunded {
+      color: #1e40af;
+      font-weight: $font-weight-semibold;
+    }
+
+    &--pending {
+      color: #854d0e;
+      font-weight: $font-weight-semibold;
+    }
+  }
+
+  // Total
+  &__total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: linear-gradient(135deg, $color-primary 0%, $color-primary-hover 100%);
+    border-radius: $radius-md;
+    color: #fff;
+    margin-bottom: 1.25rem;
+
+    span {
+      font-size: $font-size-base;
+      font-weight: $font-weight-medium;
+    }
+
+    strong {
+      font-size: $font-size-xl;
+      font-weight: $font-weight-bold;
+    }
+  }
+
+  // Footer note
+  &__note {
+    padding: 1rem;
+    background: $color-gray-50;
+    border: 1px solid $color-gray-200;
+    border-radius: $radius-md;
+
+    p {
+      font-size: $font-size-xs;
+      color: $color-gray-500;
+      line-height: 1.6;
+      margin: 0;
+
+      & + p {
+        margin-top: 0.25rem;
+      }
+
+      strong {
+        color: $color-gray-700;
+      }
+    }
+  }
+}
+
+// Print-specific overrides
+@media print {
+  .e-ticket-card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+    max-width: none;
+    break-inside: avoid;
+
+    &__total {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+}

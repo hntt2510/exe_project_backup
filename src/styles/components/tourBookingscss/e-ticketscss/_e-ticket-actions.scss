@@ -1,0 +1,66 @@
+// ============================================
+// E-Ticket Actions - Buttons below the ticket
+// ============================================
+@use '../../../variables' as *;
+
+.e-ticket-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  max-width: 680px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all $transition-fast;
+
+    &--primary {
+      background: $color-primary;
+      color: #fff;
+      border-color: $color-primary;
+
+      &:hover {
+        background: $color-primary-hover;
+        border-color: $color-primary-hover;
+      }
+    }
+
+    &--outline {
+      background: transparent;
+      color: $color-primary;
+      border-color: $color-primary;
+
+      &:hover {
+        background: $color-red-50;
+      }
+    }
+
+    &--secondary {
+      background: $color-gray-100;
+      color: $color-gray-700;
+      border-color: $color-gray-200;
+
+      &:hover {
+        background: $color-gray-200;
+      }
+    }
+  }
+
+  @media (max-width: $breakpoint-md) {
+    flex-direction: column;
+
+    &__btn {
+      justify-content: center;
+      width: 100%;
+    }
+  }
+}

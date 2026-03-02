@@ -13,6 +13,7 @@ import TourDetail from "./components/tour/TourDetail";
 import TourBooking from "./components/tourBooking";
 import BookingConfirm from "./components/tourBooking/step2";
 import PaymentPage from "./components/paymentMethods";
+import ETicketPage from "./components/tourBooking/e-ticket";
 import { ProfilePage } from "./components/profile";
 import { About } from "./components/about";
 import { ArtisanPage, ArtisanDetailPage } from "./components/artisan";
@@ -56,6 +57,7 @@ function App() {
           <Route path="/tours/:id/booking" element={<TourBooking />} />
           <Route path="/tours/:id/booking/confirm" element={<BookingConfirm />} />
           <Route path="/tours/:id/booking/payment" element={<PaymentPage />} />
+          <Route path="/tours/:id/booking/e-ticket" element={<ETicketPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/artisans" element={<ArtisanPage />} />
           <Route path="/artisans/:id" element={<ArtisanDetailPage />} />

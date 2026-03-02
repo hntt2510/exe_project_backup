@@ -40,9 +40,6 @@ export default function TourBooking() {
     if (incoming?.bookingDetails) {
       return {
         ...incoming.bookingDetails,
-        departureDate: incoming.bookingDetails.departureDate
-          ? new Date(incoming.bookingDetails.departureDate)
-          : null,
       };
     }
     return {
@@ -52,6 +49,9 @@ export default function TourBooking() {
       tourType: 'individual',
       notes: '',
       agreedToTerms: false,
+      tourScheduleId: null,
+      selectedStartTime: null,
+      schedulePrice: null,
     };
   });
 
@@ -84,6 +84,7 @@ export default function TourBooking() {
     contactInfo.email.trim() !== '' &&
     contactInfo.phone.trim() !== '' &&
     bookingDetails.departureDate !== null &&
+    bookingDetails.tourScheduleId !== null &&
     bookingDetails.agreedToTerms;
 
   const handleSubmit = () => {
@@ -144,7 +145,7 @@ export default function TourBooking() {
         <div className="tour-booking__form">
           <TourInfo tour={tour} />
           <ContactForm value={contactInfo} onChange={setContactInfo} />
-          <BookingDetails value={bookingDetails} onChange={setBookingDetails} />
+          <BookingDetails value={bookingDetails} onChange={setBookingDetails} tourId={tour.id} tourPrice={tour.price} />
           <BookingActions tourId={tour.id} canSubmit={canSubmit} onSubmit={handleSubmit} />
         </div>
 

@@ -17,8 +17,8 @@ import type {
 } from "../types";
 
 // API Base Configuration
-// In dev mode Vite proxy forwards /api → backend (avoids CORS).
-// Set VITE_API_URL in .env.production for prod builds.
+// Must use ngrok URL directly - backend requires auth and redirects to OAuth2/Google.
+// Vite proxy cannot bypass this CORS requirement.
 const API_BASE_URL = "https://legally-actual-mollusk.ngrok-free.app/";
 
 export const api = axios.create({

@@ -1,4 +1,4 @@
-import { CreditCard, Smartphone, Truck, Shield, ExternalLink, MousePointerClick, ArrowRightLeft, Landmark, TicketCheck, QrCode, CheckCircle, Clock } from 'lucide-react';
+import { CreditCard, Smartphone, Banknote, Shield, ExternalLink, MousePointerClick, ArrowRightLeft, Landmark, TicketCheck, QrCode, CheckCircle, Clock } from 'lucide-react';
 import type { PaymentMethod } from '../../services/paymentApi';
 import '../../styles/components/paymentMethodscss/_payment-method-select.scss';
 
@@ -23,9 +23,9 @@ const METHODS: {
     label: 'Momo/Ví điện tử',
   },
   {
-    key: 'COD',
-    icon: <Truck size={20} />,
-    label: 'COD - Trả tại điểm hẹn - nội địa',
+    key: 'CASH',
+    icon: <Banknote size={20} />,
+    label: 'Tiền mặt - Trả tại điểm hẹn',
   },
 ];
 
@@ -126,12 +126,12 @@ function MomoInfo() {
   );
 }
 
-function CodInfo() {
+function CashInfo() {
   return (
     <div className="payment-method-info">
-      <div className="payment-method-info__header payment-method-info__header--cod">
-        <Truck size={18} />
-        <span>Thanh toán tại điểm hẹn</span>
+      <div className="payment-method-info__header payment-method-info__header--cash">
+        <Banknote size={18} />
+        <span>Thanh toán tiền mặt tại điểm hẹn</span>
       </div>
       <p className="payment-method-info__desc">
         Bạn sẽ thanh toán trực tiếp bằng tiền mặt tại điểm hẹn khởi hành tour.
@@ -139,25 +139,25 @@ function CodInfo() {
       </p>
       <div className="payment-method-info__steps">
         <div className="payment-method-info__step">
-          <span className="payment-method-info__step-icon payment-method-info__step-icon--cod">
+          <span className="payment-method-info__step-icon payment-method-info__step-icon--cash">
             <CheckCircle size={15} />
           </span>
           <span>Xác nhận đặt chỗ</span>
         </div>
         <div className="payment-method-info__step">
-          <span className="payment-method-info__step-icon payment-method-info__step-icon--cod">
+          <span className="payment-method-info__step-icon payment-method-info__step-icon--cash">
             <Clock size={15} />
           </span>
           <span>Giữ chỗ trong <strong>24 giờ</strong></span>
         </div>
         <div className="payment-method-info__step">
-          <span className="payment-method-info__step-icon payment-method-info__step-icon--cod">
-            <Truck size={15} />
+          <span className="payment-method-info__step-icon payment-method-info__step-icon--cash">
+            <Banknote size={15} />
           </span>
-          <span>Thanh toán tại điểm hẹn</span>
+          <span>Thanh toán tiền mặt tại điểm hẹn</span>
         </div>
       </div>
-      <div className="payment-method-info__note payment-method-info__note--cod">
+      <div className="payment-method-info__note payment-method-info__note--cash">
         <Shield size={14} />
         <span>Đặt chỗ sẽ được giữ trong 24 giờ. Nếu không thanh toán, đơn sẽ tự động huỷ.</span>
       </div>
@@ -203,9 +203,9 @@ export default function PaymentMethodSelect({
                 <MomoInfo />
               </div>
             )}
-            {method.key === 'COD' && isActive && (
+            {method.key === 'CASH' && isActive && (
               <div className="payment-method-select__expand">
-                <CodInfo />
+                <CashInfo />
               </div>
             )}
           </div>

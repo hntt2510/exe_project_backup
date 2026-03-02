@@ -45,7 +45,8 @@ export default function ConfirmSidebar({
   onConfirm,
   onBack,
 }: ConfirmSidebarProps) {
-  const totalPrice = bookingDetails.participants * tour.price;
+  const unitPrice = bookingDetails.schedulePrice ?? tour.price;
+  const totalPrice = bookingDetails.participants * unitPrice;
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
@@ -94,8 +95,20 @@ export default function ConfirmSidebar({
         <h3 className="confirm-sidebar__heading">Tóm tắt &amp; Thành tiền</h3>
 
         <div className="confirm-sidebar__price-rows">
+          {/* Show discount comparison when schedule has lower price */}
+          {bookingDetails.schedulePrice != null && bookingDetails.schedulePrice < tour.price ? (
+            <div className="confirm-sidebar__price-discount">
+              <span className="confirm-sidebar__price-original">
+                {formatPrice(tour.price)} VND
+              </span>
+              <span className="confirm-sidebar__price-sale">
+                {formatPrice(bookingDetails.schedulePrice)} VND
+              </span>
+            </div>
+          ) : null}
+
           <div className="confirm-sidebar__price-row">
-            <span>{formatPrice(tour.price)} × {bookingDetails.participants} người</span>
+            <span>{formatPrice(unitPrice)} × {bookingDetails.participants} người</span>
             <strong>{formatPrice(totalPrice)} VND</strong>
           </div>
         </div>

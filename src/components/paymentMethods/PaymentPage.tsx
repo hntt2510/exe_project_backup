@@ -8,12 +8,11 @@ import PaymentMethodSelect from './PaymentMethodSelect';
 import PaymentSidebar from './PaymentSidebar';
 import { getTourById, getProvinceById } from '../../services/api';
 import {
-  getTourSchedules,
   createBooking,
   createPayment,
   type PaymentMethod,
 } from '../../services/paymentApi';
-import type { Tour, Province, TourSchedule } from '../../types';
+import type { Tour, Province } from '../../types';
 import type { ContactInfo } from '../tourBooking/ContactForm';
 import type { BookingDetailsData } from '../tourBooking/BookingDetails';
 import '../../styles/components/paymentMethodscss/_payment-page.scss';
@@ -30,7 +29,6 @@ export default function PaymentPage() {
 
   const [tour, setTour] = useState<Tour | null>(null);
   const [province, setProvince] = useState<Province | null>(null);
-  const [schedules, setSchedules] = useState<TourSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -47,9 +45,6 @@ export default function PaymentPage() {
   const bookingDetails: BookingDetailsData = state?.bookingDetails
     ? {
         ...state.bookingDetails,
-        departureDate: state.bookingDetails.departureDate
-          ? new Date(state.bookingDetails.departureDate)
-          : null,
       }
     : {
         departureDate: null,
@@ -58,10 +53,13 @@ export default function PaymentPage() {
         tourType: 'individual',
         notes: '',
         agreedToTerms: false,
+        tourScheduleId: null,
+        selectedStartTime: null,
+        schedulePrice: null,
       };
 
   // Payment form state
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('VNPAY');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   useEffect(() => {
@@ -71,12 +69,8 @@ export default function PaymentPage() {
 
     const fetchData = async () => {
       try {
-        const [tourData, schedulesData] = await Promise.all([
-          getTourById(tourId),
-          getTourSchedules(tourId).catch(() => [] as TourSchedule[]),
-        ]);
+        const tourData = await getTourById(tourId);
         setTour(tourData);
-        setSchedules(schedulesData);
 
         if (tourData.provinceId) {
           const provinceData = await getProvinceById(tourData.provinceId);
@@ -101,7 +95,7 @@ export default function PaymentPage() {
 
   const canSubmit = (): boolean => {
     if (!agreedToTerms) return false;
-    // VNPay, MoMo, COD — no extra fields needed, just agree to terms
+    // VNPay, MoMo, CASH — no extra fields needed, just agree to terms
     return true;
   };
 
@@ -124,23 +118,15 @@ export default function PaymentPage() {
     setErrorMsg(null);
 
     try {
-      /* ---- 1. Resolve tourScheduleId from selected departureDate ---- */
-      let tourScheduleId: number | undefined;
-      if (bookingDetails.departureDate && schedules.length > 0) {
-        const selectedDate = bookingDetails.departureDate.toISOString().split('T')[0];
-        const matched = schedules.find((s) => {
-          const sDate = new Date(s.tourDate).toISOString().split('T')[0];
-          return sDate === selectedDate;
-        });
-        tourScheduleId = matched?.id;
-      }
+      /* ---- 1. Use tourScheduleId from booking details (selected in step 1) ---- */
+      const tourScheduleId = bookingDetails.tourScheduleId ?? 0;
 
       /* ---- 2. Create Booking ---- */
       const numParticipants = bookingDetails.participants;
 
       const booking = await createBooking({
         tourId: tour.id,
-        tourScheduleId: tourScheduleId ?? 0,
+        tourScheduleId: tourScheduleId,
         numParticipants,
         contactName: contactInfo.fullName,
         contactPhone: contactInfo.phone,
@@ -161,8 +147,8 @@ export default function PaymentPage() {
         }
       }
 
-      /* ---- 4. COD → navigate to success page ---- */
-      navigate(`/tours/${tour.id}/booking/success`, {
+      /* ---- 4. CASH → navigate to e-ticket page ---- */
+      navigate(`/tours/${tour.id}/booking/e-ticket`, {
         state: {
           bookingId: booking.id,
           bookingCode: booking.bookingCode,

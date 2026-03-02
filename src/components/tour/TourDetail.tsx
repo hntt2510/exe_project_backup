@@ -55,6 +55,27 @@ const renderStars = (rating: number, prefix = 'star') =>
     />
   ));
 
+/** Convert any YouTube URL to embeddable format */
+const toYouTubeEmbed = (url: string): string => {
+  try {
+    const u = new URL(url);
+    // Already embed URL
+    if (u.pathname.startsWith('/embed/')) return url;
+    // https://www.youtube.com/watch?v=VIDEO_ID
+    const vParam = u.searchParams.get('v');
+    if (vParam) return `https://www.youtube.com/embed/${vParam}`;
+    // https://youtu.be/VIDEO_ID
+    if (u.hostname === 'youtu.be') {
+      const videoId = u.pathname.slice(1);
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    }
+    // https://www.youtube.com/shorts/VIDEO_ID
+    const shortsMatch = u.pathname.match(/\/shorts\/([^/?]+)/);
+    if (shortsMatch) return `https://www.youtube.com/embed/${shortsMatch[1]}`;
+  } catch { /* not a valid URL, return as-is */ }
+  return url;
+};
+
 export default function TourDetail() {
   const { id } = useParams<{ id: string }>();
   const [tour, setTour] = useState<Tour | null>(null);
@@ -129,9 +150,17 @@ export default function TourDetail() {
     );
   }
 
-  const festivals = cultureItems.filter((c) => c.category === 'CRAFT').slice(0, 2);
-  const foodItems = cultureItems.filter((c) => c.category === 'FOOD');
-  const videoItem = [...highlightItems, ...cultureItems].find((c) => c.videoUrl);
+  // Deduplicate items from highlights + culture-items APIs (they may overlap)
+  const allItemsMap = new Map<number, CultureItem>();
+  [...highlightItems, ...cultureItems].forEach((item) => {
+    if (!allItemsMap.has(item.id)) allItemsMap.set(item.id, item);
+  });
+  const allItems = Array.from(allItemsMap.values());
+
+  const highlightFiltered = allItems.filter((c) => ['CRAFT', 'LEGEND', 'INSTRUMENT'].includes(c.category));
+  const festivals = allItems.filter((c) => ['FESTIVAL', 'COSTUME', 'DANCE'].includes(c.category)).slice(0, 2);
+  const foodItems = allItems.filter((c) => c.category === 'FOOD');
+  const videoItem = allItems.find((c) => c.videoUrl);
 
   // Extract enriched province info from API items (highlights/culture-items include nested province with bestSeason, etc.)
   const itemProvince = highlightItems[0]?.province || cultureItems[0]?.province;
@@ -222,7 +251,7 @@ export default function TourDetail() {
           {videoItem?.videoUrl ? (
             <iframe
               className="td-video__player"
-              src={videoItem.videoUrl}
+              src={toYouTubeEmbed(videoItem.videoUrl)}
               title={videoItem.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
@@ -240,8 +269,12 @@ export default function TourDetail() {
           )}
         </div>
         <div className="td-video__caption">
-          <h3>Một ngày ở {provinceName || tour.title}</h3>
-          <p>Trải nghiệm một ngày đầy thú vị khám phá rừng thông, thác nước và văn hoá bản địa</p>
+          <h3>{tour.title}</h3>
+          <p>{tour.description
+            ? tour.description.length > 120
+              ? tour.description.slice(0, 120) + '...'
+              : tour.description
+            : `Khám phá vẻ đẹp thiên nhiên và văn hoá đặc sắc tại ${provinceName || 'vùng đất này'}`}</p>
         </div>
       </section>
 
@@ -253,7 +286,7 @@ export default function TourDetail() {
         <div className="td-section__container">
           <h2 className="td-section__title td-section__title--stamp">ĐỊA ĐIỂM NỔI BẬT</h2>
           <div className="td-highlights__grid">
-            {(highlightItems.length > 0 ? highlightItems : cultureItems).slice(0, 3).map((item) => (
+            {(highlightFiltered.length > 0 ? highlightFiltered : allItems).slice(0, 3).map((item) => (
               <article key={item.id} className="td-stamp-card">
                 <div className="td-stamp-card__image-wrapper">
                   <div className="td-stamp-card__image-frame">
@@ -273,7 +306,7 @@ export default function TourDetail() {
                 </div>
               </article>
             ))}
-            {highlightItems.length === 0 && cultureItems.length === 0 && (
+            {highlightFiltered.length === 0 && allItems.length === 0 && (
               <>
                 {parseImages(tour.images).slice(0, 3).map((img, i) => (
                   <article key={i} className="td-stamp-card">
