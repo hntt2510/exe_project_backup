@@ -21,6 +21,13 @@
     grid-template-columns: repeat(4, 1fr);
   }
 
+  // Dashboard: 3 thẻ quan trọng
+  &Dashboard {
+    @media (min-width: 768px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
   &__card {
     background: #fff;
     border: 1px solid #e6e8ec;
@@ -31,6 +38,8 @@
     display: flex;
     align-items: flex-start;
     gap: 14px;
+    text-decoration: none;
+    color: inherit;
 
     &:hover {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);

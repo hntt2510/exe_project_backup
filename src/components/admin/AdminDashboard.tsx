@@ -14,15 +14,6 @@ import {
   Alert,
 } from "antd";
 import {
-  ArrowUpOutlined,
-  EnvironmentOutlined,
-  CalendarOutlined,
-  FileTextOutlined,
-  DollarOutlined,
-  RiseOutlined,
-  UserOutlined,
-} from "@ant-design/icons";
-import {
   Line,
   PieChart,
   Pie,
@@ -47,10 +38,24 @@ import {
   type AdminTour,
   type AdminBooking,
 } from "../../services/adminApi";
+import DashboardSummaryCards from "./DashboardSummaryCards";
 
 const { Title, Text } = Typography;
 
-const PIE_COLORS = ["#8B0000", "#C41E3A", "#DC143C", "#FF6347", "#CD5C5C", "#B22222"];
+function formatRevenue(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M ₫`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K ₫`;
+  return `${value.toLocaleString("vi-VN")} ₫`;
+}
+
+const PIE_COLORS = [
+  "#8B0000",
+  "#C41E3A",
+  "#DC143C",
+  "#FF6347",
+  "#CD5C5C",
+  "#B22222",
+];
 
 interface BookingRow {
   key: string;
@@ -77,7 +82,11 @@ const bookingColumns: ColumnsType<BookingRow> = [
     dataIndex: "id",
     key: "id",
     width: 100,
-    render: (text) => <Text strong style={{ color: "#8B0000" }}>{text}</Text>,
+    render: (text) => (
+      <Text strong style={{ color: "#8B0000" }}>
+        {text}
+      </Text>
+    ),
   },
   {
     title: "Tour",
@@ -101,7 +110,11 @@ const bookingColumns: ColumnsType<BookingRow> = [
     key: "status",
     render: (status: string) => {
       const color =
-        status === "PAID" ? "success" : status === "PENDING" ? "warning" : "default";
+        status === "PAID"
+          ? "success"
+          : status === "PENDING"
+            ? "warning"
+            : "default";
       return <Tag color={color}>{status}</Tag>;
     },
   },
@@ -171,13 +184,22 @@ export default function AdminDashboard() {
 
         const todayStr = dayjs().format("YYYY-MM-DD");
         const thisMonth = dayjs().format("YYYY-MM");
-        const paidBookings = bookingsData.filter((b) => b.paymentStatus === "PAID");
+        const paidBookings = bookingsData.filter(
+          (b) => b.paymentStatus === "PAID",
+        );
         const bookingsTodayCount = bookingsData.filter((b) =>
-          b.createdAt?.startsWith(todayStr)
+          b.createdAt?.startsWith(todayStr),
         ).length;
-        const totalRevenue = paidBookings.reduce((s, b) => s + (b.finalAmount || 0), 0);
+        const totalRevenue = paidBookings.reduce(
+          (s, b) => s + (b.finalAmount || 0),
+          0,
+        );
         const monthlyRevenue = paidBookings
-          .filter((b) => b.paidAt?.startsWith(thisMonth) || b.createdAt?.startsWith(thisMonth))
+          .filter(
+            (b) =>
+              b.paidAt?.startsWith(thisMonth) ||
+              b.createdAt?.startsWith(thisMonth),
+          )
           .reduce((s, b) => s + (b.finalAmount || 0), 0);
 
         if (statsRes.status === "fulfilled") {
@@ -217,8 +239,18 @@ export default function AdminDashboard() {
           if (m) monthMap[m] = (monthMap[m] || 0) + (b.finalAmount || 0);
         });
         const months = [
-          "T1", "T2", "T3", "T4", "T5", "T6",
-          "T7", "T8", "T9", "T10", "T11", "T12",
+          "T1",
+          "T2",
+          "T3",
+          "T4",
+          "T5",
+          "T6",
+          "T7",
+          "T8",
+          "T9",
+          "T10",
+          "T11",
+          "T12",
         ];
         const year = dayjs().year();
         const revData = months.map((m, i) => {
@@ -248,11 +280,13 @@ export default function AdminDashboard() {
       "Không xác định";
     provinceMap[name] = (provinceMap[name] || 0) + 1;
   });
-  const tourByProvinceData = Object.entries(provinceMap).map(([name, value], i) => ({
-    name,
-    value,
-    color: PIE_COLORS[i % PIE_COLORS.length],
-  }));
+  const tourByProvinceData = Object.entries(provinceMap).map(
+    ([name, value], i) => ({
+      name,
+      value,
+      color: PIE_COLORS[i % PIE_COLORS.length],
+    }),
+  );
 
   const recentBookings: BookingRow[] = bookings.slice(0, 5).map((b) => ({
     key: String(b.id),
@@ -261,9 +295,7 @@ export default function AdminDashboard() {
     customer: b.contactName || "-",
     date: b.tourDate ? dayjs(b.tourDate).format("DD/MM/YYYY") : "-",
     status: b.paymentStatus || b.status || "PENDING",
-    amount: b.finalAmount
-      ? `${(b.finalAmount / 1_000_000).toFixed(1)}Mđ`
-      : "-",
+    amount: b.finalAmount ? `${(b.finalAmount / 1_000_000).toFixed(1)}Mđ` : "-",
   }));
 
   const tourStatusRows: TourStatusRow[] = tours.slice(0, 5).map((t) => {
@@ -279,25 +311,6 @@ export default function AdminDashboard() {
       progress,
     };
   });
-
-  const cardStyle = (gradient: string, shadow: string) => ({
-    borderRadius: 16,
-    border: "none",
-    background: gradient,
-    boxShadow: shadow,
-    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-    width: "100%",
-    height: "100%",
-  });
-
-  const bodyStyle = {
-    padding: 24,
-    height: "100%",
-    display: "flex",
-    flexDirection: "column" as const,
-    justifyContent: "space-between" as const,
-    minHeight: "160px",
-  };
 
   if (loading) {
     return (
@@ -320,7 +333,10 @@ export default function AdminDashboard() {
       )}
 
       <div style={{ marginBottom: 24 }}>
-        <Title level={2} style={{ margin: 0, fontWeight: 700, color: "#1a1a1a" }}>
+        <Title
+          level={2}
+          style={{ margin: 0, fontWeight: 700, color: "#1a1a1a" }}
+        >
           Dashboard
         </Title>
         <Text type="secondary" style={{ fontSize: 16 }}>
@@ -328,339 +344,14 @@ export default function AdminDashboard() {
         </Text>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: 16,
-          marginBottom: 24,
-          flexWrap: "wrap",
+      <DashboardSummaryCards
+        stats={{
+          bookingsToday: stats.bookingsToday,
+          totalBookings: stats.totalBookings,
+          monthlyRevenue: formatRevenue(stats.monthlyRevenue * 1_000_000),
+          revenueGrowth: stats.revenueGrowth,
         }}
-      >
-        <div style={{ flex: "1 1 0", minWidth: "160px" }}>
-          <Card
-            hoverable
-            style={cardStyle(
-              "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              "0 8px 24px rgba(102, 126, 234, 0.25)"
-            )}
-            bodyStyle={bodyStyle}
-          >
-            <div>
-              <EnvironmentOutlined
-                style={{ fontSize: 32, color: "#fff", marginBottom: 12 }}
-              />
-              <Text
-                style={{
-                  color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  display: "block",
-                  marginBottom: 12,
-                }}
-              >
-                Tổng Tour
-              </Text>
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 32,
-                  fontWeight: 700,
-                  lineHeight: 1.2,
-                  display: "block",
-                }}
-              >
-                {stats.totalTours}
-              </Text>
-            </div>
-            <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 6 }}>
-              <ArrowUpOutlined style={{ color: "#4ade80", fontSize: 14 }} />
-              <Text style={{ color: "#4ade80", fontSize: 12, fontWeight: 600 }}>
-                +{stats.toursGrowth}
-              </Text>
-              <Text
-                style={{
-                  color: "rgba(255, 255, 255, 0.7)",
-                  fontSize: 11,
-                  marginLeft: 4,
-                }}
-              >
-                tháng trước
-              </Text>
-            </div>
-          </Card>
-        </div>
-
-        <div style={{ flex: "1 1 0", minWidth: "160px" }}>
-          <Card
-            hoverable
-            style={cardStyle(
-              "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-              "0 8px 24px rgba(245, 87, 108, 0.25)"
-            )}
-            bodyStyle={bodyStyle}
-          >
-            <div>
-              <CalendarOutlined
-                style={{ fontSize: 32, color: "#fff", marginBottom: 12 }}
-              />
-              <Text
-                style={{
-                  color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  display: "block",
-                  marginBottom: 12,
-                }}
-              >
-                Booking Hôm nay
-              </Text>
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 32,
-                  fontWeight: 700,
-                  lineHeight: 1.2,
-                  display: "block",
-                }}
-              >
-                {stats.bookingsToday}
-              </Text>
-            </div>
-            <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 6 }}>
-              <ArrowUpOutlined style={{ color: "#4ade80", fontSize: 14 }} />
-              <Text style={{ color: "#4ade80", fontSize: 12, fontWeight: 600 }}>
-                +{stats.bookingsGrowth}
-              </Text>
-              <Text
-                style={{
-                  color: "rgba(255, 255, 255, 0.7)",
-                  fontSize: 11,
-                  marginLeft: 4,
-                }}
-              >
-                hôm qua
-              </Text>
-            </div>
-          </Card>
-        </div>
-
-        <div style={{ flex: "1 1 0", minWidth: "160px" }}>
-          <Card
-            hoverable
-            style={cardStyle(
-              "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
-              "0 8px 24px rgba(168, 237, 234, 0.25)"
-            )}
-            bodyStyle={bodyStyle}
-          >
-            <div>
-              <CalendarOutlined
-                style={{ fontSize: 32, color: "#fff", marginBottom: 12 }}
-              />
-              <Text
-                style={{
-                  color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  display: "block",
-                  marginBottom: 12,
-                }}
-              >
-                Tổng Booking
-              </Text>
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 32,
-                  fontWeight: 700,
-                  lineHeight: 1.2,
-                  display: "block",
-                }}
-              >
-                {stats.totalBookings}
-              </Text>
-            </div>
-            <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 6 }}>
-              <ArrowUpOutlined style={{ color: "#4ade80", fontSize: 14 }} />
-              <Text style={{ color: "#4ade80", fontSize: 12, fontWeight: 600 }}>
-                +{stats.bookingsGrowth}
-              </Text>
-              <Text
-                style={{
-                  color: "rgba(255, 255, 255, 0.7)",
-                  fontSize: 11,
-                  marginLeft: 4,
-                }}
-              >
-                tăng trưởng
-              </Text>
-            </div>
-          </Card>
-        </div>
-
-        <div style={{ flex: "1 1 0", minWidth: "160px" }}>
-          <Card
-            hoverable
-            style={cardStyle(
-              "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-              "0 8px 24px rgba(79, 172, 254, 0.25)"
-            )}
-            bodyStyle={bodyStyle}
-          >
-            <div>
-              <FileTextOutlined
-                style={{ fontSize: 32, color: "#fff", marginBottom: 12 }}
-              />
-              <Text
-                style={{
-                  color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  display: "block",
-                  marginBottom: 12,
-                }}
-              >
-                Nội dung Văn hóa
-              </Text>
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 32,
-                  fontWeight: 700,
-                  lineHeight: 1.2,
-                  display: "block",
-                }}
-              >
-                {stats.totalContent}
-              </Text>
-            </div>
-            <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 6 }}>
-              <ArrowUpOutlined style={{ color: "#4ade80", fontSize: 14 }} />
-              <Text style={{ color: "#4ade80", fontSize: 12, fontWeight: 600 }}>
-                +{stats.contentGrowth}
-              </Text>
-              <Text
-                style={{
-                  color: "rgba(255, 255, 255, 0.7)",
-                  fontSize: 11,
-                  marginLeft: 4,
-                }}
-              >
-                trong tuần
-              </Text>
-            </div>
-          </Card>
-        </div>
-
-        <div style={{ flex: "1 1 0", minWidth: "160px" }}>
-          <Card
-            hoverable
-            style={cardStyle(
-              "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-              "0 8px 24px rgba(250, 112, 154, 0.25)"
-            )}
-            bodyStyle={bodyStyle}
-          >
-            <div>
-              <UserOutlined
-                style={{ fontSize: 32, color: "#fff", marginBottom: 12 }}
-              />
-              <Text
-                style={{
-                  color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  display: "block",
-                  marginBottom: 12,
-                }}
-              >
-                Nghệ nhân
-              </Text>
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 32,
-                  fontWeight: 700,
-                  lineHeight: 1.2,
-                  display: "block",
-                }}
-              >
-                {stats.totalArtisans}
-              </Text>
-            </div>
-            <Link to="/admin/artisans" style={{ color: "rgba(255,255,255,0.9)", fontSize: 12 }}>
-              Xem tất cả →
-            </Link>
-          </Card>
-        </div>
-
-        <div style={{ flex: "1 1 0", minWidth: "160px" }}>
-          <Card
-            hoverable
-            style={{
-              ...cardStyle(
-                "linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #48dbfb 100%)",
-                "0 12px 40px rgba(255, 107, 107, 0.4)"
-              ),
-              border: "2px solid rgba(255, 255, 255, 0.4)",
-            }}
-            bodyStyle={{ ...bodyStyle, position: "relative" as const, zIndex: 1 }}
-          >
-            <div>
-              <DollarOutlined style={{ fontSize: 32, color: "#fff", marginBottom: 12 }} />
-              <Text
-                style={{
-                  color: "rgba(255, 255, 255, 0.95)",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  display: "block",
-                  marginBottom: 12,
-                }}
-              >
-                Doanh thu Tháng
-              </Text>
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 32,
-                  fontWeight: 700,
-                  lineHeight: 1.2,
-                  display: "block",
-                  textShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
-                }}
-              >
-                {stats.monthlyRevenue.toFixed(1)}M
-              </Text>
-              <Text
-                style={{
-                  color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: 14,
-                  marginTop: 4,
-                  fontWeight: 500,
-                }}
-              >
-                VNĐ
-              </Text>
-            </div>
-            <div
-              style={{
-                marginTop: 16,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <RiseOutlined style={{ color: "#4ade80", fontSize: 14 }} />
-              <Text style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>
-                +{stats.revenueGrowth}%
-              </Text>
-              <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 11 }}>
-                tháng trước
-              </Text>
-            </div>
-          </Card>
-        </div>
-      </div>
+      />
 
       <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={16}>
@@ -671,7 +362,10 @@ export default function AdminDashboard() {
               boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
             }}
             title={
-              <Title level={5} style={{ margin: 0, fontWeight: 600, color: "#1a1a1a" }}>
+              <Title
+                level={5}
+                style={{ margin: 0, fontWeight: 600, color: "#1a1a1a" }}
+              >
                 Doanh thu theo tháng
               </Title>
             }
@@ -742,7 +436,10 @@ export default function AdminDashboard() {
               boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
             }}
             title={
-              <Title level={5} style={{ margin: 0, fontWeight: 600, color: "#1a1a1a" }}>
+              <Title
+                level={5}
+                style={{ margin: 0, fontWeight: 600, color: "#1a1a1a" }}
+              >
                 Phân bố Tour theo Tỉnh
               </Title>
             }
@@ -779,7 +476,11 @@ export default function AdminDashboard() {
                   </PieChart>
                 </ResponsiveContainer>
                 <Divider style={{ margin: "16px 0" }} />
-                <Space direction="vertical" style={{ width: "100%" }} size="small">
+                <Space
+                  direction="vertical"
+                  style={{ width: "100%" }}
+                  size="small"
+                >
                   {tourByProvinceData.map((item, index) => (
                     <div
                       key={index}
@@ -791,7 +492,13 @@ export default function AdminDashboard() {
                         borderRadius: 8,
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
                         <div
                           style={{
                             width: 12,
@@ -812,7 +519,9 @@ export default function AdminDashboard() {
                 </Space>
               </>
             ) : (
-              <div style={{ padding: 24, textAlign: "center", color: "#6b7280" }}>
+              <div
+                style={{ padding: 24, textAlign: "center", color: "#6b7280" }}
+              >
                 Chưa có dữ liệu tour theo tỉnh
               </div>
             )}
@@ -829,14 +538,21 @@ export default function AdminDashboard() {
               boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
             }}
             title={
-              <Title level={5} style={{ margin: 0, fontWeight: 600, color: "#1a1a1a" }}>
+              <Title
+                level={5}
+                style={{ margin: 0, fontWeight: 600, color: "#1a1a1a" }}
+              >
                 Booking Gần đây
               </Title>
             }
             extra={
               <Link
                 to="/admin/bookings"
-                style={{ color: "#8B0000", fontWeight: 500, textDecoration: "none" }}
+                style={{
+                  color: "#8B0000",
+                  fontWeight: 500,
+                  textDecoration: "none",
+                }}
               >
                 Xem tất cả →
               </Link>
@@ -861,14 +577,21 @@ export default function AdminDashboard() {
               boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
             }}
             title={
-              <Title level={5} style={{ margin: 0, fontWeight: 600, color: "#1a1a1a" }}>
+              <Title
+                level={5}
+                style={{ margin: 0, fontWeight: 600, color: "#1a1a1a" }}
+              >
                 Trạng thái Tour
               </Title>
             }
             extra={
               <Link
                 to="/admin/tours"
-                style={{ color: "#8B0000", fontWeight: 500, textDecoration: "none" }}
+                style={{
+                  color: "#8B0000",
+                  fontWeight: 500,
+                  textDecoration: "none",
+                }}
               >
                 Xem tất cả →
               </Link>
@@ -876,7 +599,11 @@ export default function AdminDashboard() {
             bodyStyle={{ padding: 24 }}
           >
             {tourStatusRows.length > 0 ? (
-              <Space direction="vertical" style={{ width: "100%" }} size="large">
+              <Space
+                direction="vertical"
+                style={{ width: "100%" }}
+                size="large"
+              >
                 {tourStatusRows.map((item) => (
                   <div
                     key={item.key}
@@ -899,7 +626,13 @@ export default function AdminDashboard() {
                         <Text strong style={{ fontSize: 15, color: "#1a1a1a" }}>
                           {item.tour}
                         </Text>
-                        <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#6b7280",
+                            marginTop: 4,
+                          }}
+                        >
                           {item.date}
                         </div>
                       </div>
@@ -908,10 +641,14 @@ export default function AdminDashboard() {
                           item.status === "OPEN"
                             ? "success"
                             : item.status === "NEAR_DEADLINE"
-                            ? "warning"
-                            : "error"
+                              ? "warning"
+                              : "error"
                         }
-                        style={{ borderRadius: 6, padding: "4px 12px", fontWeight: 500 }}
+                        style={{
+                          borderRadius: 6,
+                          padding: "4px 12px",
+                          fontWeight: 500,
+                        }}
                       >
                         {item.status}
                       </Tag>
@@ -922,15 +659,15 @@ export default function AdminDashboard() {
                         item.progress >= 80
                           ? "success"
                           : item.progress >= 50
-                          ? "active"
-                          : "exception"
+                            ? "active"
+                            : "exception"
                       }
                       strokeColor={
                         item.progress >= 80
                           ? "#52c41a"
                           : item.progress >= 50
-                          ? "#1890ff"
-                          : "#ff4d4f"
+                            ? "#1890ff"
+                            : "#ff4d4f"
                       }
                       style={{ marginBottom: 8 }}
                     />
@@ -941,7 +678,9 @@ export default function AdminDashboard() {
                 ))}
               </Space>
             ) : (
-              <div style={{ padding: 24, textAlign: "center", color: "#6b7280" }}>
+              <div
+                style={{ padding: 24, textAlign: "center", color: "#6b7280" }}
+              >
                 Chưa có tour
               </div>
             )}
