@@ -7,7 +7,6 @@ import {
 
 import {
   getTourById,
-  getToursByProvince,
   getTourHighlights,
   getTourCultureItems,
   getProvinceById,
@@ -62,7 +61,6 @@ export default function TourDetail() {
   const [province, setProvince] = useState<Province | null>(null);
   const [highlightItems, setHighlightItems] = useState<CultureItem[]>([]);
   const [cultureItems, setCultureItems] = useState<CultureItem[]>([]);
-  const [relatedTours, setRelatedTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('intro');
   const sectionRefs = useRef<Record<TabKey, HTMLElement | null>>({
@@ -81,24 +79,23 @@ export default function TourDetail() {
     const fetchData = async () => {
       try {
         const tourData = await getTourById(tourId);
-        console.log('=== TOUR DETAIL RAW ===', JSON.parse(JSON.stringify(tourData)));
+        console.log('[TourDetail] tour =>', JSON.parse(JSON.stringify(tourData)));
         setTour(tourData);
 
-        const [provinceData, highlights, culture, related] = await Promise.all([
-          tourData.provinceId ? getProvinceById(tourData.provinceId) : Promise.resolve(null),
-          getTourHighlights(tourId).catch((err) => { console.error('=== HIGHLIGHTS API ERROR ===', err?.response?.status, err?.response?.data || err.message); return []; }),
-          getTourCultureItems(tourId).catch((err) => { console.error('=== CULTURE ITEMS API ERROR ===', err?.response?.status, err?.response?.data || err.message); return []; }),
-          tourData.provinceId ? getToursByProvince(tourData.provinceId) : Promise.resolve([]),
+        // provinceId có thể nằm ở tourData.provinceId hoặc tourData.province?.id
+        const pId = tourData.provinceId || (tourData as any).province?.id;
+
+        const [provinceData, highlights, culture] = await Promise.all([
+          pId ? getProvinceById(pId) : Promise.resolve(null),
+          getTourHighlights(tourId).catch(() => []),
+          getTourCultureItems(tourId).catch(() => []),
         ]);
 
-        console.log('=== HIGHLIGHTS ===', highlights);
-        console.log('=== CULTURE ITEMS ===', culture);
-        console.log('=== PROVINCE ===', provinceData);
+        console.log('[TourDetail] highlights =>', JSON.parse(JSON.stringify(highlights)));
 
         setProvince(provinceData);
         setHighlightItems(highlights);
         setCultureItems(culture);
-        setRelatedTours(related.filter((t) => t.id !== tourId).slice(0, 3));
       } catch (err) {
         console.error('Failed to load tour detail:', err);
       } finally {
@@ -132,7 +129,7 @@ export default function TourDetail() {
     );
   }
 
-  const festivals = cultureItems.filter((c) => c.category === 'FESTIVAL' || c.category === 'DANCE' || c.category === 'LEGEND');
+  const festivals = cultureItems.filter((c) => c.category === 'CRAFT').slice(0, 2);
   const foodItems = cultureItems.filter((c) => c.category === 'FOOD');
   const videoItem = [...highlightItems, ...cultureItems].find((c) => c.videoUrl);
 
@@ -302,43 +299,38 @@ export default function TourDetail() {
         ref={(el) => { sectionRefs.current.festivals = el; }}
       >
         <div className="td-section__container">
-          <h2 className="td-section__title td-section__title--decorated">LỄ HỘI - PHONG TỤC</h2>
-          <div className="td-festivals__grid">
-            <div className="td-festivals__list">
-              {festivals.length > 0 ? festivals.map((item) => (
-                <div key={item.id} className="td-festivals__item">
-                  {item.thumbnailUrl ? (
-                    <img className="td-festivals__thumb" src={item.thumbnailUrl} alt={item.title} />
-                  ) : (
-                    <div className="td-festivals__icon">
-                      <Landmark size={24} />
-                    </div>
-                  )}
-                  <div>
-                    <h4>{item.title}</h4>
-                    <p>{item.description}</p>
+          <h2 className="td-section__title td-section__title--decorated">LỄ HỘI &amp; PHONG TỤC</h2>
+          <div className="td-festivals__body">
+            {/* Festival cards — max 2, left column */}
+            <div className="td-festivals__cards">
+              {(festivals.length > 0 ? festivals : [
+                { id: -1, title: 'Lễ hội cầu mùa', description: 'Nghi lễ truyền thống của người Bahnar diễn ra vào đầu mùa khô, cầu mong một năm mưa thuận gió hoà, mùa màng bội thu.' },
+                { id: -2, title: 'Không gian Cồng chiêng', description: 'Di sản văn hoá phi vật thể của nhân loại, thể hiện tâm hồn và triết lý sống của người Tây Nguyên qua âm thanh cồng chiêng.' },
+              ]).map((item, idx) => (
+                <div key={item.id} className="td-festivals__card">
+                  <div className="td-festivals__card-icon">
+                    {idx === 0 ? <Calendar size={28} /> : <Landmark size={28} />}
+                  </div>
+                  <div className="td-festivals__card-text">
+                    <h4 className="td-festivals__card-title">{item.title}</h4>
+                    <p className="td-festivals__card-desc">{item.description}</p>
                   </div>
                 </div>
-              )) : (
-                <div className="td-festivals__empty">
-                  <p>Thông tin lễ hội đang được cập nhật...</p>
-                </div>
-              )}
+              ))}
             </div>
-            <div className="td-festivals__tips">
-              <div className="td-festivals__tips-card">
-                <h4><HandHeart size={18} /> Lưu ý ứng xử văn hoá</h4>
-                {culturalTips ? (
-                  <p>{culturalTips}</p>
-                ) : (
-                  <ul>
-                    <li>Trang phục lịch sự khi tham dự nghi lễ</li>
-                    <li>Tôn trọng không gian sinh hoạt chung</li>
-                    <li>Xin phép trước khi chụp ảnh người dân địa phương</li>
-                    <li>Không làm ồn trong khu vực lễ hội thiêng</li>
-                  </ul>
-                )}
-              </div>
+
+            {/* Cultural behavior tips — hardcoded, right column */}
+            <div className="td-festivals__tips-card">
+              <h4 className="td-festivals__tips-heading">
+                <HandHeart size={20} />
+                Lưu ý ứng xử văn hoá
+              </h4>
+              <ul className="td-festivals__tips-list">
+                <li className="td-festivals__tip">Trang phục lịch sự khi tham dự nghi lễ</li>
+                <li className="td-festivals__tip">Tôn trọng không gian sinh hoạt chung</li>
+                <li className="td-festivals__tip">Trước khi chụp ảnh người dân địa phương, hãy luôn chủ động xin phép họ</li>
+                <li className="td-festivals__tip">Không làm ồn trong khu vực linh thiêng</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -373,33 +365,17 @@ export default function TourDetail() {
         </div>
       </section>
 
-      {/* TOUR GỢI Ý LIÊN QUAN */}
-      {relatedTours.length > 0 && (
-        <section className="td-section td-related">
-          <div className="td-section__container">
-            <h2 className="td-section__title td-section__title--decorated">TOUR GỢI Ý LIÊN QUAN</h2>
-            <div className="td-related__grid">
-              {relatedTours.map((t) => (
-                <Link to={`/tours/${t.id}`} key={t.id} className="td-related__card">
-                  <div className="td-related__card-images">
-                    {parseImages(t.images).slice(0, 3).map((img, i) => (
-                      <img key={i} src={img} alt={`${t.title} ${i + 1}`} className="td-related__thumb" />
-                    ))}
-                    {parseImages(t.images).length === 0 && (
-                      <img src={t.thumbnailUrl || '/nen.png'} alt={t.title} className="td-related__thumb td-related__thumb--full" />
-                    )}
-                  </div>
-                  <div className="td-related__card-content">
-                    <h4>{t.title}</h4>
-                    <p className="td-related__price">{formatPrice(t.price)} VND</p>
-                    <div className="td-related__stars">{renderStars(t.averageRating, `related-${t.id}`)}</div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+      {/* CTA BANNER */}
+      <section className="td-cta-banner">
+        <div className="td-cta-banner__container">
+          <h3>Sẵn sàng khám phá địa điểm này chưa?</h3>
+          <p>Đặt tour văn hoá để trải nghiệm những nét đẹp truyền thống và thiên nhiên tươi đẹp nơi đây</p>
+          <div className="td-cta-banner__buttons">
+            <Link to={`/tours/${tour.id}/booking`} className="btn btn-primary">Đặt tour ngay</Link>
+            <Link to={`/tours?province=${tour.provinceId || (tour as any).province?.id || ''}`} className="btn-outline">Xem tour liên quan</Link>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
     </div>
   );
 }

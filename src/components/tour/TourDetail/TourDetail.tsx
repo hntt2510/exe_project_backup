@@ -138,7 +138,7 @@ export default function TourDetail() {
 
       {/* Lễ hội - Phong tục */}
       <FestivalsSection
-        festivals={festivals}
+        festivals={highlights}
         sectionRef={(el) => { sectionRefs.current.festivals = el; }}
       />
 

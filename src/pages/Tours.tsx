@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { Province, Tour } from '../types';
 import { getProvinces, getPublicTours } from '../services/api';
 import TourHero from '../components/tour/TourHero';
@@ -17,8 +18,12 @@ export default function Tours() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
-  const [selectedProvinceId, setSelectedProvinceId] = useState('all');
+  const [selectedProvinceId, setSelectedProvinceId] = useState(() => {
+    const p = searchParams.get('province');
+    return p ? p : 'all';
+  });
   const [selectedArtisanId, setSelectedArtisanId] = useState('all');
   const [sortBy, setSortBy] = useState<SortOption>('latest');
   const [currentPage, setCurrentPage] = useState(1);

@@ -165,6 +165,7 @@ export default function BookingConfirm() {
         <div className="booking-confirm__sidebar">
           <ConfirmSidebar
             tour={tour}
+            province={province}
             bookingDetails={bookingDetails}
             onConfirm={handleConfirm}
             onBack={handleBack}

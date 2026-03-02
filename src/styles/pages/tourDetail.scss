@@ -408,61 +408,52 @@
 .td-festivals {
   background: $color-white;
 
-  /* ── Two festival cards side by side ── */
-  &__cards {
-    display: grid;
-    grid-template-columns: 1fr;
+  /* ── Two-column layout: cards left, tips right ── */
+  &__body {
+    display: flex;
+    flex-direction: column;
     gap: $spacing-xl;
-    margin-bottom: $spacing-2xl;
 
     @media (min-width: $breakpoint-md) {
-      grid-template-columns: repeat(2, 1fr);
+      flex-direction: row;
+      align-items: flex-start;
     }
+  }
+
+  /* ── Festival cards — stacked vertically on the left ── */
+  &__cards {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xl;
+    flex: 1 1 60%;
   }
 
   &__card {
-    position: relative;
-    background: linear-gradient(135deg, $color-red-50 0%, $color-white 100%);
-    border: 1px solid $color-red-100;
-    border-radius: $radius-xl;
-    padding: $spacing-xl $spacing-xl $spacing-xl $spacing-xl;
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
-    overflow: hidden;
-
-    &:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 32px rgba($color-primary, 0.12);
-    }
-  }
-
-  &__card-number {
-    position: absolute;
-    top: $spacing-md;
-    right: $spacing-lg;
-    font-size: 3rem;
-    font-weight: $font-weight-bold;
-    color: rgba($color-primary, 0.08);
-    line-height: 1;
-    pointer-events: none;
-    user-select: none;
+    display: flex;
+    align-items: flex-start;
+    gap: $spacing-lg;
+    padding: $spacing-md 0;
   }
 
   &__card-icon {
+    flex-shrink: 0;
     width: 56px;
     height: 56px;
-    border-radius: 50%;
-    background: $color-white;
+    border-radius: $radius-lg;
+    background: $color-red-50;
     @include flex-center;
     color: $color-primary;
-    box-shadow: 0 4px 12px rgba($color-primary, 0.12);
-    margin-bottom: $spacing-md;
+  }
+
+  &__card-text {
+    flex: 1;
   }
 
   &__card-title {
     font-size: $font-size-lg;
     font-weight: $font-weight-bold;
     color: $color-gray-900;
-    margin-bottom: $spacing-sm;
+    margin-bottom: $spacing-xs;
   }
 
   &__card-desc {
@@ -472,12 +463,18 @@
     margin: 0;
   }
 
-  /* ── Cultural behaviour tips — full-width card ── */
+  /* ── Cultural behaviour tips — right column card ── */
   &__tips-card {
-    background: $color-red-50;
-    border: 1px solid $color-red-100;
+    flex: 0 0 auto;
+    width: 100%;
+    background: $color-white;
+    border: 2px solid $color-primary;
     border-radius: $radius-xl;
-    padding: $spacing-xl $spacing-xl;
+    padding: $spacing-xl;
+
+    @media (min-width: $breakpoint-md) {
+      width: 340px;
+    }
   }
 
   &__tips-heading {
@@ -490,36 +487,25 @@
     margin-bottom: $spacing-lg;
   }
 
-  &__tips-grid {
-    display: grid;
-    grid-template-columns: 1fr;
+  &__tips-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
     gap: $spacing-md;
-
-    @media (min-width: $breakpoint-md) {
-      grid-template-columns: 1fr 1fr;
-    }
   }
 
   &__tip {
-    display: flex;
-    align-items: flex-start;
-    gap: $spacing-sm;
     font-size: $font-size-sm;
     color: $color-gray-700;
     line-height: 1.6;
-  }
+    padding-left: $spacing-sm;
+    border-left: 2px solid transparent;
 
-  &__tip-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: $color-white;
-    color: $color-primary;
-    box-shadow: 0 2px 6px rgba($color-primary, 0.1);
+    &:hover {
+      border-left-color: $color-primary;
+    }
   }
 }
 
@@ -532,11 +518,11 @@
   &__container {
     max-width: 700px;
     margin: 0 auto;
-    padding: 0 $spacing-md;
     background: $color-white;
+    border: 2px solid $color-primary;
     border-radius: $radius-2xl;
     padding: $spacing-2xl $spacing-xl;
-    box-shadow: $shadow-md;
+    box-shadow: none;
 
     h3 {
       font-family: 'Playfair Display', serif;

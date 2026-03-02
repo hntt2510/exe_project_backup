@@ -157,24 +157,11 @@
     padding: 0 1.5rem 1.5rem;
   }
 
-  &__map-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+  &__map-leaflet {
+    width: 100%;
     height: 180px;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
     border-radius: 8px;
-    gap: 0.5rem;
-
-    span {
-      font-size: 0.8rem;
-      color: #6b7280;
-    }
-  }
-
-  &__map-pin {
-    color: #8B0000;
+    border: 1px solid #e5e7eb;
+    z-index: 0;
   }
 }

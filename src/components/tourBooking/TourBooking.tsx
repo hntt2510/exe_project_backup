@@ -150,7 +150,7 @@ export default function TourBooking() {
 
         {/* Right column - Sidebar */}
         <div className="tour-booking__sidebar">
-          <BookingSidebar tour={tour} bookingDetails={bookingDetails} />
+          <BookingSidebar tour={tour} province={province} bookingDetails={bookingDetails} />
         </div>
       </div>
     </div>
