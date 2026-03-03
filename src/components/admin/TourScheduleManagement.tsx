@@ -83,12 +83,6 @@ function formatDateTimeVN(isoString: string | null | undefined): string {
   }
 }
 
-/** Format date từ UTC sang giờ Việt Nam */
-function formatDateVN(isoString: string | null | undefined): string {
-  if (!isoString) return "-";
-  return dayjs.utc(isoString).add(7, "hour").format("DD/MM/YYYY");
-}
-
 const localizer = dayjsLocalizer(dayjs);
 
 const { Title, Text } = Typography;

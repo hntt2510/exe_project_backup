@@ -52,6 +52,7 @@ export default function TourBooking() {
       tourScheduleId: null,
       selectedStartTime: null,
       schedulePrice: null,
+      scheduleBasePrice: null,
     };
   });
 

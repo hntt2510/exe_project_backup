@@ -133,11 +133,11 @@ export default function BookingSidebar({ tour, province, bookingDetails }: Booki
         <div className="booking-sidebar__pricing">
           <h4 className="booking-sidebar__pricing-title">Giá tham chiếu</h4>
 
-          {/* Show discount comparison when schedule has lower price */}
-          {bookingDetails.schedulePrice != null && bookingDetails.schedulePrice < tour.price ? (
+          {/* Show discount comparison when schedule has discount */}
+          {bookingDetails.scheduleBasePrice != null && bookingDetails.schedulePrice != null && bookingDetails.schedulePrice < bookingDetails.scheduleBasePrice ? (
             <div className="booking-sidebar__price-discount">
               <span className="booking-sidebar__price-original">
-                {formatPrice(tour.price)} VND
+                {formatPrice(bookingDetails.scheduleBasePrice)} VND
               </span>
               <span className="booking-sidebar__price-sale">
                 {formatPrice(bookingDetails.schedulePrice)} VND

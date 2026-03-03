@@ -69,6 +69,9 @@ export interface BookingResponse {
   updatedAt: string;
 }
 
+// Timeout cao hơn cho booking/payment vì Render.com free tier cold start có thể mất > 60s
+const PAYMENT_TIMEOUT = 120_000; // 2 phút
+
 /**
  * POST /api/bookings
  * Tạo booking mới → trả về bookingId.
@@ -79,6 +82,7 @@ export const createBooking = async (
   const response = await api.post<ApiResponse<BookingResponse>>(
     '/api/bookings',
     data,
+    { timeout: PAYMENT_TIMEOUT },
   );
   return response.data.data;
 };
@@ -88,6 +92,12 @@ export const createBooking = async (
 export interface CreatePaymentRequest {
   bookingId: number;
   paymentMethod: PaymentMethod;
+  /**
+   * MoMo requestType — quyết định giao diện thanh toán:
+   * - 'captureWallet'  → trang đơn giản, chỉ nút "Thanh toán bằng Ví MoMo"
+   * - 'payWithMethod'  → trang đầy đủ với QR code, VietQR, ngân hàng…
+   */
+  requestType?: string;
 }
 
 export interface CreatePaymentResponse {
@@ -114,6 +124,7 @@ export const createPayment = async (
   const response = await api.post<ApiResponse<CreatePaymentResponse>>(
     '/api/payments/create',
     data,
+    { timeout: PAYMENT_TIMEOUT },
   );
   return response.data.data;
 };
@@ -161,3 +172,42 @@ export const getMomoReturn = async (queryString: string): Promise<CreatePaymentR
   );
   return response.data.data;
 };
+
+// ========== Voucher ==========
+
+export interface Voucher {
+  id: number;
+  code: string;
+  discountType: string;       // "PERCENTAGE" | "FIXED_AMOUNT"
+  discountValue: number;
+  minPurchase: number;
+  maxUsage: number;
+  currentUsage: number;
+  validFrom: string;
+  validUntil: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+/**
+ * GET /api/vouchers/public/validate/{code}
+ * Validate 1 mã voucher cụ thể — trả về thông tin voucher nếu hợp lệ.
+ */
+export const validateVoucher = async (code: string): Promise<Voucher> => {
+  const response = await api.get<ApiResponse<Voucher>>(
+    `/api/vouchers/public/validate/${encodeURIComponent(code)}`,
+  );
+  return response.data.data;
+};
+
+/**
+ * Tính giá trị giảm của voucher trên 1 số tiền.
+ */
+export function calcVoucherDiscount(voucher: Voucher, amount: number): number {
+  if (amount < voucher.minPurchase) return 0;
+  if (voucher.discountType === 'PERCENTAGE') {
+    return Math.round(amount * voucher.discountValue / 100);
+  }
+  // FIXED_AMOUNT
+  return Math.min(voucher.discountValue, amount);
+}

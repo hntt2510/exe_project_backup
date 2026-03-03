@@ -52,6 +52,7 @@ export default function ETicketPage() {
         tourScheduleId: null,
         selectedStartTime: null,
         schedulePrice: null,
+        scheduleBasePrice: null,
       };
 
   useEffect(() => {

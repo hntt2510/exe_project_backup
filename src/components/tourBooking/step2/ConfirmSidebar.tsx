@@ -95,11 +95,11 @@ export default function ConfirmSidebar({
         <h3 className="confirm-sidebar__heading">Tóm tắt &amp; Thành tiền</h3>
 
         <div className="confirm-sidebar__price-rows">
-          {/* Show discount comparison when schedule has lower price */}
-          {bookingDetails.schedulePrice != null && bookingDetails.schedulePrice < tour.price ? (
+          {/* Show discount comparison when schedule has discount */}
+          {bookingDetails.scheduleBasePrice != null && bookingDetails.schedulePrice != null && bookingDetails.schedulePrice < bookingDetails.scheduleBasePrice ? (
             <div className="confirm-sidebar__price-discount">
               <span className="confirm-sidebar__price-original">
-                {formatPrice(tour.price)} VND
+                {formatPrice(bookingDetails.scheduleBasePrice)} VND
               </span>
               <span className="confirm-sidebar__price-sale">
                 {formatPrice(bookingDetails.schedulePrice)} VND

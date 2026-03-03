@@ -10,12 +10,36 @@ import { getTourById, getProvinceById } from '../../services/api';
 import {
   createBooking,
   createPayment,
+  validateVoucher,
   type PaymentMethod,
+  type Voucher,
 } from '../../services/paymentApi';
 import type { Tour, Province } from '../../types';
 import type { ContactInfo } from '../tourBooking/ContactForm';
 import type { BookingDetailsData } from '../tourBooking/BookingDetails';
 import '../../styles/components/paymentMethodscss/_payment-page.scss';
+
+/** Retry wrapper — tự động retry khi gặp timeout/network error (Render cold start) */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  { retries = 2, delayMs = 3000, onRetry }: { retries?: number; delayMs?: number; onRetry?: (attempt: number) => void } = {},
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const isTimeout = axios.isAxiosError(err) && (err.code === 'ECONNABORTED' || err.message?.includes('timeout'));
+      const isNetwork = axios.isAxiosError(err) && !err.response; // no response = network error
+      if ((isTimeout || isNetwork) && attempt < retries) {
+        console.warn(`[Payment] Attempt ${attempt + 1} failed (${isTimeout ? 'timeout' : 'network'}), retrying in ${delayMs}ms...`);
+        onRetry?.(attempt + 1);
+        await new Promise((r) => setTimeout(r, delayMs));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
 
 interface PaymentLocationState {
   contactInfo: ContactInfo;
@@ -56,11 +80,19 @@ export default function PaymentPage() {
         tourScheduleId: null,
         selectedStartTime: null,
         schedulePrice: null,
+        scheduleBasePrice: null,
       };
 
   // Payment form state
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Voucher state
+  const [voucherCode, setVoucherCode] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [voucherLoading, setVoucherLoading] = useState(false);
+  const [voucherAnimating, setVoucherAnimating] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -93,6 +125,54 @@ export default function PaymentPage() {
     }
   }, [loading, state, id, navigate]);
 
+  // Voucher apply handler
+  const handleApplyVoucher = async () => {
+    const code = voucherCode.trim().toUpperCase();
+    if (!code) {
+      setVoucherError('Vui lòng nhập mã voucher.');
+      return;
+    }
+    setVoucherLoading(true);
+    setVoucherError(null);
+    setAppliedVoucher(null);
+    setVoucherAnimating(false);
+
+    try {
+      const voucher = await validateVoucher(code);
+
+      // Check min purchase
+      const unitPrice = bookingDetails.schedulePrice ?? tour!.price;
+      const totalPrice = bookingDetails.participants * unitPrice;
+      if (totalPrice < voucher.minPurchase) {
+        setVoucherError(
+          `Đơn hàng tối thiểu ${voucher.minPurchase.toLocaleString('vi-VN')}đ để áp dụng voucher này.`,
+        );
+        return;
+      }
+
+      setAppliedVoucher(voucher);
+      // Trigger animation
+      setVoucherAnimating(true);
+      setTimeout(() => setVoucherAnimating(false), 1200);
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const msg = err.response?.data?.message;
+        setVoucherError(msg || 'Mã voucher không hợp lệ hoặc đã hết hạn.');
+      } else {
+        setVoucherError('Không thể kiểm tra voucher. Vui lòng thử lại.');
+      }
+    } finally {
+      setVoucherLoading(false);
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherCode('');
+    setVoucherError(null);
+    setVoucherAnimating(false);
+  };
+
   const canSubmit = (): boolean => {
     if (!agreedToTerms) return false;
     // VNPay, MoMo, CASH — no extra fields needed, just agree to terms
@@ -117,6 +197,8 @@ export default function PaymentPage() {
     setSubmitting(true);
     setErrorMsg(null);
 
+    let isRedirecting = false;
+
     try {
       /* ---- 1. Use tourScheduleId from booking details (selected in step 1) ---- */
       const tourScheduleId = bookingDetails.tourScheduleId ?? 0;
@@ -124,27 +206,72 @@ export default function PaymentPage() {
       /* ---- 2. Create Booking ---- */
       const numParticipants = bookingDetails.participants;
 
-      const booking = await createBooking({
+      console.log('[Payment] Creating booking...', {
         tourId: tour.id,
-        tourScheduleId: tourScheduleId,
+        tourScheduleId,
         numParticipants,
-        contactName: contactInfo.fullName,
-        contactPhone: contactInfo.phone,
-        contactEmail: contactInfo.email,
         paymentMethod,
       });
 
+      const retryOpts = {
+        retries: 2,
+        delayMs: 3000,
+        onRetry: (attempt: number) =>
+          setErrorMsg(`Server đang khởi động, thử lại lần ${attempt}...`),
+      };
+
+      const booking = await withRetry(
+        () =>
+          createBooking({
+            tourId: tour.id,
+            tourScheduleId: tourScheduleId,
+            numParticipants,
+            contactName: contactInfo.fullName,
+            contactPhone: contactInfo.phone,
+            contactEmail: contactInfo.email,
+            ...(appliedVoucher && { voucherCode: appliedVoucher.code }),
+            paymentMethod,
+          }),
+        retryOpts,
+      );
+
+      setErrorMsg(null); // Xóa thông báo retry nếu thành công
+      console.log('[Payment] Booking created:', booking);
+
       /* ---- 3. Create Payment (VNPay / MoMo → need redirect URL) ---- */
       if (paymentMethod === 'VNPAY' || paymentMethod === 'MOMO') {
-        const payment = await createPayment({
-          bookingId: booking.id,
-          paymentMethod,
-        });
+        console.log('[Payment] Creating payment for', paymentMethod, '...');
 
-        if (payment.paymentUrl) {
-          window.location.href = payment.paymentUrl;
+        const payment = await withRetry(
+          () =>
+            createPayment({
+              bookingId: booking.id,
+              paymentMethod,
+              // 'payWithMethod' → MoMo hiển thị trang QR đầy đủ thay vì trang captureWallet
+              ...(paymentMethod === 'MOMO' && { requestType: 'payWithMethod' }),
+            }),
+          retryOpts,
+        );
+
+        console.log('[Payment] Payment response:', payment);
+
+        // Dùng paymentUrl trả về từ /api/payments/create
+        const redirectUrl = payment?.paymentUrl;
+
+        if (redirectUrl) {
+          console.log('[Payment] Redirecting to:', redirectUrl);
+          isRedirecting = true;
+          // Use replace so user can't go "back" to this page mid-payment
+          window.location.replace(redirectUrl);
           return;
         }
+
+        // Backend không trả về paymentUrl → báo lỗi
+        console.error('[Payment] No paymentUrl received from backend:', payment);
+        setErrorMsg(
+          `Không nhận được URL thanh toán từ ${paymentMethod}. Vui lòng thử lại hoặc chọn phương thức khác.`,
+        );
+        return;
       }
 
       /* ---- 4. CASH → navigate to e-ticket page ---- */
@@ -157,15 +284,14 @@ export default function PaymentPage() {
         },
       });
     } catch (err: unknown) {
-      console.error('Payment failed:', err);
+      console.error('[Payment] Payment failed:', err);
 
       // Extract real error message from Axios response (e.g. 400 body)
       let message = 'Thanh toán thất bại. Vui lòng thử lại.';
       if (axios.isAxiosError(err)) {
-        const serverMsg =
-          err.response?.data?.message ||
-          err.response?.data?.error ||
-          err.response?.data?.data;
+        const data = err.response?.data;
+        console.error('[Payment] Server error response:', data);
+        const serverMsg = data?.message || data?.error || data?.data;
         message = serverMsg
           ? `Lỗi: ${serverMsg}`
           : `Lỗi ${err.response?.status ?? ''}: ${err.message}`;
@@ -174,7 +300,10 @@ export default function PaymentPage() {
       }
       setErrorMsg(message);
     } finally {
-      setSubmitting(false);
+      // Don't reset submitting state if we're navigating to payment gateway
+      if (!isRedirecting) {
+        setSubmitting(false);
+      }
     }
   };
 
@@ -237,6 +366,56 @@ export default function PaymentPage() {
               onSelect={setPaymentMethod}
             />
 
+            {/* Voucher */}
+            <div className="payment-page__voucher">
+              <label className="payment-page__voucher-label">Mã giảm giá (Voucher)</label>
+              {appliedVoucher ? (
+                <div className="payment-page__voucher-applied">
+                  <div className="payment-page__voucher-applied-info">
+                    <span className="payment-page__voucher-code">{appliedVoucher.code}</span>
+                    <span className="payment-page__voucher-desc">
+                      {appliedVoucher.discountType === 'PERCENTAGE'
+                        ? `Giảm ${appliedVoucher.discountValue}%`
+                        : `Giảm ${appliedVoucher.discountValue.toLocaleString('vi-VN')}đ`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="payment-page__voucher-remove"
+                    onClick={handleRemoveVoucher}
+                  >
+                    Xóa
+                  </button>
+                </div>
+              ) : (
+                <div className="payment-page__voucher-input-row">
+                  <input
+                    type="text"
+                    className="payment-page__voucher-input"
+                    placeholder="Nhập mã voucher"
+                    value={voucherCode}
+                    onChange={(e) => {
+                      setVoucherCode(e.target.value.toUpperCase());
+                      setVoucherError(null);
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleApplyVoucher()}
+                    disabled={voucherLoading}
+                  />
+                  <button
+                    type="button"
+                    className="payment-page__voucher-btn"
+                    onClick={handleApplyVoucher}
+                    disabled={voucherLoading || !voucherCode.trim()}
+                  >
+                    {voucherLoading ? 'Đang kiểm tra...' : 'Áp dụng'}
+                  </button>
+                </div>
+              )}
+              {voucherError && (
+                <p className="payment-page__voucher-error">{voucherError}</p>
+              )}
+            </div>
+
             {/* Agree */}
             <div className="payment-page__agree">
               <label className="payment-page__agree-label">
@@ -285,7 +464,12 @@ export default function PaymentPage() {
 
         {/* Right column – sidebar */}
         <div className="payment-page__sidebar">
-          <PaymentSidebar tour={tour} bookingDetails={bookingDetails} />
+          <PaymentSidebar
+            tour={tour}
+            bookingDetails={bookingDetails}
+            appliedVoucher={appliedVoucher}
+            voucherAnimating={voucherAnimating}
+          />
         </div>
       </div>
     </div>

@@ -51,6 +51,7 @@ export default function BookingConfirm() {
         tourScheduleId: null,
         selectedStartTime: null,
         schedulePrice: null,
+        scheduleBasePrice: null,
       };
 
   useEffect(() => {

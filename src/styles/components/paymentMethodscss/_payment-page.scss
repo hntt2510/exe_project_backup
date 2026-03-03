@@ -98,6 +98,125 @@
     }
   }
 
+  // Voucher section
+  &__voucher {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid $color-gray-200;
+  }
+
+  &__voucher-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: $color-gray-700;
+    margin-bottom: 0.5rem;
+  }
+
+  &__voucher-input-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  &__voucher-input {
+    flex: 1;
+    padding: 0.625rem 0.875rem;
+    border: 1.5px solid $color-gray-300;
+    border-radius: $radius-md;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: border-color 0.2s;
+
+    &::placeholder {
+      text-transform: none;
+      letter-spacing: 0;
+      color: $color-gray-400;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $color-primary;
+      box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.08);
+    }
+  }
+
+  &__voucher-btn {
+    padding: 0.625rem 1.25rem;
+    background: $color-primary;
+    color: #fff;
+    border: none;
+    border-radius: $radius-md;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+
+    &:hover:not(:disabled) {
+      background: $color-primary-hover;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__voucher-applied {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem 0.875rem;
+    background: #ecfdf5;
+    border: 1.5px solid #6ee7b7;
+    border-radius: $radius-md;
+  }
+
+  &__voucher-applied-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  &__voucher-code {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #065f46;
+    letter-spacing: 0.5px;
+  }
+
+  &__voucher-desc {
+    font-size: 0.8rem;
+    color: #047857;
+    padding: 2px 8px;
+    background: #d1fae5;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  &__voucher-remove {
+    background: none;
+    border: none;
+    color: #dc2626;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.15s;
+
+    &:hover {
+      background: #fef2f2;
+    }
+  }
+
+  &__voucher-error {
+    font-size: 0.8rem;
+    color: #dc2626;
+    margin-top: 0.375rem;
+  }
+
   // Error message
   &__error {
     background: #fef2f2;

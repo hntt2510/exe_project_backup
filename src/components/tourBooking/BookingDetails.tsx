@@ -16,7 +16,8 @@ export interface BookingDetailsData {
   agreedToTerms: boolean;
   tourScheduleId: number | null;
   selectedStartTime: string | null; // formatted "HH:mm"
-  schedulePrice: number | null; // giá theo khung giờ (currentPrice từ TourSchedule)
+  schedulePrice: number | null; // giá sau giảm (đã áp dụng discountPercent)
+  scheduleBasePrice: number | null; // giá gốc trước giảm (currentPrice hoặc tourPrice)
 }
 
 interface BookingDetailsProps {
@@ -114,7 +115,7 @@ export default function BookingDetails({ value, onChange, tourId, tourPrice }: B
     if (value.tourScheduleId) {
       const stillValid = matched.some((s) => s.id === value.tourScheduleId);
       if (!stillValid) {
-        onChange({ ...value, tourScheduleId: null, selectedStartTime: null, schedulePrice: null });
+        onChange({ ...value, tourScheduleId: null, selectedStartTime: null, schedulePrice: null, scheduleBasePrice: null });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,22 +146,23 @@ export default function BookingDetails({ value, onChange, tourId, tourPrice }: B
   const handleSelectDate = (day: number) => {
     if (isPastDate(day)) return;
     const dateStr = buildDateStr(viewYear, viewMonth, day);
-    onChange({ ...value, departureDate: dateStr, tourScheduleId: null, selectedStartTime: null, schedulePrice: null });
+    onChange({ ...value, departureDate: dateStr, tourScheduleId: null, selectedStartTime: null, schedulePrice: null, scheduleBasePrice: null });
   };
 
   const handleSelectSchedule = (schedule: TourSchedule) => {
     const time = formatScheduleTime(schedule.startTime);
-    // Compute actual price: use currentPrice if available, otherwise calculate from discount
+    // basePrice = giá gốc của khung giờ (currentPrice nếu có, không thì tourPrice)
+    const basePrice = schedule.currentPrice ?? tourPrice;
     const discount = schedule.discountPercent ?? 0;
-    let price: number;
-    if (schedule.currentPrice != null) {
-      price = schedule.currentPrice;
-    } else if (discount > 0) {
-      price = Math.round(tourPrice * (1 - discount / 100));
-    } else {
-      price = tourPrice;
-    }
-    onChange({ ...value, tourScheduleId: schedule.id, selectedStartTime: time, schedulePrice: price });
+    // Áp dụng discount lên basePrice
+    const price = discount > 0 ? Math.round(basePrice * (1 - discount / 100)) : basePrice;
+    onChange({
+      ...value,
+      tourScheduleId: schedule.id,
+      selectedStartTime: time,
+      schedulePrice: price,
+      scheduleBasePrice: discount > 0 ? basePrice : null,
+    });
   };
 
   const isSelectedDate = (day: number) => {
@@ -295,16 +297,17 @@ export default function BookingDetails({ value, onChange, tourId, tourPrice }: B
                     <div className="schedule-picker__slot-price">
                       {(() => {
                         const discount = schedule.discountPercent ?? 0;
-                        const effectivePrice = schedule.currentPrice != null
-                          ? schedule.currentPrice
-                          : discount > 0
-                            ? Math.round(tourPrice * (1 - discount / 100))
-                            : tourPrice;
-                        const hasDiscount = discount > 0 && effectivePrice < tourPrice;
+                        // Giá gốc của khung giờ (currentPrice nếu có, không thì tourPrice)
+                        const basePrice = schedule.currentPrice ?? tourPrice;
+                        // Giá sau giảm
+                        const effectivePrice = discount > 0
+                          ? Math.round(basePrice * (1 - discount / 100))
+                          : basePrice;
+                        const hasDiscount = discount > 0;
                         return hasDiscount ? (
                           <>
                             <span className="schedule-picker__slot-original-price">
-                              {formatPrice(tourPrice)} VND
+                              {formatPrice(basePrice)} VND
                             </span>
                             <span className="schedule-picker__slot-current-price">
                               {formatPrice(effectivePrice)} VND
