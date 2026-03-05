@@ -123,11 +123,24 @@ function debounce<T extends (...args: any[]) => void>(fn: T, wait: number) {
   };
 }
 
+// === Base Map Definitions ===
+const BASE_MAPS = [
+  { id: 'esriSatellite', label: '🛰 Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles &copy; Esri', maxZoom: 19 },
+  { id: 'osm', label: '🗺 OpenStreetMap', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 },
+  { id: 'cartoLight', label: '☀️ Carto Light', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', attribution: '&copy; CARTO', maxZoom: 20 },
+  { id: 'cartoDark', label: '🌙 Carto Dark', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; CARTO', maxZoom: 20 },
+  { id: 'stamenTerrain', label: '🏔 Terrain', url: 'https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}{r}.png', attribution: '&copy; Stadia Maps &copy; Stamen', maxZoom: 18 },
+  { id: 'stamenToner', label: '⬛ Toner', url: 'https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}{r}.png', attribution: '&copy; Stadia Maps &copy; Stamen', maxZoom: 20 },
+  { id: 'esriStreet', label: '🏙 Esri Street', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri', maxZoom: 18 },
+  { id: 'esriTopo', label: '🗻 Esri Topo', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri', maxZoom: 18 },
+];
+
 export default function MapSection() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
   const markerLayerRef = useRef<L.FeatureGroup | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const provinceNameToIdRef = useRef<Map<string, number>>(new Map());
   const provinceIdToNameRef = useRef<Map<number, string>>(new Map());
 
@@ -140,6 +153,7 @@ export default function MapSection() {
   const [mapError, setMapError] = useState<string | null>(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [geoJsonData, setGeoJsonData] = useState<any | null>(null);
+  const [activeBaseMap, setActiveBaseMap] = useState('esriSatellite');
 
   const activeProvinceId = selectedProvinceId ?? hoveredProvinceId;
 
@@ -229,11 +243,11 @@ export default function MapSection() {
           maxZoom: 18,
         });
 
-        // Fixed base layer: Esri Satellite
-        L.tileLayer(
-          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          { attribution: 'Tiles &copy; Esri', maxZoom: 19 }
-        ).addTo(map);
+        // Base tile layer (default: Esri Satellite)
+        const defaultMap = BASE_MAPS.find(m => m.id === 'esriSatellite')!;
+        const tileLayer = L.tileLayer(defaultMap.url, { attribution: defaultMap.attribution, maxZoom: defaultMap.maxZoom });
+        tileLayer.addTo(map);
+        tileLayerRef.current = tileLayer;
 
         mapInstanceRef.current = map;
 
@@ -285,7 +299,7 @@ export default function MapSection() {
               console.error('Failed to load GeoJSON:', err);
               setMapError(
                 err.message ||
-                  'Không thể tải dữ liệu bản đồ. Vui lòng đặt file geo-vietnam.geojson hoặc vietnam.geojson vào thư mục public/geo/'
+                'Không thể tải dữ liệu bản đồ. Vui lòng đặt file geo-vietnam.geojson hoặc vietnam.geojson vào thư mục public/geo/'
               );
             });
         }, 300);
@@ -308,6 +322,9 @@ export default function MapSection() {
         }
         mapInstanceRef.current = null;
       }
+      if (tileLayerRef.current) {
+        tileLayerRef.current = null;
+      }
       if (geoJsonLayerRef.current) {
         try {
           geoJsonLayerRef.current.remove();
@@ -326,6 +343,23 @@ export default function MapSection() {
       }
     };
   }, [debouncedHoverFetch, fetchCultureItems]);
+
+  // Handler switch base map
+  const handleBaseMapChange = useCallback((mapId: string) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    const config = BASE_MAPS.find(m => m.id === mapId);
+    if (!config) return;
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+    }
+    const newTile = L.tileLayer(config.url, { attribution: config.attribution, maxZoom: config.maxZoom });
+    newTile.addTo(map);
+    // Đưa tile xuống dưới cùng (dưới markers)
+    newTile.bringToBack();
+    tileLayerRef.current = newTile;
+    setActiveBaseMap(mapId);
+  }, []);
 
   const renderProvinceMarkers = useCallback(() => {
     if (!mapInstanceRef.current || !geoJsonData || provinceNameSet.size === 0) return;
@@ -447,6 +481,21 @@ export default function MapSection() {
                 <p>{mapError}</p>
               </div>
             )}
+
+            {/* Base Map Switcher */}
+            <div className="map-section__basemap-switcher">
+              {BASE_MAPS.map((bm) => (
+                <button
+                  key={bm.id}
+                  className={`map-section__basemap-btn${activeBaseMap === bm.id ? ' map-section__basemap-btn--active' : ''}`}
+                  onClick={() => handleBaseMapChange(bm.id)}
+                  title={bm.label}
+                >
+                  {bm.label}
+                </button>
+              ))}
+            </div>
+
             <div ref={mapRef} className="map-section__map" />
             {!isMapLoaded && (
               <div className="map-section__loading">
