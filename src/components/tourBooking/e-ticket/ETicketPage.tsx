@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
+import { useParams, useLocation, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Breadcrumbs from '../../Breadcrumbs';
 import BookingSteps from '../BookingSteps';
 import ETicketCard from './ETicketCard';
 import ETicketActions from './ETicketActions';
 import { getTourById, getProvinceById } from '../../../services/api';
-import { getBookingById, type BookingResponse } from '../../../services/paymentApi';
+import { getBookingById, getBookingByCode, type BookingResponse } from '../../../services/paymentApi';
 import type { Tour, Province } from '../../../types';
 import type { ContactInfo } from '../ContactForm';
 import type { BookingDetailsData } from '../BookingDetails';
@@ -23,8 +23,10 @@ export default function ETicketPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   const state = location.state as ETicketLocationState | undefined;
+  const bookingCodeFromQuery = searchParams.get('bookingCode');
 
   const [tour, setTour] = useState<Tour | null>(null);
   const [province, setProvince] = useState<Province | null>(null);
@@ -70,31 +72,47 @@ export default function ETicketPage() {
           setProvince(provinceData);
         }
 
-        // Fetch booking details from API
+        // Priority 1: Fetch booking from URL query param (bookingCode)
+        if (bookingCodeFromQuery) {
+          try {
+            console.log('[ETicket] Fetching booking by code:', bookingCodeFromQuery);
+            const bookingData = await getBookingByCode(bookingCodeFromQuery);
+            setBooking(bookingData);
+            console.log('[ETicket] Booking data fetched from code:', bookingData);
+            return; // Don't try state-based fetch if query param worked
+          } catch (err) {
+            console.warn('[ETicket] Could not fetch booking by code:', err);
+            // Continue to state-based fetch as fallback
+          }
+        }
+
+        // Priority 2: Fetch booking from navigation state (bookingId)
         if (state?.bookingId) {
           try {
+            console.log('[ETicket] Fetching booking by ID:', state.bookingId);
             const bookingData = await getBookingById(state.bookingId);
             setBooking(bookingData);
-          } catch {
-            console.warn('Could not fetch booking details, using navigation state.');
+            console.log('[ETicket] Booking data fetched from ID:', bookingData);
+          } catch (err) {
+            console.warn('[ETicket] Could not fetch booking by ID, using navigation state.', err);
           }
         }
       } catch (err) {
-        console.error('Failed to load e-ticket data:', err);
+        console.error('[ETicket] Failed to load e-ticket data:', err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [id, state?.bookingId]);
+  }, [id, state?.bookingId, bookingCodeFromQuery]);
 
-  // Redirect if no state
+  // Redirect if no state and no query param
   useEffect(() => {
-    if (!loading && !state) {
+    if (!loading && !state && !bookingCodeFromQuery) {
       navigate(`/tours/${id}/booking`, { replace: true });
     }
-  }, [loading, state, id, navigate]);
+  }, [loading, state, bookingCodeFromQuery, id, navigate]);
 
   /* ---------- Loading ---------- */
   if (loading) {

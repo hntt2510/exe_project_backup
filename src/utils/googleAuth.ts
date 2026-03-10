@@ -42,123 +42,49 @@ export const getGoogleIdToken = async (clientId: string): Promise<string> => {
     const timeout = window.setTimeout(() => {
       if (!settled) {
         settled = true;
-        reject(new Error("Google xác thực quá thời gian"));
+        reject(new Error("Google xác thực quá thời gian (60s)"));
       }
     }, 60000);
+
+    const cleanup = () => {
+      window.clearTimeout(timeout);
+      settled = true;
+    };
 
     google.accounts.id.initialize({
       client_id: clientId,
       callback: (response: { credential?: string }) => {
         if (settled) return;
-        settled = true;
-        window.clearTimeout(timeout);
+        cleanup();
         if (!response?.credential) {
           reject(new Error("Không nhận được Google credential"));
           return;
         }
         resolve(response.credential);
       },
-      // Enable FedCM opt-in to handle future deprecation
       use_fedcm_for_prompt: true,
     });
 
-    // Use renderButton instead of prompt for better compatibility
-    const containerElement = document.createElement("div");
-    containerElement.id = "google_signin_button_container";
-    containerElement.style.display = "none";
-    document.body.appendChild(containerElement);
+    // Use prompt with error handling
+    let notificationHandled = false;
+    google.accounts.id.prompt((notification: any) => {
+      if (settled || notificationHandled) return;
+      notificationHandled = true;
 
-    try {
-      google.accounts.id.renderButton(containerElement, {
-        type: "standard",
-        size: "large",
-        text: "signin_with",
-        locale: "vi",
-      });
-
-      // Trigger click on the rendered button
-      const button = containerElement.querySelector("button");
-      if (button) {
-        button.click();
-      } else {
-        // Fallback to prompt if renderButton fails
-        google.accounts.id.prompt((notification: any) => {
-          if (settled) return;
-          if (notification?.isNotDisplayed?.()) {
-            settled = true;
-            window.clearTimeout(timeout);
-            reject(new Error("Google prompt không hiển thị"));
-          }
-          if (notification?.isSkippedMoment?.()) {
-            settled = true;
-            window.clearTimeout(timeout);
-            reject(new Error("Google prompt bị bỏ qua"));
-          }
-        });
+      if (notification?.isNotDisplayed?.()) {
+        cleanup();
+        console.warn("[Google Auth] Prompt not displayed. This may happen if:");
+        console.warn("  - Origin not whitelisted in Google Cloud Console");
+        console.warn("  - User dismissed all One Tap prompts recently");
+        console.warn("  - Browser privacy settings blocking");
+        reject(new Error(
+          "Google prompt không hiển thị. Kiểm tra origin trong Google Cloud Console."
+        ));
+      } else if (notification?.isSkippedMoment?.()) {
+        cleanup();
+        console.warn("[Google Auth] Prompt skipped by user");
+        reject(new Error("Bạn đã bỏ qua Google login"));
       }
-    } catch (error) {
-      // Fallback to prompt if renderButton has issues
-      google.accounts.id.prompt((notification: any) => {
-        if (settled) return;
-        if (notification?.isNotDisplayed?.()) {
-          settled = true;
-          window.clearTimeout(timeout);
-          reject(new Error("Google prompt không hiển thị"));
-        }
-        if (notification?.isSkippedMoment?.()) {
-          settled = true;
-          window.clearTimeout(timeout);
-          reject(new Error("Google prompt bị bỏ qua"));
-        }
-      });
-    }
-  });
-};
-
-/**
- * Render Google Sign-In button into a container element
- * @param containerId - HTML element ID to render button into
- * @param clientId - Google Client ID
- * @param onSuccess - Callback when user signs in
- * @param onError - Callback when error occurs
- */
-export const renderGoogleSignInButton = (
-  containerId: string,
-  clientId: string,
-  onSuccess: (credential: string) => void,
-  onError: (error: Error) => void
-): void => {
-  loadGoogleScript()
-    .then(() => {
-      const google = window.google;
-      if (!google?.accounts?.id) {
-        onError(new Error("Google Identity Services chưa sẵn sàng"));
-        return;
-      }
-
-      google.accounts.id.initialize({
-        client_id: clientId,
-        callback: (response: { credential?: string }) => {
-          if (!response?.credential) {
-            onError(new Error("Không nhận được Google credential"));
-            return;
-          }
-          onSuccess(response.credential);
-        },
-        use_fedcm_for_prompt: true,
-      });
-
-      const container = document.getElementById(containerId);
-      if (container) {
-        google.accounts.id.renderButton(container, {
-          type: "standard",
-          size: "large",
-          text: "signin_with",
-          locale: "vi",
-        });
-      }
-    })
-    .catch((error) => {
-      onError(error);
     });
+  });
 };

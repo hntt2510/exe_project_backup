@@ -206,18 +206,25 @@ export default function PaymentPage() {
       /* ---- 2. Create Booking ---- */
       const numParticipants = bookingDetails.participants;
 
-      console.log('[Payment] Creating booking...', {
-        tourId: tour.id,
-        tourScheduleId,
-        numParticipants,
-        paymentMethod,
-      });
+      console.log('[Payment] ====== CREATING BOOKING ======');
+      console.log('[Payment] Tour ID:', tour.id);
+      console.log('[Payment] Tour Schedule ID:', tourScheduleId);
+      console.log('[Payment] Num Participants:', numParticipants);
+      console.log('[Payment] Contact Name:', contactInfo.fullName);
+      console.log('[Payment] Contact Phone:', contactInfo.phone);
+      console.log('[Payment] Contact Email:', contactInfo.email);
+      console.log('[Payment] Payment Method:', paymentMethod);
+      if (appliedVoucher) {
+        console.log('[Payment] Voucher Code:', appliedVoucher.code);
+      }
 
       const retryOpts = {
         retries: 2,
         delayMs: 3000,
-        onRetry: (attempt: number) =>
-          setErrorMsg(`Server đang khởi động, thử lại lần ${attempt}...`),
+        onRetry: (attempt: number) => {
+          console.log('[Payment] Retry attempt', attempt, '...');
+          setErrorMsg(`Server đang khởi động, thử lại lần ${attempt}...`);
+        },
       };
 
       const booking = await withRetry(
@@ -236,38 +243,70 @@ export default function PaymentPage() {
       );
 
       setErrorMsg(null); // Xóa thông báo retry nếu thành công
-      console.log('[Payment] Booking created:', booking);
+      console.log('[Payment] ====== BOOKING RESPONSE ======');
+      console.log('[Payment] Full Booking Response:', JSON.stringify(booking, null, 2));
+      console.log('[Payment] Booking Response Keys:', Object.keys(booking));
+      console.log('[Payment] Booking ID:', booking.id);
+      console.log('[Payment] Booking Code:', booking.bookingCode);
+      console.log('[Payment] Booking Status:', booking.status);
+      console.log('[Payment] Final Amount:', booking.finalAmount);
+      console.log('[Payment] Payment Status:', booking.paymentStatus);
 
       /* ---- 3. Create Payment (VNPay / MoMo → need redirect URL) ---- */
       if (paymentMethod === 'VNPAY' || paymentMethod === 'MOMO') {
-        console.log('[Payment] Creating payment for', paymentMethod, '...');
+        console.log('[Payment] ====== CREATING PAYMENT ======');
+        console.log('[Payment] Payment Method:', paymentMethod);
+        console.log('[Payment] Booking ID:', booking.id);
+        console.log('[Payment] Booking Code:', booking.bookingCode);
 
         const payment = await withRetry(
           () =>
             createPayment({
               bookingId: booking.id,
               paymentMethod,
-              // 'payWithMethod' → MoMo hiển thị trang QR đầy đủ thay vì trang captureWallet
+              // 'payWithMethod' →MoMo hiển thị trang QR đầy đủ thay vì trang captureWallet
               ...(paymentMethod === 'MOMO' && { requestType: 'payWithMethod' }),
             }),
           retryOpts,
         );
 
-        console.log('[Payment] Payment response:', payment);
+        console.log('[Payment] ====== PAYMENT RESPONSE ======');
+        console.log('[Payment] Full Response:', JSON.stringify(payment, null, 2));
+        console.log('[Payment] Response Keys:', Object.keys(payment));
+        console.log('[Payment] paymentUrl:', payment.paymentUrl);
+        console.log('[Payment] paymentUrl Type:', typeof payment.paymentUrl);
+        console.log('[Payment] paymentUrl Length:', payment.paymentUrl?.length);
 
-        // Dùng paymentUrl trả về từ /api/payments/create
-        const redirectUrl = payment?.paymentUrl;
+        // Get the payment URL from response
+        const redirectUrl = payment.paymentUrl;
 
-        if (redirectUrl) {
-          console.log('[Payment] Redirecting to:', redirectUrl);
+        if (redirectUrl && redirectUrl.trim().length > 0) {
+          console.log('[Payment] ✓ URL FOUND - Redirecting to:', redirectUrl);
           isRedirecting = true;
+          
+          // Store booking info in sessionStorage for quick access if needed
+          const bookingInfo = {
+            bookingId: booking.id,
+            bookingCode: booking.bookingCode,
+            tourId: tour.id,
+            paymentMethod,
+            finalAmount: booking.finalAmount,
+            createdAt: new Date().toISOString(),
+          };
+          sessionStorage.setItem('lastBooking', JSON.stringify(bookingInfo));
+          
           // Use replace so user can't go "back" to this page mid-payment
-          window.location.replace(redirectUrl);
+          setTimeout(() => {
+            console.log('[Payment] Executing window.location.replace()...');
+            window.location.replace(redirectUrl);
+          }, 100);
           return;
         }
 
         // Backend không trả về paymentUrl → báo lỗi
-        console.error('[Payment] No paymentUrl received from backend:', payment);
+        console.error('[Payment] ✗ NO URL FOUND');
+        console.error('[Payment] Full payment object:', JSON.stringify(payment, null, 2));
+        console.error('[Payment] Payment is:', payment);
         setErrorMsg(
           `Không nhận được URL thanh toán từ ${paymentMethod}. Vui lòng thử lại hoặc chọn phương thức khác.`,
         );
@@ -275,29 +314,41 @@ export default function PaymentPage() {
       }
 
       /* ---- 4. CASH → navigate to e-ticket page ---- */
-      navigate(`/tours/${tour.id}/booking/e-ticket`, {
-        state: {
-          bookingId: booking.id,
-          bookingCode: booking.bookingCode,
-          contactInfo,
-          bookingDetails,
+      console.log('[Payment] CASH payment - navigating to e-ticket with bookingCode:', booking.bookingCode);
+      navigate(
+        `/tours/${tour.id}/booking/e-ticket?bookingCode=${encodeURIComponent(booking.bookingCode)}`,
+        {
+          state: {
+            contactInfo,
+            bookingDetails,
+          },
         },
-      });
+      );
     } catch (err: unknown) {
-      console.error('[Payment] Payment failed:', err);
+      console.error('[Payment] ====== ERROR ======');
+      console.error('[Payment] Error:', err);
+      console.error('[Payment] Error Type:', typeof err);
 
       // Extract real error message from Axios response (e.g. 400 body)
       let message = 'Thanh toán thất bại. Vui lòng thử lại.';
       if (axios.isAxiosError(err)) {
+        console.error('[Payment] Error is Axios Error');
+        console.error('[Payment] Status:', err.response?.status);
+        console.error('[Payment] Status Text:', err.response?.statusText);
         const data = err.response?.data;
-        console.error('[Payment] Server error response:', data);
+        console.error('[Payment] Response Data:', JSON.stringify(data, null, 2));
+        console.error('[Payment] Error Code:', err.code);
+        console.error('[Payment] Error Message:', err.message);
         const serverMsg = data?.message || data?.error || data?.data;
         message = serverMsg
           ? `Lỗi: ${serverMsg}`
           : `Lỗi ${err.response?.status ?? ''}: ${err.message}`;
       } else if (err instanceof Error) {
+        console.error('[Payment] Error is Error instance');
+        console.error('[Payment] Error Stack:', err.stack);
         message = err.message;
       }
+      console.error('[Payment] Final Error Message:', message);
       setErrorMsg(message);
     } finally {
       // Don't reset submitting state if we're navigating to payment gateway

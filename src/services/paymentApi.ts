@@ -173,6 +173,17 @@ export const getMomoReturn = async (queryString: string): Promise<CreatePaymentR
   return response.data.data;
 };
 
+/**
+ * GET /api/bookings/public/by-code/{bookingCode}
+ * Lấy thông tin booking bằng booking code (public endpoint — không cần auth).
+ */
+export const getBookingByCode = async (bookingCode: string): Promise<BookingResponse> => {
+  const response = await api.get<ApiResponse<BookingResponse>>(
+    `/api/bookings/public/by-code/${encodeURIComponent(bookingCode)}`,
+  );
+  return response.data.data;
+};
+
 // ========== Voucher ==========
 
 export interface Voucher {
