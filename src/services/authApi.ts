@@ -1,5 +1,5 @@
 import type { ApiResponse, User } from "../types";
-import { api } from "./api";
+import { API_BASE_URL, api } from "./api";
 
 export type LoginRequest = {
   username: string;
@@ -49,6 +49,8 @@ export type GoogleLoginRequest = {
   idToken: string;
 };
 
+export const GOOGLE_OAUTH2_URL = `${API_BASE_URL}oauth2/authorization/google`;
+
 export const authLogin = async (data: LoginRequest): Promise<AuthLoginResponse> => {
   const response = await api.post<ApiResponse<AuthLoginResponse>>("/api/auth/login", data);
   return response.data.data;
@@ -80,6 +82,10 @@ export const authGoogleLogin = async (
 ): Promise<AuthLoginResponse> => {
   const response = await api.post<ApiResponse<AuthLoginResponse>>("/api/auth/google", data);
   return response.data.data;
+};
+
+export const startGoogleOAuth2Login = (): void => {
+  window.location.href = GOOGLE_OAUTH2_URL;
 };
 
 export const authRefreshToken = async (

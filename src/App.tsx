@@ -7,6 +7,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import VerifyCode from "./pages/VerifyCode";
 import ResetPassword from "./pages/ResetPassword";
+import GoogleAuthCallback from "./pages/GoogleAuthCallback";
 import { HomePage } from './pages';
 import Tours from "./pages/Tours";
 import TourDetail from "./components/tour/TourDetail";
@@ -48,6 +49,10 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/verify-code" element={<VerifyCode />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
+        <Route path="/oauth2/callback" element={<GoogleAuthCallback />} />
+        <Route path="/oauth2/redirect" element={<GoogleAuthCallback />} />
+        <Route path="/login/oauth2/code/google" element={<GoogleAuthCallback />} />
 
         {/* Public Routes */}
         <Route element={<Layout />}>

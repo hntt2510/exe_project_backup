@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { authGoogleLogin, authLogin, type LoginRequest } from "../services/authApi";
+import { authLogin, startGoogleOAuth2Login, type LoginRequest } from "../services/authApi";
 import { message } from "antd";
-import { getGoogleIdToken } from "../utils/googleAuth";
 import { persistAuthSession } from "../utils/authSession";
-
-const GOOGLE_CLIENT_ID =
-  (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ||
-  "87846938671-76pcjrb3ucf7ngmkai7b2qni7uvrn9qt.apps.googleusercontent.com";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -117,19 +112,7 @@ const Login = () => {
     setError("");
     try {
       setLoading(true);
-      const idToken = await getGoogleIdToken(GOOGLE_CLIENT_ID);
-      const response = await authGoogleLogin({ idToken });
-      persistAuthSession(response);
-      message.success("Đăng nhập với Google thành công!");
-      if (response.role === "ADMIN") {
-        navigate("/admin");
-      } else if (response.role === "STAFF") {
-        navigate("/staff");
-      } else if (response.role === "ARTISAN") {
-        navigate("/artisan");
-      } else {
-        navigate("/");
-      }
+      startGoogleOAuth2Login();
     } catch (err: any) {
       const errorMessage =
         err.response?.data?.message || err.message || "Đăng nhập Google thất bại";
