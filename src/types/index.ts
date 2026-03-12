@@ -34,7 +34,13 @@ export interface Tour {
   title: string;
   slug: string;
   description: string;
-  durationHours: number;
+  /** Thời điểm đẹp nhất (e.g. "Tháng 10 - Tháng 3 mùa khô") */
+  bestSeason?: string;
+  /** Cách di chuyển đến vùng (e.g. "Xe máy, xe khách từ Pleiku") */
+  transportation?: string;
+  /** Lưu ý ứng xử văn hoá */
+  culturalTips?: string;
+  durationHours?: number;
   maxParticipants: number;
   price: number;
   thumbnailUrl: string;
@@ -328,14 +334,15 @@ export interface LearnModule {
   title: string;
   slug: string;
   thumbnailUrl: string;
-  categoryId: number;
-  categoryName: string;
-  quickNotesJson: string;
-  culturalEtiquetteTitle: string;
-  culturalEtiquetteText: string;
-  lessonsCount: number;
-  durationMinutes: number;
-  lessons: LearnModuleLesson[];
+  categoryId?: number;
+  categoryName?: string;
+  categorySlug?: string;
+  quickNotesJson?: string;
+  culturalEtiquetteTitle?: string;
+  culturalEtiquetteText?: string;
+  lessonsCount?: number;
+  durationMinutes?: number;
+  lessons?: LearnModuleLesson[];
   quizPrompt?: LearnQuizPrompt;
   suggestedTours?: LearnSuggestedTour[];
 }

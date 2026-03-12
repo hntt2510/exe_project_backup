@@ -16,8 +16,16 @@ export default function LessonSummary({ sections }: LessonSummaryProps) {
       <div className="lesson-summary__content">
         {sections.map((section, index) => (
           <div key={index} className="lesson-summary__section">
-            <h3 className="lesson-summary__section-title">{section.title}</h3>
-            <p className="lesson-summary__section-content">{section.content}</p>
+            {section.title && <h3 className="lesson-summary__section-title">{section.title}</h3>}
+            {section.content.trim().startsWith('<') ||
+            /<[a-z]/.test(section.content) ? (
+              <div
+                className="lesson-summary__section-content"
+                dangerouslySetInnerHTML={{ __html: section.content }}
+              />
+            ) : (
+              <p className="lesson-summary__section-content">{section.content}</p>
+            )}
           </div>
         ))}
       </div>

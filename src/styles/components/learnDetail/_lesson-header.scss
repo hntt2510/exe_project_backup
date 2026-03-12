@@ -50,6 +50,9 @@
   &__author-info {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
   }
 
   &__author-name {
@@ -77,8 +80,8 @@
 
   &__follow-btn {
     padding: 0.5rem 1.25rem;
-    background: transparent;
-    color: $color-primary;
+    background: $color-primary;
+    color: $color-white;
     border: 1.5px solid $color-primary;
     border-radius: $radius-full;
     font-size: $font-size-sm;
@@ -87,9 +90,9 @@
     transition: all $transition-base;
     white-space: nowrap;
 
-    &:hover {
-      background: $color-primary;
-      color: $color-white;
+    &:hover:not(.lesson-header__follow-btn--following) {
+      background: $color-primary-hover;
+      border-color: $color-primary-hover;
     }
 
     &--following {
@@ -107,6 +110,8 @@
 
   &__actions {
     display: flex;
+    flex-direction: column;
+    align-items: flex-end;
     gap: $spacing-sm;
   }
 
@@ -147,6 +152,7 @@
 
   @media (max-width: $breakpoint-md) {
     &__actions {
+      flex-direction: row;
       flex-wrap: wrap;
     }
 

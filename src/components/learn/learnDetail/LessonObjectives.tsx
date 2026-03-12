@@ -1,58 +1,68 @@
-import { useState } from 'react';
-import { Pin, RefreshCw } from 'lucide-react';
 import '../../../styles/components/learnDetail/_lesson-objectives.scss';
+import type { LearnLessonDifficulty } from '../../../types';
+
+const DIFFICULTY_LABELS: Record<LearnLessonDifficulty, string> = {
+  BASIC: 'Cơ bản',
+  INTERMEDIATE: 'Trung bình',
+  ADVANCED: 'Nâng cao',
+};
 
 interface LessonObjectivesProps {
   objectives: string[];
+  difficulty?: LearnLessonDifficulty;
+  estimatedMinutes?: number;
+  progressPercent?: number;
+  currentIndex?: number;
+  totalLessons?: number;
 }
 
-export default function LessonObjectives({ objectives }: LessonObjectivesProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPinned, setIsPinned] = useState(false);
-  const progress = ((currentIndex + 1) / objectives.length) * 100;
+export default function LessonObjectives({
+  objectives,
+  difficulty,
+  estimatedMinutes,
+  progressPercent = 0,
+  currentIndex = 0,
+  totalLessons = 0,
+}: LessonObjectivesProps) {
+  const objectiveText = objectives.length > 0 ? objectives[0] : '';
+  const difficultyLabel = difficulty ? DIFFICULTY_LABELS[difficulty] : null;
+  const durationText =
+    estimatedMinutes != null && estimatedMinutes > 0
+      ? estimatedMinutes < 1
+        ? '< 1 phút'
+        : `${Math.round(estimatedMinutes)} phút`
+      : null;
 
   return (
-    <div
-      className={`lesson-objectives ${
-        isPinned ? 'lesson-objectives--pinned' : ''
-      }`}
-    >
-      <div className="lesson-objectives__header">
+    <div className="lesson-objectives">
+      <div className="lesson-objectives__left">
         <h2 className="lesson-objectives__title">Mục tiêu bài học</h2>
-        <div className="lesson-objectives__controls">
-          <button
-            className={`lesson-objectives__control-btn ${
-              isPinned ? 'lesson-objectives__control-btn--active' : ''
-            }`}
-            onClick={() => setIsPinned(!isPinned)}
-            aria-label={isPinned ? 'Bỏ cố định' : 'Cố định'}
-          >
-            <Pin size={16} />
-          </button>
-          <button
-            className="lesson-objectives__control-btn"
-            onClick={() =>
-              setCurrentIndex((prev) => (prev + 1) % objectives.length)
-            }
-            aria-label="Làm mới"
-          >
-            <RefreshCw size={16} />
-          </button>
-        </div>
+        {objectiveText && (
+          <p className="lesson-objectives__text">{objectiveText}</p>
+        )}
       </div>
-      <div className="lesson-objectives__content">
-        <p className="lesson-objectives__text">{objectives[currentIndex]}</p>
-        <div className="lesson-objectives__progress">
-          <span className="lesson-objectives__progress-text">
-            {currentIndex + 1}/{objectives.length}
-          </span>
-          <div className="lesson-objectives__progress-bar">
-            <div
-              className="lesson-objectives__progress-fill"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+      <div className="lesson-objectives__right">
+        <div className="lesson-objectives__meta">
+          {difficultyLabel && (
+            <span className="lesson-objectives__meta-badge">{difficultyLabel}</span>
+          )}
+          {durationText && (
+            <span className="lesson-objectives__meta-badge">{durationText}</span>
+          )}
         </div>
+        {totalLessons > 0 && (
+          <div className="lesson-objectives__progress">
+            <span className="lesson-objectives__progress-label">
+              Tiến độ: {currentIndex + 1}/{totalLessons} bài
+            </span>
+            <div className="lesson-objectives__progress-bar">
+              <div
+                className="lesson-objectives__progress-fill"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

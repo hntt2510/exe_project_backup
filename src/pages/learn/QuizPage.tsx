@@ -3,8 +3,13 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Breadcrumbs from '../../components/Breadcrumbs';
 import { QuizHeader, QuizQuestionCard, QuizSidebar } from '../../components/learn';
 import { getQuizById } from '../../services/api';
+import { submitQuiz } from '../../services/learnApi';
 import type { LearnQuiz, LearnQuizQuestion } from '../../types';
 import '../../styles/pages/_quiz.scss';
+
+function hasAuthToken(): boolean {
+  return !!localStorage.getItem('accessToken');
+}
 
 export default function QuizPage() {
   const { moduleId } = useParams<{ moduleId: string }>();
@@ -18,8 +23,9 @@ export default function QuizPage() {
   const [quiz, setQuiz] = useState<LearnQuiz | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({}); // questionId -> option index
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({}); // questionId -> optionIndex
   const timeLimitSeconds = quiz ? quiz.timeLimitMinutes * 60 : 0;
   const [timeLeft, setTimeLeft] = useState(timeLimitSeconds);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -56,16 +62,63 @@ export default function QuizPage() {
   useEffect(() => {
     if (timeLeft !== 0 || isSubmitted || !quiz || !moduleId) return;
     setIsSubmitted(true);
-    navigate(`/learn/${moduleId}/quiz/results`, {
-      state: {
-        quizId: quiz.id,
-        quizTitle: quiz.title,
-        questions: quiz.questions,
-        selectedAnswers,
-        timeSpent: quiz.timeLimitMinutes * 60,
-      },
-    });
-  }, [timeLeft, isSubmitted, quiz, moduleId, navigate, selectedAnswers]);
+    void doSubmit();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft, isSubmitted, quiz?.id, moduleId]);
+
+  const doSubmit = async () => {
+    if (!quiz || !moduleId) return;
+    const timeSpent = quiz.timeLimitMinutes * 60 - timeLeft;
+
+    if (hasAuthToken()) {
+      setSubmitting(true);
+      try {
+        const questionIdToOptionId = (q: LearnQuizQuestion, optIdx: number) =>
+          q.options?.[optIdx]?.id ?? 0;
+        const answers: Record<number, number> = {};
+        quiz.questions.forEach((q) => {
+          const idx = selectedAnswers[q.id];
+          if (idx !== undefined) {
+            answers[q.id] = questionIdToOptionId(q, idx);
+          }
+        });
+        const result = await submitQuiz(quiz.id, answers, timeSpent);
+        navigate(`/learn/${moduleId}/quiz/results`, {
+          state: {
+            quizId: quiz.id,
+            quizTitle: quiz.title,
+            questions: quiz.questions,
+            selectedAnswers,
+            timeSpent,
+            apiResult: result,
+          },
+        });
+      } catch (err) {
+        console.error('[QuizPage] submitQuiz error:', err);
+        navigate(`/learn/${moduleId}/quiz/results`, {
+          state: {
+            quizId: quiz.id,
+            quizTitle: quiz.title,
+            questions: quiz.questions,
+            selectedAnswers,
+            timeSpent,
+          },
+        });
+      } finally {
+        setSubmitting(false);
+      }
+    } else {
+      navigate(`/learn/${moduleId}/quiz/results`, {
+        state: {
+          quizId: quiz.id,
+          quizTitle: quiz.title,
+          questions: quiz.questions,
+          selectedAnswers,
+          timeSpent,
+        },
+      });
+    }
+  };
 
   const handleAnswerSelect = (questionId: number, optionIndex: number) => {
     if (isSubmitted || !quiz) return;
@@ -73,17 +126,9 @@ export default function QuizPage() {
   };
 
   const handleSubmit = () => {
-    if (!quiz) return;
+    if (!quiz || isSubmitted) return;
     setIsSubmitted(true);
-    navigate(`/learn/${moduleId}/quiz/results`, {
-      state: {
-        quizId: quiz.id,
-        quizTitle: quiz.title,
-        questions: quiz.questions,
-        selectedAnswers,
-        timeSpent: quiz.timeLimitMinutes * 60 - timeLeft,
-      },
-    });
+    doSubmit();
   };
 
   if (loading) {
@@ -123,14 +168,13 @@ export default function QuizPage() {
     <div className="quiz-page">
       <div className="quiz-page__container">
         <Breadcrumbs items={breadcrumbItems} />
-
+        <div className="quiz-page__card">
         <QuizHeader
           title={quiz.title}
           questionCount={quiz.totalQuestions}
           durationMinutes={quiz.timeLimitMinutes}
           difficulty={quiz.difficulty}
           objective={quiz.objective}
-          rules={quiz.rules}
           answeredCount={answeredCount}
         />
 
@@ -156,8 +200,9 @@ export default function QuizPage() {
             answeredCount={answeredCount}
             onSubmit={handleSubmit}
             backUrl={`/learn/${moduleId}`}
-            canSubmit={canSubmit}
+            canSubmit={canSubmit && !submitting}
           />
+        </div>
         </div>
       </div>
     </div>

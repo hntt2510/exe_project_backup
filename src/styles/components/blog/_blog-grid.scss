@@ -1,0 +1,110 @@
+@use '../../variables' as *;
+
+// ============================================
+// Blog Grid — 2 columns, paper texture bg
+// ============================================
+.blog-grid {
+  width: 100%;
+  background: url('/paper-bg.png') center / cover repeat;
+  padding: $spacing-3xl 0;
+
+  &__inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 $spacing-lg;
+  }
+
+  &__list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: $spacing-2xl $spacing-xl;
+
+    @media (min-width: $breakpoint-md) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: $breakpoint-sm) {
+      max-width: 100%;
+      margin: 0;
+    }
+  }
+
+  &__empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: $color-gray-500;
+    font-size: $font-size-lg;
+    padding: $spacing-3xl 0;
+  }
+
+  &__pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: $spacing-2xl;
+  }
+}
+
+// Blog skeleton
+.blog-skeleton {
+  display: grid;
+  grid-template-columns: 40% 1fr;
+  gap: $spacing-lg;
+  background: $color-white;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  box-shadow: $shadow-sm;
+  min-height: 180px;
+
+  @media (max-width: $breakpoint-sm) {
+    grid-template-columns: 1fr;
+  }
+
+  &__img {
+    width: 100%;
+    height: 100%;
+    min-height: 180px;
+    background: linear-gradient(90deg,
+      $color-gray-200 25%,
+      $color-gray-100 50%,
+      $color-gray-200 75%);
+    background-size: 200% 100%;
+    animation: blog-pulse 1.4s ease infinite;
+  }
+
+  &__content {
+    padding: $spacing-lg;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__line {
+    height: 14px;
+    border-radius: 4px;
+    background: linear-gradient(90deg,
+      $color-gray-200 25%,
+      $color-gray-100 50%,
+      $color-gray-200 75%);
+    background-size: 200% 100%;
+    animation: blog-pulse 1.4s ease infinite;
+
+    &--title {
+      width: 90%;
+      height: 20px;
+    }
+
+    &--excerpt {
+      width: 100%;
+    }
+
+    &--meta {
+      width: 60%;
+      margin-top: auto;
+    }
+  }
+}
+
+@keyframes blog-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

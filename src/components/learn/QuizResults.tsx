@@ -4,6 +4,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { CheckCircle, XCircle, ChevronDown } from 'lucide-react';
+import type { Tour } from '../../types';
+import TourCard from '../tour/TourCard';
 
 // ---------------------------------------------------------------------------
 // QuizResultBanner
@@ -35,7 +37,7 @@ export function QuizResultBanner({
       </h1>
       <p className="quiz-result-banner__subtitle">
         {showScore
-          ? 'Cảm ơn bạn đã tham gia Quiz. Xem đáp án bạn chọn bên dưới.'
+          ? 'Cảm ơn bạn đã tham gia Quiz. Xem giải thích và gợi ý tour bên dưới.'
           : 'Cảm ơn bạn đã tham gia Quiz.'}
       </p>
     </div>
@@ -52,6 +54,9 @@ interface QuizResultSummaryProps {
   totalCount: number;
   retakeUrl: string;
   backUrl: string;
+  canClaimVoucher?: boolean;
+  onClaimVoucher?: () => void;
+  isClaimingVoucher?: boolean;
 }
 
 export function QuizResultSummary({
@@ -61,6 +66,9 @@ export function QuizResultSummary({
   totalCount,
   retakeUrl,
   backUrl,
+  canClaimVoucher,
+  onClaimVoucher,
+  isClaimingVoucher,
 }: QuizResultSummaryProps) {
   const navigate = useNavigate();
 
@@ -93,10 +101,6 @@ export function QuizResultSummary({
             <span className="quiz-result-summary__metric-value">{correctCount}/{totalCount}</span>
           </div>
         )}
-        <div className="quiz-result-summary__metric">
-          <span className="quiz-result-summary__metric-label">Tổng số câu</span>
-          <span className="quiz-result-summary__metric-value">{totalCount}</span>
-        </div>
       </div>
       {showScore && (
         <div className="quiz-result-summary__progress-section">
@@ -108,6 +112,16 @@ export function QuizResultSummary({
             />
           </div>
         </div>
+      )}
+      {canClaimVoucher && onClaimVoucher && (
+        <button
+          type="button"
+          className="quiz-result-summary__claim-btn"
+          onClick={onClaimVoucher}
+          disabled={isClaimingVoucher}
+        >
+          {isClaimingVoucher ? 'Đang xử lý...' : 'Nhận voucher'}
+        </button>
       )}
       <div className="quiz-result-summary__actions">
         <button
@@ -198,22 +212,15 @@ export function QuizExplanationCard({
   );
 }
 
-// ---------------------------------------------------------------------------
-// RelatedTours
-// ---------------------------------------------------------------------------
-interface RelatedTour {
-  id: number;
-  title: string;
-  description: string;
-  price: string;
-  thumbnailUrl: string;
-}
-
 interface RelatedToursProps {
-  tours: RelatedTour[];
+  tours: Tour[];
 }
 
 export function RelatedTours({ tours }: RelatedToursProps) {
+  const topTours = tours.slice(0, 3);
+
+  if (!topTours.length) return null;
+
   return (
     <div className="related-tours">
       <h2 className="related-tours__title">TRẢI NGHIỆM VĂN HOÁ NGAY TẠI TÂY NGUYÊN</h2>
@@ -221,22 +228,8 @@ export function RelatedTours({ tours }: RelatedToursProps) {
         Chọn một tour phù hợp để chạm vào không gian cồng chiêng & đời sống bản địa.
       </p>
       <div className="related-tours__grid">
-        {tours.map((tour) => (
-          <div key={tour.id} className="related-tours__card">
-            <img
-              src={tour.thumbnailUrl}
-              alt={tour.title}
-              className="related-tours__image"
-            />
-            <div className="related-tours__content">
-              <h3 className="related-tours__card-title">{tour.title}</h3>
-              <p className="related-tours__card-description">{tour.description}</p>
-              <div className="related-tours__card-footer">
-                <span className="related-tours__card-price">{tour.price}</span>
-                <button type="button" className="related-tours__card-button">Đặt ngay</button>
-              </div>
-            </div>
-          </div>
+        {topTours.map((tour) => (
+          <TourCard key={tour.id} tour={tour} />
         ))}
       </div>
     </div>

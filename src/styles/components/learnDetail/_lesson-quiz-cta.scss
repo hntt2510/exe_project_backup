@@ -1,7 +1,7 @@
 @use '../../variables' as *;
 
 .lesson-quiz-cta {
-  background: url('/paper-bg.png') center / cover repeat;
+  background: $color-gray-50;
   border: 2px solid $color-primary;
   border-radius: $radius-2xl;
   padding: $spacing-3xl;
@@ -15,7 +15,7 @@
     font-family: 'iCiel Lodestone', 'Georgia', serif;
     font-size: clamp($font-size-xl, 3vw, $font-size-2xl);
     font-weight: $font-weight-bold;
-    color: $color-primary;
+    color: $color-text-primary;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin: 0;

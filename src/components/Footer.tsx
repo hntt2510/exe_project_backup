@@ -4,16 +4,16 @@ import '../styles/components/_footer.scss';
 
 const footerLinks = {
     explore: [
-        { label: 'Bản đồ văn hóa', path: '/map' },
+        { label: 'Bản đồ văn hóa', path: '/#cultural-map' },
         { label: 'Tour trải nghiệm', path: '/tours' },
-        { label: 'Lễ hội truyền thống', path: '/culture/festivals' },
-        { label: 'Chính sách', path: '/policies' },
+        { label: 'Nghệ nhân truyền tải', path: '/artisans' },
+        { label: 'Chính sách', path: '/policy' },
     ],
     support: [
         { label: 'Liên hệ', path: '/contact' },
         { label: 'Câu hỏi thường gặp', path: '/faq' },
         { label: 'Hướng dẫn đặt tour', path: '/guide' },
-        { label: 'Chính sách', path: '/policies' },
+        { label: 'Chính sách', path: '/policy' },
     ],
 };
 

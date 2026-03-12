@@ -7,16 +7,24 @@ interface LessonQuickNotesProps {
 }
 
 export default function LessonQuickNotes({ notes, tip }: LessonQuickNotesProps) {
+  const hasNotes = notes.length > 0;
+  const hasTip = !!tip?.title && !!tip?.content;
+  if (!hasNotes && !hasTip) return null;
+
   return (
     <div className="lesson-quick-notes">
-      <h2 className="lesson-quick-notes__title">Ghi chú nhanh</h2>
-      <ol className="lesson-quick-notes__list">
-        {notes.map((note, index) => (
-          <li key={index} className="lesson-quick-notes__item">
-            {note}
-          </li>
-        ))}
-      </ol>
+      {hasNotes && (
+        <>
+          <h2 className="lesson-quick-notes__title">Ghi chú nhanh</h2>
+          <ol className="lesson-quick-notes__list">
+            {notes.map((note, index) => (
+              <li key={index} className="lesson-quick-notes__item">
+                {note}
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
       {tip && (
         <div className="lesson-quick-notes__tip">
           <div className="lesson-quick-notes__tip-icon">

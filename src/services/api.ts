@@ -76,8 +76,10 @@ export function getApiErrorMessage(error: unknown): string {
 // ========== In-memory cache (load 1 lần, dùng chung) ==========
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 phút
 const cache = new Map<string, { data: unknown; ts: number }>();
+const ENABLE_API_CACHE = !import.meta.env.DEV;
 
 function getCached<T>(key: string): T | undefined {
+  if (!ENABLE_API_CACHE) return undefined;
   const entry = cache.get(key);
   if (!entry) return undefined;
   if (Date.now() - entry.ts > CACHE_TTL_MS) {
@@ -88,6 +90,7 @@ function getCached<T>(key: string): T | undefined {
 }
 
 function setCached(key: string, data: unknown): void {
+  if (!ENABLE_API_CACHE) return;
   cache.set(key, { data, ts: Date.now() });
 }
 
@@ -168,7 +171,10 @@ type PublicTourResponse = {
   title: string;
   slug: string;
   description: string;
-  durationHours: number;
+  bestSeason?: string;
+  transportation?: string;
+  culturalTips?: string;
+  durationHours?: number;
   maxParticipants: number;
   price: number;
   thumbnailUrl: string;
@@ -186,7 +192,7 @@ type PublicTourResponse = {
 const parseTourImages = (images?: string | string[]): string[] => {
   if (!images) return [];
   if (Array.isArray(images)) return images;
-  const trimmed = images.trim();
+  const trimmed = (typeof images === "string" ? images : "").trim();
   if (!trimmed) return [];
   if (trimmed.startsWith("[")) {
     try {
@@ -202,6 +208,36 @@ const parseTourImages = (images?: string | string[]): string[] => {
     .filter(Boolean);
 };
 
+/** Chuẩn hóa Tour từ API (hỗ trợ nested province/artisan) */
+function normalizeTour(raw: Record<string, unknown>): Tour {
+  const province = raw.province as { id?: number; name?: string } | undefined;
+  const artisan = raw.artisan as { id?: number; fullName?: string } | undefined;
+  return {
+    id: raw.id as number,
+    provinceId: (raw.provinceId as number) ?? province?.id ?? 0,
+    provinceName: (raw.provinceName as string) ?? province?.name,
+    title: raw.title as string,
+    slug: raw.slug as string,
+    description: raw.description as string,
+    bestSeason: raw.bestSeason as string | undefined,
+    transportation: raw.transportation as string | undefined,
+    culturalTips: raw.culturalTips as string | undefined,
+    durationHours: raw.durationHours as number | undefined,
+    maxParticipants: (raw.maxParticipants as number) ?? 0,
+    price: raw.price as number,
+    thumbnailUrl: raw.thumbnailUrl as string,
+    images: parseTourImages(raw.images as string | string[]),
+    artisanId: (raw.artisanId as number) ?? artisan?.id,
+    artisanName: (raw.artisanName as string) ?? artisan?.fullName,
+    averageRating: (raw.averageRating as number) ?? 0,
+    totalReviews: (raw.totalReviews as number) ?? 0,
+    totalBookings: raw.totalBookings as number | undefined,
+    status: raw.status as string | undefined,
+    createdAt: (raw.createdAt as string) ?? "",
+    updatedAt: (raw.updatedAt as string) ?? (raw.createdAt as string) ?? "",
+  };
+}
+
 export const getPublicTours = async (): Promise<Tour[]> => {
   const key = "publicTours";
   const cached = getCached<Tour[]>(key);
@@ -216,8 +252,11 @@ export const getPublicTours = async (): Promise<Tour[]> => {
     title: item.title,
     slug: item.slug,
     description: item.description,
+    bestSeason: item.bestSeason,
+    transportation: item.transportation,
+    culturalTips: item.culturalTips,
     durationHours: item.durationHours,
-    maxParticipants: item.maxParticipants,
+    maxParticipants: item.maxParticipants ?? 0,
     price: item.price,
     thumbnailUrl: item.thumbnailUrl,
     images: parseTourImages(item.images),
@@ -225,6 +264,7 @@ export const getPublicTours = async (): Promise<Tour[]> => {
     artisanName: item.artisan?.fullName,
     averageRating: item.averageRating ?? 0,
     totalReviews: 0,
+    totalBookings: item.totalBookings,
     createdAt: item.createdAt ?? "",
     updatedAt: item.createdAt ?? "",
   }));
@@ -236,8 +276,11 @@ export const getTourById = async (id: number): Promise<Tour> => {
   const key = `tour:${id}`;
   const cached = getCached<Tour>(key);
   if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<Tour>>(`/api/tours/public/${id}`);
-  const data = response.data.data;
+  const response = await api.get<ApiResponse<Record<string, unknown>>>(
+    `/api/tours/public/${id}`,
+  );
+  const raw = response.data.data ?? {};
+  const data = normalizeTour(raw);
   setCached(key, data);
   return data;
 };
@@ -248,10 +291,11 @@ export const getToursByProvince = async (
   const key = `tours:province:${provinceId}`;
   const cached = getCached<Tour[]>(key);
   if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<Tour[]>>(
-    `/api/tours/public/province/${provinceId}`,
-  );
-  const data = response.data.data;
+  const response = await api.get<
+    ApiResponse<Array<Record<string, unknown>>>
+  >(`/api/tours/public/province/${provinceId}`);
+  const rawList = response.data.data ?? [];
+  const data = rawList.map((r) => normalizeTour(r));
   setCached(key, data);
   return data;
 };
@@ -435,13 +479,18 @@ export const getLearnCategories = async (): Promise<LearnCategory[]> => {
   return data;
 };
 
-export const getLearnModules = async (): Promise<LearnModule[]> => {
-  const key = "learn:modules";
+export const getLearnModules = async (
+  categoryId?: number
+): Promise<LearnModule[]> => {
+  const key = categoryId
+    ? `learn:modules:category:${categoryId}`
+    : "learn:modules";
   const cached = getCached<LearnModule[]>(key);
   if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<LearnModule[]>>(
-    "/api/learn/public/modules",
-  );
+  const url = categoryId
+    ? `/api/learn/public/modules?categoryId=${categoryId}`
+    : "/api/learn/public/modules";
+  const response = await api.get<ApiResponse<LearnModule[]>>(url);
   const data = response.data.data ?? [];
   setCached(key, data);
   return data;
@@ -488,10 +537,25 @@ export const getLearnUserStats = async (): Promise<LearnUserStats | null> => {
   try {
     const token = localStorage.getItem("accessToken");
     if (!token) return null;
-    const response = await api.get<ApiResponse<LearnUserStats>>(
-      "/api/learn/users/me/stats",
-    );
-    return response.data.data;
+    const response = await api.get<
+      ApiResponse<{
+        totalLessonsCompleted: number;
+        averageScore: number | string;
+        learningStreak: number;
+        totalCoursesCompleted: number;
+        overallLearningProgressPercent: number;
+        featuredCourses: LearnModule[];
+      }>
+    >("/api/learn/users/me/stats");
+    const raw = response.data.data;
+    if (!raw) return null;
+    return {
+      ...raw,
+      averageScore:
+        typeof raw.averageScore === "number"
+          ? raw.averageScore
+          : parseFloat(String(raw.averageScore ?? 0)) || 0,
+    };
   } catch {
     return null;
   }

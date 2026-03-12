@@ -3,7 +3,7 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3, Target, Clock, List, Pin } from 'lucide-react';
+import { BarChart3, Target, Clock, Pin } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // QuizHeader
@@ -16,7 +16,6 @@ interface QuizHeaderProps {
   durationMinutes: number;
   difficulty?: QuizDifficulty;
   objective?: string;
-  rules?: string[];
   answeredCount: number;
 }
 
@@ -32,11 +31,8 @@ export function QuizHeader({
   durationMinutes,
   difficulty,
   objective,
-  rules,
   answeredCount,
 }: QuizHeaderProps) {
-  const progress = questionCount > 0 ? (answeredCount / questionCount) * 100 : 0;
-
   return (
     <div className="quiz-header">
       <h1 className="quiz-header__title">
@@ -61,26 +57,20 @@ export function QuizHeader({
             <span>{String(durationMinutes).padStart(2, '0')}:00</span>
           </div>
         )}
-        <div className="quiz-header__meta-item">
+        <div className="quiz-header__meta-item quiz-header__meta-item--progress">
           <span>Tiến độ {answeredCount}/{questionCount}</span>
-          <div className="quiz-header__progress-bar">
-            <div
-              className="quiz-header__progress-fill"
-              style={{ width: `${progress}%` }}
-            />
+          <div className="quiz-header__progress-dots">
+            {Array.from({ length: questionCount }).map((_, index) => (
+              <div
+                key={index}
+                className={`quiz-header__progress-dot ${
+                  index < answeredCount ? 'quiz-header__progress-dot--answered' : ''
+                }`}
+              />
+            ))}
           </div>
         </div>
       </div>
-      {rules != null && rules.length > 0 && (
-        <div className="quiz-header__rules">
-          <List size={16} />
-          <ul>
-            {rules.map((rule, i) => (
-              <li key={i}>{rule}</li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }
@@ -113,7 +103,7 @@ export function QuizQuestionCard({
     <div className="quiz-question-card">
       <div className="quiz-question-card__header">
         <h3 className="quiz-question-card__question">
-          Câu {questionNumber}: {questionText}
+          <span className="quiz-question-card__question-number">Câu {questionNumber}:</span> {questionText}
         </h3>
       </div>
       <div className="quiz-question-card__options">
@@ -181,6 +171,7 @@ export function QuizSidebar({
 
   return (
     <div className="quiz-sidebar">
+      <div className="quiz-sidebar__card">
       <div className="quiz-sidebar__timer-card">
         <Clock size={64} className="quiz-sidebar__timer-icon" />
         <div className="quiz-sidebar__timer-text">{formatTime(timeLeft)}</div>
@@ -216,6 +207,7 @@ export function QuizSidebar({
         <Link to={backUrl} className="quiz-sidebar__back-btn">
           Quay về bài học
         </Link>
+      </div>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 /**
- * Learn – barrel export từ 4 file chính (LearnList, LessonDetail, Quiz, QuizResults)
+ * Learn – barrel export cho các khối UI của learn pages.
  */
 
 // Trang danh sách module

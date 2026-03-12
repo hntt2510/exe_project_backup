@@ -36,21 +36,33 @@ export default function IntroSection({
                   <Calendar size={16} />
                   <div>
                     <strong>Thời điểm đẹp nhất</strong>
-                    <p>Tháng 10 - Tháng 3 (mùa khô, thời tiết mát mẻ)</p>
+                    <p>
+                      {tour.bestSeason ??
+                        province?.bestSeason ??
+                        'Tháng 10 - Tháng 3 (mùa khô, thời tiết mát mẻ)'}
+                    </p>
                   </div>
                 </div>
                 <div className="td-quick-info__item">
                   <Car size={16} />
                   <div>
                     <strong>Cách di chuyển</strong>
-                    <p>{province ? `Từ ${province.name}` : 'Liên hệ để biết thêm'}</p>
+                    <p>
+                      {tour.transportation ??
+                        province?.transportation ??
+                        (province ? `Từ ${province.name}` : 'Liên hệ để biết thêm')}
+                    </p>
                   </div>
                 </div>
                 <div className="td-quick-info__item">
                   <HandHeart size={16} />
                   <div>
                     <strong>Lưu ý văn hoá</strong>
-                    <p>Trang phục lịch sự, tôn trọng phong tục địa phương</p>
+                    <p>
+                      {tour.culturalTips ??
+                        province?.culturalTips ??
+                        'Trang phục lịch sự, tôn trọng phong tục địa phương'}
+                    </p>
                   </div>
                 </div>
                 <Link to={`/tours/${tour.id}/booking`} className="btn btn-primary td-quick-info__cta">

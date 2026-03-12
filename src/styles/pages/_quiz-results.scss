@@ -4,7 +4,7 @@
 .quiz-results-page {
   min-height: 100vh;
   padding: 120px 0 80px;
-  background: #fafafa;
+  background: #f5f4f2 url('/paper-bg.png') repeat;
 
   &__container {
     max-width: 1200px;
@@ -18,12 +18,13 @@
 
   &__content {
     display: grid;
-    grid-template-columns: 1fr 320px;
+    grid-template-columns: 1fr;
     gap: 32px;
     margin-bottom: 48px;
+    align-items: start;
 
     @include mixins.respond-to(md) {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr 320px;
     }
   }
 
@@ -42,5 +43,6 @@
   &__sidebar {
     display: flex;
     flex-direction: column;
+    align-self: start;
   }
 }

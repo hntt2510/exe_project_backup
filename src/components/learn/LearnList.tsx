@@ -28,29 +28,29 @@ export interface LessonGroup {
 }
 
 // ---------------------------------------------------------------------------
-// CategoryFilter – dùng danh mục từ GET /api/learn/public/categories
+// CategoryFilter – dùng danh mục từ GET /api/learn/public/categories, filter theo categoryId
 // ---------------------------------------------------------------------------
 interface CategoryFilterProps {
   categories: LearnCategory[];
-  activeCategorySlug: string;
-  onCategoryChange: (slug: string) => void;
+  activeCategoryId: number | null;
+  onCategoryChange: (categoryId: number | null) => void;
 }
 
-function CategoryFilter({ categories, activeCategorySlug, onCategoryChange }: CategoryFilterProps) {
+function CategoryFilter({ categories, activeCategoryId, onCategoryChange }: CategoryFilterProps) {
   const sorted = [...categories].sort((a, b) => a.orderIndex - b.orderIndex);
   return (
     <div className="category-filter">
       <button
-        onClick={() => onCategoryChange('all')}
-        className={`category-filter__btn ${activeCategorySlug === 'all' ? 'category-filter__btn--active' : ''}`}
+        onClick={() => onCategoryChange(null)}
+        className={`category-filter__btn ${activeCategoryId === null ? 'category-filter__btn--active' : ''}`}
       >
         Tất cả
       </button>
       {sorted.map((cat) => (
         <button
           key={cat.id}
-          onClick={() => onCategoryChange(cat.slug)}
-          className={`category-filter__btn ${activeCategorySlug === cat.slug ? 'category-filter__btn--active' : ''}`}
+          onClick={() => onCategoryChange(cat.id)}
+          className={`category-filter__btn ${activeCategoryId === cat.id ? 'category-filter__btn--active' : ''}`}
         >
           {cat.name}
         </button>
@@ -73,21 +73,22 @@ function LessonCard({ lesson, progressPercent = 0 }: LessonCardProps) {
 
   return (
     <Link to={lessonUrl} className="lesson-card">
-      {lesson.thumbnailUrl ? (
-        <div className="lesson-card__image">
-          <img 
-            src={lesson.thumbnailUrl} 
+      <div className="lesson-card__image">
+        {lesson.thumbnailUrl ? (
+          <img
+            src={lesson.thumbnailUrl}
             alt={lesson.title}
             onError={(e) => {
               (e.target as HTMLImageElement).src = '/nen.png';
             }}
           />
-        </div>
-      ) : (
-        <div className="lesson-card__image">
+        ) : (
           <img src="/nen.png" alt={lesson.title} />
-        </div>
-      )}
+        )}
+        {lesson.category && (
+          <span className="lesson-card__badge">{lesson.category}</span>
+        )}
+      </div>
       <div className="lesson-card__content">
         <h3 className="lesson-card__title">{lesson.title}</h3>
         <div className="lesson-card__meta">
@@ -155,17 +156,19 @@ interface LearnPageContentProps {
   categories: LearnCategory[];
   stats?: LearnUserStats | null;
   loading: boolean;
+  activeCategoryId: number | null;
+  onCategoryChange: (categoryId: number | null) => void;
 }
 
-export default function LearnPageContent({ lessonGroups, categories, stats, loading }: LearnPageContentProps) {
-  const [activeCategorySlug, setActiveCategorySlug] = useState<string>('all');
-
-  const filteredLessons =
-    activeCategorySlug === 'all'
-      ? lessonGroups
-      : lessonGroups.filter((group) => group.categorySlug === activeCategorySlug);
-
-  // Use overallLearningProgressPercent from stats for progress bars
+export default function LearnPageContent({
+  lessonGroups,
+  categories,
+  stats,
+  loading,
+  activeCategoryId,
+  onCategoryChange,
+}: LearnPageContentProps) {
+  // Modules đã được filter từ API theo categoryId – không cần filter client
   const progressPercent = stats?.overallLearningProgressPercent ?? 0;
 
   return (
@@ -180,8 +183,8 @@ export default function LearnPageContent({ lessonGroups, categories, stats, load
 
         <CategoryFilter
           categories={categories}
-          activeCategorySlug={activeCategorySlug}
-          onCategoryChange={setActiveCategorySlug}
+          activeCategoryId={activeCategoryId}
+          onCategoryChange={onCategoryChange}
         />
 
         <PromoBanner />
@@ -194,13 +197,13 @@ export default function LearnPageContent({ lessonGroups, categories, stats, load
               ))}
             </div>
           </div>
-        ) : filteredLessons.length === 0 ? (
+        ) : lessonGroups.length === 0 ? (
           <div className="learn-page__empty">
             <p>Chưa có bài học nào trong danh mục này.</p>
           </div>
         ) : (
           <div className="learn-page__grid">
-            {filteredLessons.map((group) => (
+            {lessonGroups.map((group) => (
               <LessonCard
                 key={group.id}
                 lesson={group}

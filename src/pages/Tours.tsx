@@ -114,7 +114,7 @@ export default function Tours() {
     <div className="tour-page">
       <TourHero />
 
-      <section className="tour-page__content">
+      <section id="tour-content" className="tour-page__content">
         <div className="tour-page__container">
           <TourFilterBar
             search={search}

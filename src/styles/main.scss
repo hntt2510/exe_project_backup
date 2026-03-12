@@ -41,6 +41,7 @@
 @use 'components/learn' as learn-components;
 @use 'components/learnDetail' as lesson-detail-components;
 @use 'components/artisan' as artisan-components;
+@use 'components/blog' as blog-components;
 
 // Pages
 @use 'pages/home';
@@ -50,7 +51,11 @@
 @use 'pages/verify-code';
 @use 'pages/reset-password';
 @use 'pages/learn';
-@use 'pages/lesson-detail';
+@use 'components/lessonDetailPagescss' as lesson-detail-page;
 @use 'pages/quiz';
 @use 'pages/quiz-results';
 @use 'pages/about';
+@use 'pages/policy';
+@use 'pages/contact';
+@use 'pages/faq';
+@use 'pages/guide';

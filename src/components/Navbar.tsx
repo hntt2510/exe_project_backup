@@ -11,6 +11,7 @@ const navLinks = [
   { path: "/", label: "Trang chủ" },
   { path: "/tours", label: "Tours" },
   { path: "/artisans", label: "Góc nghệ nhân" },
+  { path: "/blog", label: "Blog" },
   { path: "/learn", label: "Học nhanh" },
   { path: "/about", label: "Về chúng tôi" },
 ];

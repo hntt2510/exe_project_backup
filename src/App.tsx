@@ -18,7 +18,12 @@ import ETicketPage from "./components/tourBooking/e-ticket";
 import { ProfilePage } from "./components/profile";
 import { About } from "./components/about";
 import { ArtisanPage, ArtisanDetailPage } from "./components/artisan";
+import { BlogPage, BlogDetailPage } from "./components/blog";
 import { LearnPage, LessonDetailPage, QuizPage, QuizResultsPage } from "./pages/learn";
+import PolicyPage from "./pages/PolicyPage";
+import ContactPage from "./pages/ContactPage";
+import FAQPage from "./pages/FAQPage";
+import GuidePage from "./pages/GuidePage";
 
 // Admin Pages
 import AdminDashboardPage from "./pages/admin/AdminDashboard";
@@ -69,7 +74,13 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/artisans" element={<ArtisanPage />} />
           <Route path="/artisans/:id" element={<ArtisanDetailPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:id" element={<BlogDetailPage />} />
           <Route path="/about" element={<About />} />
+          <Route path="/policy" element={<PolicyPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/guide" element={<GuidePage />} />
           <Route path="/learn" element={<LearnPage />} />
           <Route path="/learn/:moduleId" element={<LessonDetailPage />} />
           <Route path="/learn/:moduleId/quiz" element={<QuizPage />} />

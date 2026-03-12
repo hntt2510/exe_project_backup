@@ -1,0 +1,10 @@
+@use '../../variables' as *;
+
+// ============================================
+// Blog Page — wrapper
+// ============================================
+.blog-page {
+  min-height: 100vh;
+  background: $color-gray-50;
+  overflow-x: hidden;
+}

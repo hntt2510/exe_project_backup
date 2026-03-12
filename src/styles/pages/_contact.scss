@@ -1,0 +1,202 @@
+@use '../variables';
+@use '../mixins';
+
+.contact-page {
+  min-height: 100vh;
+  background: #faf9f6;
+
+  &__container {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 variables.$spacing-md;
+
+    @include mixins.respond-to(md) {
+      padding: 0 variables.$spacing-lg;
+    }
+
+    @include mixins.respond-to(lg) {
+      padding: 0 variables.$spacing-xl;
+    }
+  }
+
+  &__hero {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(to bottom, #fff, #faf9f6);
+    padding: variables.$spacing-3xl 0;
+    padding-top: calc(var(--navbar-h, 88px) + variables.$spacing-3xl);
+    border-bottom: 1px solid variables.$color-border;
+
+    @include mixins.respond-to(md) {
+      padding: variables.$spacing-4xl 0 variables.$spacing-3xl;
+      padding-top: calc(var(--navbar-h, 88px) + variables.$spacing-4xl);
+    }
+  }
+
+  &__hero-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  &__hero-pattern {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+    background-size: 16px 16px;
+    opacity: 0.3;
+  }
+
+  &__hero-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(64px);
+
+    &--primary {
+      top: -6rem;
+      right: -6rem;
+      width: 24rem;
+      height: 24rem;
+      background: rgba(variables.$color-primary, 0.1);
+    }
+  }
+
+  &__hero-content {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+  }
+
+  &__title {
+    font-size: 2.25rem !important;
+    font-weight: 700 !important;
+    margin-bottom: variables.$spacing-lg !important;
+    color: variables.$color-text-primary;
+
+    @include mixins.respond-to(md) {
+      font-size: 3rem !important;
+    }
+  }
+
+  &__title-highlight {
+    color: variables.$color-primary;
+  }
+
+  &__subtitle {
+    font-size: 1.0625rem !important;
+    color: variables.$color-text-secondary;
+    max-width: 40rem;
+    margin: 0 auto !important;
+    line-height: 1.75;
+  }
+
+  &__content {
+    padding: variables.$spacing-3xl 0;
+
+    @include mixins.respond-to(md) {
+      padding: variables.$spacing-4xl 0;
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: variables.$spacing-2xl;
+
+    @include mixins.respond-to(lg) {
+      grid-template-columns: 1fr 1.2fr;
+      gap: variables.$spacing-3xl;
+    }
+  }
+
+  &__info {
+    &-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: variables.$color-primary;
+      margin-bottom: variables.$spacing-sm;
+    }
+
+    &-title {
+      font-size: 1.5rem !important;
+      font-weight: 700 !important;
+      color: variables.$color-text-primary;
+      margin-bottom: variables.$spacing-xl !important;
+    }
+
+    &-list {
+      display: flex;
+      flex-direction: column;
+      gap: variables.$spacing-lg;
+    }
+
+    &-item {
+      display: flex;
+      gap: variables.$spacing-md;
+      padding: variables.$spacing-lg;
+      background: #fff;
+      border-radius: variables.$radius-lg;
+      border: 1px solid variables.$color-border;
+    }
+
+    &-icon {
+      color: variables.$color-primary;
+      flex-shrink: 0;
+    }
+
+    &-item-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: variables.$color-text-secondary;
+      margin-bottom: variables.$spacing-xs;
+    }
+
+    &-item-value {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 500;
+      color: variables.$color-text-primary;
+    }
+  }
+
+  &__form-card {
+    padding: variables.$spacing-2xl;
+    background: #fff;
+    border-radius: variables.$radius-xl;
+    border: 1px solid variables.$color-border;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  }
+
+  &__form-title {
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+    margin-bottom: variables.$spacing-xl !important;
+    color: variables.$color-text-primary;
+  }
+
+  &__form {
+    .ant-form-item-label > label {
+      font-weight: 500;
+    }
+  }
+
+  &__textarea {
+    resize: none;
+  }
+
+  &__form-submit {
+    margin-bottom: 0 !important;
+  }
+
+  &__submit-btn {
+    display: inline-flex !important;
+    align-items: center;
+    gap: variables.$spacing-sm;
+    font-weight: 600 !important;
+  }
+}

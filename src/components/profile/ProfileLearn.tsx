@@ -80,7 +80,7 @@ export default function ProfileLearn({ stats }: ProfileLearnProps) {
           {stats.featuredCourses.map((course: FeaturedCourse) => (
             <Link
               key={course.id}
-              to={`/learn/${course.categoryName.toLowerCase()}/${course.slug}`}
+              to={`/learn/${course.id}`}
               className="profile-learn__course-card"
             >
               <img

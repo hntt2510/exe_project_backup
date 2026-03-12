@@ -9,8 +9,9 @@
   background: $color-white;
   border-radius: $radius-xl;
   padding: $spacing-xl;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgba(139, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
   margin-bottom: $spacing-2xl;
+  border: 1px solid rgba(139, 0, 0, 0.08);
 
   &__row {
     display: grid;

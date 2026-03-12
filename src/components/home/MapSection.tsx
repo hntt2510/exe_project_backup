@@ -435,7 +435,7 @@ export default function MapSection() {
   }, [fetchCultureItems, selectedProvinceId]);
 
   return (
-    <section className="map-section">
+    <section className="map-section" id="cultural-map">
       <div className="map-section__container">
         <h2 className="map-section__title">BẢN ĐỒ TÂY NGUYÊN</h2>
         <p className="map-section__subtitle">

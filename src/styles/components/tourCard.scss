@@ -41,6 +41,69 @@
     z-index: 1;
   }
 
+  &__badge {
+    position: absolute;
+    bottom: 26px;
+    left: 28px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem 0.65rem;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    color: $color-white;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: $radius-full;
+    backdrop-filter: blur(4px);
+    z-index: 2;
+
+    svg {
+      flex-shrink: 0;
+    }
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    flex-wrap: wrap;
+  }
+
+  &__meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: $font-size-xs;
+    color: $color-gray-600;
+
+    svg {
+      color: $color-primary;
+      flex-shrink: 0;
+    }
+
+    &--rating {
+      color: $color-gray-700;
+      font-weight: $font-weight-medium;
+
+      svg {
+        color: #f59e0b;
+      }
+    }
+  }
+
+  &__artisan {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: $font-size-xs;
+    color: $color-gray-600;
+
+    svg {
+      color: $color-primary;
+      flex-shrink: 0;
+    }
+  }
+
   &__image-frame {
     background: #fefefe;
     border-radius: 12px;

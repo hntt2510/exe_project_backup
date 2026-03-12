@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Pagination } from "antd";
 import type { PublicArtisan } from "../../types";
 import ArtisanCard from "./ArtisanCard";
+import ArtisanPagination from "./ArtisanPagination";
 import "../../styles/components/artisan/_artisan-grid.scss";
 
 const PAGE_SIZE = 6;
@@ -53,11 +53,10 @@ export default function ArtisanGrid({ artisans, loading }: Props) {
 
         {!loading && artisans.length > PAGE_SIZE && (
           <div className="artisan-grid__pagination">
-            <Pagination
-              current={currentPage}
-              pageSize={PAGE_SIZE}
-              total={artisans.length}
-              onChange={(page) => {
+            <ArtisanPagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(artisans.length / PAGE_SIZE)}
+              onPageChange={(page) => {
                 setCurrentPage(page);
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
