@@ -713,6 +713,16 @@ export interface AdminLearnQuizPrompt {
   timeLimitMinutes: number;
 }
 
+export interface AdminLearnModuleSuggestedTour {
+  id: number;
+  title: string;
+  slug: string;
+  thumbnailUrl: string;
+  location: string;
+  description: string;
+  price: number;
+}
+
 export interface AdminLearnModule {
   id: number;
   title: string;
@@ -727,6 +737,13 @@ export interface AdminLearnModule {
   durationMinutes: number;
   lessons: AdminLearnModuleLesson[];
   quizPrompt?: AdminLearnQuizPrompt;
+  suggestedTours?: AdminLearnModuleSuggestedTour[];
+}
+
+export interface AdminLearnLessonAuthor {
+  id: number;
+  fullName: string;
+  profileImageUrl?: string;
 }
 
 export interface AdminLearnLesson {
@@ -743,6 +760,7 @@ export interface AdminLearnLesson {
   viewsCount: number;
   orderIndex: number;
   totalLessonsInModule: number;
+  author?: AdminLearnLessonAuthor;
   moduleId: number;
   moduleTitle: string;
   categoryName: string;
@@ -785,13 +803,106 @@ export const getAdminLearnLessonById = async (
   return response.data.data;
 };
 
+export const getAdminLearnQuizzes = async (params?: {
+  moduleId?: number;
+  page?: number;
+  limit?: number;
+}): Promise<{ data: AdminLearnQuiz[]; total: number }> => {
+  const response = await api.get<
+    ApiResponse<
+      | AdminLearnQuiz[]
+      | { content?: AdminLearnQuiz[]; quizzes?: AdminLearnQuiz[]; total?: number }
+    >
+  >("/api/learn/quizzes", { params });
+  const raw = response.data.data;
+  let data: AdminLearnQuiz[] = [];
+  let total = 0;
+  if (Array.isArray(raw)) {
+    data = raw;
+    total = raw.length;
+  } else if (raw && typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    data =
+      (obj.content as AdminLearnQuiz[]) ??
+      (obj.quizzes as AdminLearnQuiz[]) ??
+      (obj.data as AdminLearnQuiz[]) ??
+      [];
+    total =
+      (obj.totalElements as number) ?? (obj.total as number) ?? data.length;
+  }
+  return { data, total };
+};
+
 export const getAdminLearnQuizById = async (
   id: number,
 ): Promise<AdminLearnQuiz> => {
-  const response = await api.get<ApiResponse<AdminLearnQuiz>>(
+  // Dùng endpoint public như cũ
+  const response = await api.get<ApiResponse<any>>(
     `/api/learn/public/quizzes/${id}`,
   );
-  return response.data.data;
+  const rawData = response.data.data;
+  
+  // Transform snake_case to camelCase cho options và đảm bảo isCorrect được set đúng
+  if (rawData && rawData.questions && Array.isArray(rawData.questions)) {
+    rawData.questions = rawData.questions.map((q: any) => {
+      if (q.options && Array.isArray(q.options)) {
+        q.options = q.options.map((opt: any) => {
+          // Xử lý isCorrect: kiểm tra cả camelCase và snake_case
+          // Ưu tiên snake_case vì có thể backend trả về is_correct nhưng không map vào isCorrect
+          let isCorrect = false;
+          
+          // Kiểm tra snake_case trước (vì có thể backend trả về đúng field này)
+          if (opt.is_correct !== undefined && opt.is_correct !== null) {
+            isCorrect = Boolean(opt.is_correct);
+          } 
+          // Sau đó kiểm tra camelCase
+          else if (opt.isCorrect !== undefined && opt.isCorrect !== null) {
+            isCorrect = Boolean(opt.isCorrect);
+          }
+          // Kiểm tra các format khác
+          else if (opt["is-correct"] !== undefined && opt["is-correct"] !== null) {
+            isCorrect = Boolean(opt["is-correct"]);
+          }
+          // Nếu cả hai đều null hoặc undefined, mặc định là false
+          else {
+            isCorrect = false;
+          }
+          
+          const transformed = {
+            id: opt.id,
+            label: opt.label || opt.label_text || String(opt.id),
+            optionText: opt.optionText || opt.option_text || opt.text || "",
+            isCorrect,
+          };
+          
+          // Debug log để kiểm tra (chỉ trong development)
+          if (import.meta.env.DEV) {
+            console.log(`[Quiz Transform] Option ${opt.id}:`, {
+              original: {
+                id: opt.id,
+                label: opt.label,
+                optionText: opt.optionText || opt.option_text,
+                isCorrect: opt.isCorrect,
+                is_correct: opt.is_correct,
+                allKeys: Object.keys(opt),
+              },
+              transformed,
+            });
+          }
+          
+          return transformed;
+        });
+      }
+      return q;
+    });
+  }
+  
+  // Debug log toàn bộ response sau khi transform
+  if (import.meta.env.DEV) {
+    console.log("[Quiz Transform] Final transformed data:", rawData);
+  }
+  
+  return rawData as AdminLearnQuiz;
 };
 
 // Admin CRUD - dùng khi backend có /api/admin/learn/*
@@ -835,7 +946,15 @@ export const createAdminLearnModule = async (data: {
     "/api/learn/modules",
     data,
   );
-  return response.data.data;
+  // Đảm bảo response được parse đúng theo structure từ API
+  const moduleData = response.data.data;
+  
+  // Transform nếu cần (đảm bảo các field optional được set đúng)
+  return {
+    ...moduleData,
+    lessons: moduleData.lessons || [],
+    suggestedTours: moduleData.suggestedTours || [],
+  };
 };
 
 export const updateAdminLearnModule = async (

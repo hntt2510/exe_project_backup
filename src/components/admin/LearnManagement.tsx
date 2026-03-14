@@ -1,11 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
-  Table,
   Button,
   Space,
   Tag,
-  Tabs,
   Modal,
   Descriptions,
   App,
@@ -20,6 +18,10 @@ import {
   Divider,
   Row,
   Col,
+  Collapse,
+  Empty,
+  Badge,
+  Tooltip,
 } from "antd";
 import {
   BookOutlined,
@@ -31,9 +33,15 @@ import {
   DeleteOutlined,
   PlusOutlined,
   SearchOutlined,
+  RightOutlined,
+  DownOutlined,
+  PlayCircleOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
 } from "@ant-design/icons";
 import LearnSummaryCards from "./LearnSummaryCards";
-import type { ColumnsType } from "antd/es/table";
+import type { CollapseProps } from "antd";
 import {
   getAdminLearnCategories,
   getAdminLearnModules,
@@ -60,6 +68,7 @@ import {
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+const { Panel } = Collapse;
 
 const difficultyLabels: Record<string, string> = {
   BASIC: "Cơ bản",
@@ -85,11 +94,13 @@ function slugify(text: string): string {
 
 export default function LearnManagement() {
   const { message } = App.useApp();
-  const [activeTab, setActiveTab] = useState("categories");
   const [categories, setCategories] = useState<AdminLearnCategory[]>([]);
   const [modules, setModules] = useState<AdminLearnModule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchText, setSearchText] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<number[]>([]);
+  const [expandedModules, setExpandedModules] = useState<number[]>([]);
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -113,23 +124,20 @@ export default function LearnManagement() {
   // Lesson form
   const [lessonModalOpen, setLessonModalOpen] = useState(false);
   const [lessonEditId, setLessonEditId] = useState<number | null>(null);
+  const [selectedModuleIdForLesson, setSelectedModuleIdForLesson] = useState<number | null>(null);
   const [lessonForm] = Form.useForm();
   const [lessonSaving, setLessonSaving] = useState(false);
 
   // Quiz form (create)
   const [quizCreateModalOpen, setQuizCreateModalOpen] = useState(false);
   const [quizCreateForm] = Form.useForm();
+  const [selectedModuleIdForQuiz, setSelectedModuleIdForQuiz] = useState<number | null>(null);
   const [quizCreateSaving, setQuizCreateSaving] = useState(false);
 
   // Quiz edit (chỉnh sửa đáp án)
   const [quizEditModalOpen, setQuizEditModalOpen] = useState(false);
   const [quizEditData, setQuizEditData] = useState<AdminLearnQuiz | null>(null);
   const [quizEditSaving, setQuizEditSaving] = useState(false);
-
-  const [searchCategory, setSearchCategory] = useState("");
-  const [searchModule, setSearchModule] = useState("");
-  const [searchLesson, setSearchLesson] = useState("");
-  const [filterModuleCategory, setFilterModuleCategory] = useState<string>("all");
 
   const fetchCategories = async () => {
     try {
@@ -164,6 +172,34 @@ export default function LearnManagement() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Group modules by category
+  const modulesByCategory = useMemo(() => {
+    const grouped: Record<number, AdminLearnModule[]> = {};
+    modules.forEach((module) => {
+      if (!grouped[module.categoryId]) {
+        grouped[module.categoryId] = [];
+      }
+      grouped[module.categoryId].push(module);
+    });
+    return grouped;
+  }, [modules]);
+
+  // Filter categories and modules based on search
+  const filteredCategories = useMemo(() => {
+    if (!searchText.trim()) return categories;
+    const searchLower = searchText.toLowerCase();
+    return categories.filter((cat) => {
+      const catMatches = cat.name?.toLowerCase().includes(searchLower) || 
+                        cat.slug?.toLowerCase().includes(searchLower);
+      const modulesInCat = modulesByCategory[cat.id] || [];
+      const moduleMatches = modulesInCat.some((m) => 
+        m.title?.toLowerCase().includes(searchLower) ||
+        m.slug?.toLowerCase().includes(searchLower)
+      );
+      return catMatches || moduleMatches;
+    });
+  }, [categories, modulesByCategory, searchText]);
 
   const openModuleDetail = async (moduleId: number) => {
     setDetailType("module");
@@ -202,9 +238,24 @@ export default function LearnManagement() {
     setDetailData(null);
     try {
       const data = await getAdminLearnQuizById(quizId);
+      // Debug log để kiểm tra isCorrect
+      console.log("[Quiz Detail] Fetched data:", data);
+      if (data.questions) {
+        data.questions.forEach((q, i) => {
+          console.log(`[Quiz Detail] Question ${i + 1}:`, {
+            questionText: q.questionText,
+            options: q.options?.map((opt) => ({
+              label: opt.label,
+              optionText: opt.optionText,
+              isCorrect: opt.isCorrect,
+            })),
+          });
+        });
+      }
       setDetailData(data);
-    } catch {
-      message.error("Không thể tải chi tiết quiz");
+    } catch (err: any) {
+      console.error("[openQuizDetail] Error:", err);
+      message.error(err?.message || "Không thể tải chi tiết quiz");
     } finally {
       setDetailLoading(false);
     }
@@ -255,13 +306,14 @@ export default function LearnManagement() {
       await deleteAdminLearnCategory(id);
       message.success("Đã xóa danh mục");
       fetchCategories();
+      fetchModules();
     } catch {
       message.error("Không thể xóa danh mục");
     }
   };
 
   // ========== Module CRUD ==========
-  const handleOpenModuleForm = (record?: AdminLearnModule) => {
+  const handleOpenModuleForm = (record?: AdminLearnModule, categoryId?: number) => {
     if (record) {
       setModuleEditId(record.id);
       moduleForm.setFieldsValue({
@@ -275,6 +327,9 @@ export default function LearnManagement() {
     } else {
       setModuleEditId(null);
       moduleForm.resetFields();
+      if (categoryId) {
+        moduleForm.setFieldsValue({ categoryId });
+      }
     }
     setModuleModalOpen(true);
   };
@@ -314,7 +369,8 @@ export default function LearnManagement() {
   };
 
   // ========== Lesson CRUD ==========
-  const handleOpenLessonForm = (record?: AdminLearnLesson & { moduleId?: number }) => {
+  const handleOpenLessonForm = (moduleId: number, record?: AdminLearnLesson) => {
+    setSelectedModuleIdForLesson(moduleId);
     if (record) {
       setLessonEditId(record.id);
       lessonForm.setFieldsValue({
@@ -332,6 +388,7 @@ export default function LearnManagement() {
     } else {
       setLessonEditId(null);
       lessonForm.resetFields();
+      lessonForm.setFieldsValue({ moduleId });
     }
     setLessonModalOpen(true);
   };
@@ -371,9 +428,11 @@ export default function LearnManagement() {
   };
 
   // ========== Quiz Create ==========
-  const handleOpenQuizCreate = () => {
+  const handleOpenQuizCreate = (moduleId: number) => {
+    setSelectedModuleIdForQuiz(moduleId);
     quizCreateForm.resetFields();
     quizCreateForm.setFieldsValue({
+      moduleId,
       questions: [
         {
           questionText: "",
@@ -423,15 +482,30 @@ export default function LearnManagement() {
     }
   };
 
-  // ========== Quiz Edit (chỉnh sửa đáp án) ==========
+  // ========== Quiz Edit ==========
   const handleOpenQuizEdit = async (quizId: number) => {
     setDetailModalOpen(false);
     try {
       const data = await getAdminLearnQuizById(quizId);
+      console.log("[handleOpenQuizEdit] Quiz data:", data);
+      if (data.questions) {
+        data.questions.forEach((q, i) => {
+          console.log(`[handleOpenQuizEdit] Question ${i + 1}:`, {
+            questionText: q.questionText,
+            options: q.options?.map((opt) => ({
+              id: opt.id,
+              label: opt.label,
+              optionText: opt.optionText,
+              isCorrect: opt.isCorrect,
+            })),
+          });
+        });
+      }
       setQuizEditData(data);
       setQuizEditModalOpen(true);
-    } catch {
-      message.error("Không thể tải quiz");
+    } catch (err: any) {
+      console.error("[handleOpenQuizEdit] Error:", err);
+      message.error(err?.message || "Không thể tải quiz");
     }
   };
 
@@ -488,402 +562,48 @@ export default function LearnManagement() {
     totalQuizzes: modules.filter((m) => m.quizPrompt).length,
   };
 
-  const filteredCategories = categories.filter(
-    (c) =>
-      !searchCategory ||
-      c.name?.toLowerCase().includes(searchCategory.toLowerCase()) ||
-      c.slug?.toLowerCase().includes(searchCategory.toLowerCase()),
-  );
+  const toggleCategoryExpand = (categoryId: number) => {
+    setExpandedCategories((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
 
-  const filteredModules = modules.filter((m) => {
-    if (filterModuleCategory !== "all" && m.categoryId !== Number(filterModuleCategory)) return false;
-    if (
-      searchModule &&
-      !m.title?.toLowerCase().includes(searchModule.toLowerCase()) &&
-      !m.categoryName?.toLowerCase().includes(searchModule.toLowerCase())
-    )
-      return false;
-    return true;
-  });
-
-  const allLessonsRaw = modules.flatMap((m) =>
-    (m.lessons ?? []).map((l) => ({
-      ...l,
-      moduleTitle: m.title,
-      categoryName: m.categoryName,
-      moduleId: m.id,
-    })),
-  );
-
-  const filteredLessons = allLessonsRaw.filter(
-    (l) =>
-      !searchLesson ||
-      l.title?.toLowerCase().includes(searchLesson.toLowerCase()) ||
-      l.moduleTitle?.toLowerCase().includes(searchLesson.toLowerCase()),
-  );
-
-  const categoryColumns: ColumnsType<AdminLearnCategory> = [
-    { title: "ID", dataIndex: "id", key: "id", width: 80 },
-    { title: "Tên", dataIndex: "name", key: "name", render: (t) => <strong>{t}</strong> },
-    { title: "Slug", dataIndex: "slug", key: "slug" },
-    { title: "Thứ tự", dataIndex: "orderIndex", key: "orderIndex", width: 100 },
-    {
-      title: "Thao tác",
-      key: "action",
-      width: 180,
-      render: (_, record) => (
-        <Space>
-          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleOpenCategoryForm(record)}>
-            Sửa
-          </Button>
-          <Popconfirm
-            title="Xóa danh mục?"
-            description="Hành động này không thể hoàn tác."
-            onConfirm={() => handleDeleteCategory(record.id)}
-            okText="Xóa"
-            cancelText="Hủy"
-          >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-              Xóa
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
-
-  const moduleColumns: ColumnsType<AdminLearnModule> = [
-    { title: "ID", dataIndex: "id", key: "id", width: 80 },
-    {
-      title: "Module",
-      dataIndex: "title",
-      key: "title",
-      render: (text, record) => (
-        <div>
-          <strong>{text}</strong>
-          <div style={{ fontSize: 12, color: "#8c8c8c" }}>{record.categoryName}</div>
-        </div>
-      ),
-    },
-    { title: "Slug", dataIndex: "slug", key: "slug", width: 150 },
-    {
-      title: "Bài học",
-      key: "lessonsCount",
-      width: 100,
-      render: (_, record) => record.lessonsCount ?? record.lessons?.length ?? 0,
-    },
-    {
-      title: "Thời lượng",
-      key: "durationMinutes",
-      width: 100,
-      render: (_, record) => `${record.durationMinutes ?? 0} phút`,
-    },
-    {
-      title: "Quiz",
-      key: "quiz",
-      width: 80,
-      render: (_, record) =>
-        record.quizPrompt ? <Tag color="green">Có</Tag> : <Tag color="default">Không</Tag>,
-    },
-    {
-      title: "Thao tác",
-      key: "action",
-      width: 220,
-      render: (_, record) => (
-        <Space>
-          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => openModuleDetail(record.id)}>
-            Xem
-          </Button>
-          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleOpenModuleForm(record)}>
-            Sửa
-          </Button>
-          <Popconfirm
-            title="Xóa module?"
-            description="Tất cả bài học và quiz trong module sẽ bị ảnh hưởng."
-            onConfirm={() => handleDeleteModule(record.id)}
-            okText="Xóa"
-            cancelText="Hủy"
-          >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-              Xóa
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
-
-  type LessonRow = (typeof allLessonsRaw)[number];
-  const lessonColumns: ColumnsType<LessonRow> = [
-    { title: "ID", dataIndex: "id", key: "id", width: 80 },
-    {
-      title: "Bài học",
-      dataIndex: "title",
-      key: "title",
-      render: (text, record) => (
-        <div>
-          <strong>{text}</strong>
-          <div style={{ fontSize: 12, color: "#8c8c8c" }}>{record.moduleTitle}</div>
-        </div>
-      ),
-    },
-    { title: "Module", dataIndex: "moduleTitle", key: "moduleTitle", width: 180 },
-    { title: "Thứ tự", dataIndex: "orderIndex", key: "orderIndex", width: 90 },
-    {
-      title: "Thời lượng",
-      dataIndex: "duration",
-      key: "duration",
-      width: 100,
-      render: (v: number) => (v != null ? `${v} phút` : "—"),
-    },
-    {
-      title: "Thao tác",
-      key: "action",
-      width: 220,
-      render: (_, record) => (
-        <Space>
-          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => openLessonDetail(record.id)}>
-            Xem
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleOpenLessonForm({ ...record, moduleId: record.moduleId })}
-          >
-            Sửa
-          </Button>
-          <Popconfirm
-            title="Xóa bài học?"
-            onConfirm={() => handleDeleteLesson(record.id)}
-            okText="Xóa"
-            cancelText="Hủy"
-          >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-              Xóa
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
-
-  const tabItems = [
-    {
-      key: "categories",
-      label: (
-        <span>
-          <FolderOutlined />
-          Danh mục ({stats.totalCategories})
-        </span>
-      ),
-      children: (
-        <>
-          <Row gutter={[16, 16]} style={{ marginBottom: 16 }} align="middle">
-            <Col xs={24} sm={12} md={10}>
-              <Input
-                placeholder="Tìm theo tên, slug..."
-                prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
-                value={searchCategory}
-                onChange={(e) => setSearchCategory(e.target.value)}
-                allowClear
-              />
-            </Col>
-            <Col xs={24} sm={12} md={14} style={{ textAlign: "right" }}>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenCategoryForm()}>
-                Tạo danh mục
-              </Button>
-            </Col>
-          </Row>
-          <Table
-            columns={categoryColumns}
-            dataSource={filteredCategories}
-            rowKey="id"
-            loading={loading}
-            pagination={{ pageSize: 10, showTotal: (t) => `Tổng ${t} danh mục` }}
-          />
-        </>
-      ),
-    },
-    {
-      key: "modules",
-      label: (
-        <span>
-          <BookOutlined />
-          Module ({stats.totalModules})
-        </span>
-      ),
-      children: (
-        <>
-          <Row gutter={[16, 16]} style={{ marginBottom: 16 }} align="middle">
-            <Col xs={24} sm={12} md={6}>
-              <div style={{ marginBottom: 4, fontSize: 13, color: "#595959" }}>Danh mục</div>
-              <Select
-                style={{ width: "100%" }}
-                placeholder="Tất cả"
-                value={filterModuleCategory}
-                onChange={setFilterModuleCategory}
-              >
-                <Select.Option value="all">Tất cả danh mục</Select.Option>
-                {categories.map((c) => (
-                  <Select.Option key={c.id} value={String(c.id)}>
-                    {c.name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Col>
-            <Col xs={24} sm={12} md={8}>
-              <div style={{ marginBottom: 4, fontSize: 13, color: "#595959" }}>Tìm kiếm</div>
-              <Input
-                placeholder="Tìm theo tiêu đề, danh mục..."
-                prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
-                value={searchModule}
-                onChange={(e) => setSearchModule(e.target.value)}
-                allowClear
-              />
-            </Col>
-            <Col xs={24} sm={12} md={10} style={{ textAlign: "right" }}>
-              <div style={{ marginBottom: 4, fontSize: 13, color: "transparent" }}>.</div>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModuleForm()}>
-                Tạo module
-              </Button>
-            </Col>
-          </Row>
-          <Table
-            columns={moduleColumns}
-            dataSource={filteredModules}
-            rowKey="id"
-            loading={loading}
-            pagination={{ pageSize: 10, showTotal: (t) => `Tổng ${t} module` }}
-          />
-        </>
-      ),
-    },
-    {
-      key: "lessons",
-      label: (
-        <span>
-          <FileTextOutlined />
-          Bài học ({stats.totalLessons})
-        </span>
-      ),
-      children: (
-        <>
-          <Row gutter={[16, 16]} style={{ marginBottom: 16 }} align="middle">
-            <Col xs={24} sm={12} md={10}>
-              <Input
-                placeholder="Tìm theo tiêu đề bài học, module..."
-                prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
-                value={searchLesson}
-                onChange={(e) => setSearchLesson(e.target.value)}
-                allowClear
-              />
-            </Col>
-            <Col xs={24} sm={12} md={14} style={{ textAlign: "right" }}>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenLessonForm()}>
-                Tạo bài học
-              </Button>
-            </Col>
-          </Row>
-          <Table
-            columns={lessonColumns}
-            dataSource={filteredLessons}
-            rowKey="id"
-            loading={loading}
-            pagination={{ pageSize: 10, showTotal: (t) => `Tổng ${t} bài học` }}
-          />
-        </>
-      ),
-    },
-    {
-      key: "quizzes",
-      label: (
-        <span>
-          <QuestionCircleOutlined />
-          Quiz ({stats.totalQuizzes})
-        </span>
-      ),
-      children: (
-        <div>
-          <Row gutter={[16, 16]} style={{ marginBottom: 20 }} align="middle">
-            <Col flex="auto">
-              <Text type="secondary">
-                Quiz được gắn với module. Tạo quiz mới hoặc sửa đáp án trên từng quiz.
-              </Text>
-            </Col>
-            <Col>
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenQuizCreate}>
-                Tạo quiz mới
-              </Button>
-            </Col>
-          </Row>
-          <Row gutter={[16, 16]}>
-            {modules
-              .filter((m) => m.quizPrompt)
-              .map((m) => (
-                <Col xs={24} md={12} lg={8} key={m.id}>
-                  <Card
-                    hoverable
-                    style={{
-                      borderRadius: 12,
-                      border: "1px solid #e5e7eb",
-                      height: "100%",
-                    }}
-                    styles={{ body: { padding: 20 } }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 600, color: "#1f2937" }}>{m.title}</div>
-                        <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
-                          {m.quizPrompt?.totalQuestions} câu · {m.quizPrompt?.timeLimitMinutes} phút
-                        </div>
-                      </div>
-                      <Tag color="green">Quiz</Tag>
-                    </div>
-                    <Space>
-                      {m.quizPrompt?.id && (
-                        <>
-                          <Button type="link" size="small" onClick={() => openQuizDetail(m.quizPrompt!.id)}>
-                            Xem
-                          </Button>
-                          <Button
-                            type="link"
-                            size="small"
-                            icon={<EditOutlined />}
-                            onClick={() => handleOpenQuizEdit(m.quizPrompt!.id)}
-                          >
-                            Sửa đáp án
-                          </Button>
-                          <Popconfirm
-                            title="Xóa quiz?"
-                            onConfirm={() => handleDeleteQuiz(m.quizPrompt!.id)}
-                            okText="Xóa"
-                            cancelText="Hủy"
-                          >
-                            <Button type="link" size="small" danger>
-                              Xóa
-                            </Button>
-                          </Popconfirm>
-                        </>
-                      )}
-                    </Space>
-                  </Card>
-                </Col>
-              ))}
-          </Row>
-          {stats.totalQuizzes === 0 && (
-            <Alert
-              message="Chưa có quiz nào"
-              description="Nhấn 'Tạo quiz mới' để thêm quiz cho module."
-              type="info"
-              showIcon
-              style={{ marginTop: 16 }}
-            />
-          )}
-        </div>
-      ),
-    },
-  ];
+  const toggleModuleExpand = async (moduleId: number) => {
+    const isCurrentlyExpanded = expandedModules.includes(moduleId);
+    
+    if (!isCurrentlyExpanded) {
+      // Khi expand, fetch chi tiết module để lấy lessons và quiz
+      const module = modules.find((m) => m.id === moduleId);
+      if (module && (!module.lessons || module.lessons.length === 0)) {
+        try {
+          const detail = await getAdminLearnModuleById(moduleId);
+          // Cập nhật module trong state với lessons và quiz từ chi tiết
+          setModules((prev) =>
+            prev.map((m) =>
+              m.id === moduleId
+                ? {
+                    ...m,
+                    lessons: detail.lessons || [],
+                    quizPrompt: detail.quizPrompt,
+                  }
+                : m
+            )
+          );
+        } catch (err) {
+          console.error("Error fetching module details:", err);
+          message.error("Không thể tải chi tiết module");
+        }
+      }
+    }
+    
+    setExpandedModules((prev) =>
+      prev.includes(moduleId)
+        ? prev.filter((id) => id !== moduleId)
+        : [...prev, moduleId]
+    );
+  };
 
   const renderDetailContent = () => {
     if (detailLoading) {
@@ -908,16 +628,37 @@ export default function LearnManagement() {
             {d.lessonsCount ?? d.lessons?.length ?? 0}
           </Descriptions.Item>
           <Descriptions.Item label="Thời lượng">{d.durationMinutes} phút</Descriptions.Item>
-          <Descriptions.Item label="Cultural Etiquette">{d.culturalEtiquetteTitle}</Descriptions.Item>
+          <Descriptions.Item label="Cultural Etiquette">{d.culturalEtiquetteTitle || "—"}</Descriptions.Item>
           {d.lessons && d.lessons.length > 0 && (
             <Descriptions.Item label="Bài học">
-              <Space direction="vertical" size="small">
+              <Space direction="vertical" size="small" style={{ width: "100%" }}>
                 {d.lessons.map((l) => (
-                  <Button key={l.id} type="link" size="small" onClick={() => openLessonDetail(l.id)}>
+                  <Button
+                    key={l.id}
+                    type="link"
+                    size="small"
+                    onClick={() => {
+                      setDetailModalOpen(false);
+                      openLessonDetail(l.id);
+                    }}
+                  >
                     {l.orderIndex}. {l.title}
                   </Button>
                 ))}
               </Space>
+            </Descriptions.Item>
+          )}
+          {d.quizPrompt && (
+            <Descriptions.Item label="Quiz">
+              <Button
+                type="link"
+                onClick={() => {
+                  setDetailModalOpen(false);
+                  openQuizDetail(d.quizPrompt!.id);
+                }}
+              >
+                {d.quizPrompt.title} ({d.quizPrompt.totalQuestions} câu)
+              </Button>
             </Descriptions.Item>
           )}
         </Descriptions>
@@ -931,7 +672,17 @@ export default function LearnManagement() {
           <Descriptions.Item label="ID">{d.id}</Descriptions.Item>
           <Descriptions.Item label="Tiêu đề">{d.title}</Descriptions.Item>
           <Descriptions.Item label="Slug">{d.slug}</Descriptions.Item>
-          <Descriptions.Item label="Module">{d.moduleTitle}</Descriptions.Item>
+          <Descriptions.Item label="Module">
+            <Button
+              type="link"
+              onClick={() => {
+                setDetailModalOpen(false);
+                openModuleDetail(d.moduleId);
+              }}
+            >
+              {d.moduleTitle}
+            </Button>
+          </Descriptions.Item>
           <Descriptions.Item label="Danh mục">{d.categoryName}</Descriptions.Item>
           <Descriptions.Item label="Độ khó">
             <Tag>{difficultyLabels[d.difficulty] ?? d.difficulty}</Tag>
@@ -944,11 +695,24 @@ export default function LearnManagement() {
 
     if (detailType === "quiz") {
       const d = detailData as AdminLearnQuiz;
+      const module = modules.find((m) => m.id === d.moduleId);
       return (
         <>
           <Descriptions column={1} bordered>
             <Descriptions.Item label="ID">{d.id}</Descriptions.Item>
-            <Descriptions.Item label="Module ID">{d.moduleId}</Descriptions.Item>
+            <Descriptions.Item label="Module">
+              {module && (
+                <Button
+                  type="link"
+                  onClick={() => {
+                    setDetailModalOpen(false);
+                    openModuleDetail(module.id);
+                  }}
+                >
+                  {module.title}
+                </Button>
+              )}
+            </Descriptions.Item>
             <Descriptions.Item label="Tiêu đề">{d.title}</Descriptions.Item>
             <Descriptions.Item label="Thời gian">{d.timeLimitMinutes} phút</Descriptions.Item>
             <Descriptions.Item label="Độ khó">
@@ -958,49 +722,181 @@ export default function LearnManagement() {
             <Descriptions.Item label="Số câu hỏi">{d.totalQuestions}</Descriptions.Item>
           </Descriptions>
           <div style={{ marginTop: 16 }}>
-            <Button type="primary" icon={<EditOutlined />} onClick={() => handleOpenQuizEdit(d.id)}>
-              Chỉnh sửa đáp án
-            </Button>
+            <Space>
+              <Button type="primary" icon={<EditOutlined />} onClick={() => handleOpenQuizEdit(d.id)}>
+                Chỉnh sửa đáp án
+              </Button>
+            </Space>
           </div>
           {d.questions && d.questions.length > 0 && (
-            <div style={{ marginTop: 16, maxHeight: 300, overflow: "auto" }}>
-              {d.questions.map((q, i) => (
-                <div
-                  key={q.id}
-                  style={{
-                    padding: 12,
-                    marginBottom: 8,
-                    background: "#fafafa",
-                    borderRadius: 8,
-                    border: "1px solid #f0f0f0",
-                  }}
-                >
-                  <strong>Câu {i + 1}:</strong> {q.questionText}
-                  {q.hintText && (
-                    <div style={{ fontSize: 12, color: "#8c8c8c", marginTop: 4 }}>Gợi ý: {q.hintText}</div>
-                  )}
-                  <div style={{ marginTop: 8 }}>
-                    {q.options?.map((opt) => (
-                      <div
-                        key={opt.id}
-                        style={{
-                          padding: "4px 8px",
-                          marginTop: 4,
-                          background: opt.isCorrect ? "#f6ffed" : "#fff",
-                          borderLeft: opt.isCorrect ? "3px solid #52c41a" : "3px solid transparent",
-                        }}
-                      >
-                        {opt.label}. {opt.optionText}
-                        {opt.isCorrect && (
-                          <Tag color="success" style={{ marginLeft: 8 }}>
-                            Đáp án đúng
+            <div style={{ marginTop: 24 }}>
+              <Title level={4} style={{ marginBottom: 16 }}>
+                Danh sách câu hỏi và đáp án ({d.questions.length} câu)
+              </Title>
+              <div style={{ maxHeight: "60vh", overflowY: "auto", paddingRight: 8 }}>
+                {d.questions.map((q, i) => {
+                  const correctOptions = q.options?.filter((opt) => opt.isCorrect) || [];
+                  return (
+                    <Card
+                      key={q.id}
+                      style={{
+                        marginBottom: 16,
+                        borderRadius: 8,
+                        border: "1px solid #e8e8e8",
+                        background: "#fff",
+                      }}
+                      bodyStyle={{ padding: 16 }}
+                    >
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                          <Tag color="blue" style={{ fontSize: 13, fontWeight: 600 }}>
+                            Câu {i + 1}
                           </Tag>
+                          <Text strong style={{ fontSize: 15, flex: 1 }}>
+                            {q.questionText}
+                          </Text>
+                        </div>
+                        {q.hintText && (
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "#8c8c8c",
+                              marginTop: 4,
+                              padding: "6px 12px",
+                              background: "#f5f5f5",
+                              borderRadius: 4,
+                              fontStyle: "italic",
+                            }}
+                          >
+                            💡 Gợi ý: {q.hintText}
+                          </div>
+                        )}
+                        {/* Hiển thị đáp án đúng ngay ở đầu câu hỏi */}
+                        {correctOptions.length > 0 && (
+                          <div
+                            style={{
+                              marginTop: 12,
+                              padding: "10px 14px",
+                              background: "linear-gradient(135deg, #52c41a 0%, #73d13d 100%)",
+                              borderRadius: 6,
+                              border: "2px solid #52c41a",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              boxShadow: "0 2px 8px rgba(82, 196, 26, 0.2)",
+                            }}
+                          >
+                            <CheckCircleOutlined style={{ fontSize: 18, color: "#fff" }} />
+                            <Text strong style={{ fontSize: 14, color: "#fff" }}>
+                              ĐÁP ÁN ĐÚNG: {correctOptions.map((opt) => opt.label).join(", ")}
+                            </Text>
+                          </div>
                         )}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                      <Divider style={{ margin: "12px 0" }} />
+                      <div>
+                        <Text strong style={{ fontSize: 13, color: "#595959", marginBottom: 12, display: "block" }}>
+                          Các lựa chọn đáp án:
+                        </Text>
+                        <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                          {q.options?.map((opt) => (
+                            <div
+                              key={opt.id}
+                              style={{
+                                padding: "12px 14px",
+                                borderRadius: 8,
+                                background: opt.isCorrect 
+                                  ? "linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%)" 
+                                  : "#fafafa",
+                                border: opt.isCorrect
+                                  ? "3px solid #52c41a"
+                                  : "2px solid #e8e8e8",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                transition: "all 0.2s",
+                                boxShadow: opt.isCorrect 
+                                  ? "0 2px 8px rgba(82, 196, 26, 0.15)" 
+                                  : "none",
+                                position: "relative",
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1 }}>
+                                <div
+                                  style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: "50%",
+                                    background: opt.isCorrect 
+                                      ? "linear-gradient(135deg, #52c41a 0%, #73d13d 100%)" 
+                                      : "#d9d9d9",
+                                    color: "#fff",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontWeight: 700,
+                                    fontSize: 15,
+                                    flexShrink: 0,
+                                    boxShadow: opt.isCorrect 
+                                      ? "0 2px 6px rgba(82, 196, 26, 0.3)" 
+                                      : "none",
+                                  }}
+                                >
+                                  {opt.isCorrect ? (
+                                    <CheckCircleOutlined style={{ fontSize: 20 }} />
+                                  ) : (
+                                    opt.label
+                                  )}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <Text
+                                    style={{
+                                      fontSize: 15,
+                                      color: opt.isCorrect ? "#262626" : "#595959",
+                                      fontWeight: opt.isCorrect ? 600 : 400,
+                                      display: "block",
+                                    }}
+                                  >
+                                    {!opt.isCorrect && <span style={{ fontWeight: 600, marginRight: 6 }}>{opt.label}.</span>}
+                                    {opt.optionText}
+                                  </Text>
+                                </div>
+                              </div>
+                              {opt.isCorrect && (
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <Tag
+                                    color="success"
+                                    style={{
+                                      fontSize: 13,
+                                      fontWeight: 700,
+                                      padding: "4px 12px",
+                                      borderRadius: 12,
+                                      border: "none",
+                                      background: "#52c41a",
+                                      color: "#fff",
+                                    }}
+                                  >
+                                    ✓ ĐÚNG
+                                  </Tag>
+                                </div>
+                              )}
+                              {!opt.isCorrect && (
+                                <CloseCircleOutlined 
+                                  style={{ 
+                                    fontSize: 18, 
+                                    color: "#d9d9d9",
+                                    marginLeft: 8,
+                                  }} 
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </Space>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
           )}
         </>
@@ -1019,7 +915,7 @@ export default function LearnManagement() {
           Quản lý Học nhanh
         </Title>
         <Text type="secondary" style={{ fontSize: 16 }}>
-          Quản lý danh mục, module, bài học và quiz. Tạo mới, chỉnh sửa và xóa nội dung học tập.
+          Quản lý danh mục, module, bài học và quiz theo cấu trúc phân cấp
         </Text>
       </div>
 
@@ -1035,13 +931,482 @@ export default function LearnManagement() {
         }}
         bodyStyle={{ padding: 24 }}
       >
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={tabItems}
-          size="large"
-          style={{ marginTop: 8 }}
-        />
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }} align="middle">
+          <Col xs={24} sm={16} md={18}>
+            <Input
+              placeholder="Tìm kiếm danh mục, module, bài học..."
+              prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              allowClear
+              size="large"
+            />
+          </Col>
+          <Col xs={24} sm={8} md={6} style={{ textAlign: "right" }}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => handleOpenCategoryForm()}
+              size="large"
+            >
+              Tạo danh mục
+            </Button>
+          </Col>
+        </Row>
+
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 48 }}>
+            <Spin size="large" />
+            <p style={{ marginTop: 16 }}>Đang tải dữ liệu...</p>
+          </div>
+        ) : filteredCategories.length === 0 ? (
+          <Empty
+            description={searchText ? "Không tìm thấy kết quả" : "Chưa có danh mục nào"}
+            style={{ padding: 48 }}
+          >
+            {!searchText && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenCategoryForm()}>
+                Tạo danh mục đầu tiên
+              </Button>
+            )}
+          </Empty>
+        ) : (
+          <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
+            {filteredCategories.map((category) => {
+              const categoryModules = (modulesByCategory[category.id] || []).filter((m) => {
+                if (!searchText.trim()) return true;
+                const searchLower = searchText.toLowerCase();
+                return (
+                  m.title?.toLowerCase().includes(searchLower) ||
+                  m.slug?.toLowerCase().includes(searchLower) ||
+                  m.lessons?.some((l) => l.title?.toLowerCase().includes(searchLower))
+                );
+              });
+              const isCategoryExpanded = expandedCategories.includes(category.id);
+
+              return (
+                <Card
+                  key={category.id}
+                  style={{
+                    marginBottom: 16,
+                    borderRadius: 12,
+                    border: "1px solid #e5e7eb",
+                    background: isCategoryExpanded ? "#fafafa" : "#fff",
+                  }}
+                  bodyStyle={{ padding: 16 }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => toggleCategoryExpand(category.id)}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1 }}>
+                      {isCategoryExpanded ? (
+                        <DownOutlined style={{ color: "#8B0000" }} />
+                      ) : (
+                        <RightOutlined style={{ color: "#8c8c8c" }} />
+                      )}
+                      <FolderOutlined style={{ fontSize: 20, color: "#8B0000" }} />
+                      <div>
+                        <Title level={5} style={{ margin: 0, fontWeight: 600 }}>
+                          {category.name}
+                        </Title>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {categoryModules.length} module
+                        </Text>
+                      </div>
+                    </div>
+                    <Space>
+                      <Badge count={categoryModules.length} showZero>
+                        <Tag color="blue">{categoryModules.length} module</Tag>
+                      </Badge>
+                      <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenCategoryForm(category);
+                        }}
+                      >
+                        Sửa
+                      </Button>
+                      <Popconfirm
+                        title="Xóa danh mục?"
+                        description="Tất cả module trong danh mục sẽ bị ảnh hưởng."
+                        onConfirm={() => handleDeleteCategory(category.id)}
+                        okText="Xóa"
+                        cancelText="Hủy"
+                      >
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined />}
+                          size="small"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Xóa
+                        </Button>
+                      </Popconfirm>
+                      <Button
+                        type="primary"
+                        size="small"
+                        icon={<PlusOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenModuleForm(undefined, category.id);
+                        }}
+                      >
+                        Thêm Module
+                      </Button>
+                    </Space>
+                  </div>
+
+                  {isCategoryExpanded && (
+                    <div style={{ marginTop: 16, paddingLeft: 32 }}>
+                      {categoryModules.length === 0 ? (
+                        <Empty
+                          description="Chưa có module nào"
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                          style={{ padding: 24 }}
+                        >
+                          <Button
+                            type="primary"
+                            size="small"
+                            icon={<PlusOutlined />}
+                            onClick={() => handleOpenModuleForm(undefined, category.id)}
+                          >
+                            Tạo module đầu tiên
+                          </Button>
+                        </Empty>
+                      ) : (
+                        categoryModules.map((module) => {
+                          const lessons = module.lessons || [];
+                          const quiz = module.quizPrompt;
+                          const isModuleExpanded = expandedModules.includes(module.id);
+                          // Sử dụng lessonsCount nếu lessons chưa được fetch
+                          const displayLessonsCount = lessons.length > 0 ? lessons.length : (module.lessonsCount || 0);
+
+                          return (
+                            <Card
+                              key={module.id}
+                              style={{
+                                marginBottom: 12,
+                                borderRadius: 8,
+                                border: "1px solid #e8e8e8",
+                                background: isModuleExpanded ? "#f9f9f9" : "#fff",
+                              }}
+                              bodyStyle={{ padding: 12 }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "flex-start",
+                                  cursor: "pointer",
+                                }}
+                                onClick={() => toggleModuleExpand(module.id)}
+                              >
+                                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flex: 1 }}>
+                                  {isModuleExpanded ? (
+                                    <DownOutlined style={{ color: "#8B0000", marginTop: 4 }} />
+                                  ) : (
+                                    <RightOutlined style={{ color: "#8c8c8c", marginTop: 4 }} />
+                                  )}
+                                  <BookOutlined style={{ fontSize: 18, color: "#1890ff", marginTop: 2 }} />
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                                      <Text strong style={{ fontSize: 15 }}>
+                                        {module.title}
+                                      </Text>
+                                      <Tag color="cyan">{module.categoryName}</Tag>
+                                    </div>
+                                    <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#8c8c8c" }}>
+                                      <span>
+                                        <FileTextOutlined /> {displayLessonsCount} bài học
+                                      </span>
+                                      <span>
+                                        <ClockCircleOutlined /> {module.durationMinutes || 0} phút
+                                      </span>
+                                      {quiz && (
+                                        <span>
+                                          <QuestionCircleOutlined /> Quiz ({quiz.totalQuestions} câu)
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                <Space size="small" onClick={(e) => e.stopPropagation()}>
+                                  <Tooltip title="Xem chi tiết">
+                                    <Button
+                                      type="text"
+                                      icon={<EyeOutlined />}
+                                      size="small"
+                                      onClick={() => openModuleDetail(module.id)}
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Sửa module">
+                                    <Button
+                                      type="text"
+                                      icon={<EditOutlined />}
+                                      size="small"
+                                      onClick={() => handleOpenModuleForm(module)}
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Thêm bài học">
+                                    <Button
+                                      type="text"
+                                      icon={<PlusOutlined />}
+                                      size="small"
+                                      onClick={() => handleOpenLessonForm(module.id)}
+                                    />
+                                  </Tooltip>
+                                  {!quiz && (
+                                    <Tooltip title="Tạo quiz">
+                                      <Button
+                                        type="text"
+                                        icon={<QuestionCircleOutlined />}
+                                        size="small"
+                                        onClick={() => handleOpenQuizCreate(module.id)}
+                                      />
+                                    </Tooltip>
+                                  )}
+                                  <Popconfirm
+                                    title="Xóa module?"
+                                    description="Tất cả bài học và quiz trong module sẽ bị xóa."
+                                    onConfirm={() => handleDeleteModule(module.id)}
+                                    okText="Xóa"
+                                    cancelText="Hủy"
+                                  >
+                                    <Button
+                                      type="text"
+                                      danger
+                                      icon={<DeleteOutlined />}
+                                      size="small"
+                                    />
+                                  </Popconfirm>
+                                </Space>
+                              </div>
+
+                              {isModuleExpanded && (
+                                <div style={{ marginTop: 12, paddingLeft: 32 }}>
+                                  {/* Lessons */}
+                                  {lessons.length > 0 && (
+                                    <div style={{ marginBottom: 12 }}>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          justifyContent: "space-between",
+                                          alignItems: "center",
+                                          marginBottom: 8,
+                                        }}
+                                      >
+                                        <Text strong style={{ fontSize: 13, color: "#595959" }}>
+                                          <FileTextOutlined /> Bài học ({lessons.length})
+                                        </Text>
+                                        <Button
+                                          type="link"
+                                          size="small"
+                                          icon={<PlusOutlined />}
+                                          onClick={() => handleOpenLessonForm(module.id)}
+                                        >
+                                          Thêm bài học
+                                        </Button>
+                                      </div>
+                                      <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                                        {lessons
+                                          .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
+                                          .map((lesson) => (
+                                            <Card
+                                              key={lesson.id}
+                                              size="small"
+                                              style={{
+                                                background: "#fff",
+                                                border: "1px solid #f0f0f0",
+                                              }}
+                                              bodyStyle={{ padding: 8 }}
+                                            >
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  justifyContent: "space-between",
+                                                  alignItems: "center",
+                                                }}
+                                              >
+                                                <div style={{ flex: 1 }}>
+                                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                                    <Text strong style={{ fontSize: 13 }}>
+                                                      {lesson.orderIndex}. {lesson.title}
+                                                    </Text>
+                                                    <Tag color="orange" style={{ fontSize: 11 }}>
+                                                      {difficultyLabels[lesson.difficulty] || lesson.difficulty}
+                                                    </Tag>
+                                                  </div>
+                                                  <div style={{ fontSize: 11, color: "#8c8c8c", marginTop: 4 }}>
+                                                    <ClockCircleOutlined /> {lesson.estimatedMinutes || 0} phút
+                                                  </div>
+                                                </div>
+                                                <Space size="small">
+                                                  <Button
+                                                    type="text"
+                                                    size="small"
+                                                    icon={<EyeOutlined />}
+                                                    onClick={() => openLessonDetail(lesson.id)}
+                                                  >
+                                                    Xem
+                                                  </Button>
+                                                  <Button
+                                                    type="text"
+                                                    size="small"
+                                                    icon={<EditOutlined />}
+                                                    onClick={() => handleOpenLessonForm(module.id, lesson)}
+                                                  >
+                                                    Sửa
+                                                  </Button>
+                                                  <Popconfirm
+                                                    title="Xóa bài học?"
+                                                    onConfirm={() => handleDeleteLesson(lesson.id)}
+                                                    okText="Xóa"
+                                                    cancelText="Hủy"
+                                                  >
+                                                    <Button
+                                                      type="text"
+                                                      danger
+                                                      size="small"
+                                                      icon={<DeleteOutlined />}
+                                                    />
+                                                  </Popconfirm>
+                                                </Space>
+                                              </div>
+                                            </Card>
+                                          ))}
+                                      </Space>
+                                    </div>
+                                  )}
+
+                                  {/* Quiz */}
+                                  {quiz && (
+                                    <div>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          justifyContent: "space-between",
+                                          alignItems: "center",
+                                          marginBottom: 8,
+                                        }}
+                                      >
+                                        <Text strong style={{ fontSize: 13, color: "#595959" }}>
+                                          <QuestionCircleOutlined /> Quiz
+                                        </Text>
+                                      </div>
+                                      <Card
+                                        size="small"
+                                        style={{
+                                          background: "#f6ffed",
+                                          border: "1px solid #b7eb8f",
+                                        }}
+                                        bodyStyle={{ padding: 12 }}
+                                      >
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "center",
+                                          }}
+                                        >
+                                          <div style={{ flex: 1 }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                              <Text strong style={{ fontSize: 13 }}>
+                                                {quiz.title}
+                                              </Text>
+                                              <Tag color="green">{quiz.totalQuestions} câu</Tag>
+                                              <Tag color="blue">{quiz.timeLimitMinutes} phút</Tag>
+                                            </div>
+                                            <div style={{ fontSize: 11, color: "#8c8c8c", marginTop: 4 }}>
+                                              <Tag color="orange" style={{ fontSize: 11 }}>
+                                                {difficultyLabels[quiz.difficulty] || quiz.difficulty}
+                                              </Tag>
+                                            </div>
+                                          </div>
+                                          <Space size="small">
+                                            <Button
+                                              type="text"
+                                              size="small"
+                                              icon={<EyeOutlined />}
+                                              onClick={() => openQuizDetail(quiz.id)}
+                                            >
+                                              Xem
+                                            </Button>
+                                            <Button
+                                              type="text"
+                                              size="small"
+                                              icon={<EditOutlined />}
+                                              onClick={() => handleOpenQuizEdit(quiz.id)}
+                                            >
+                                              Sửa
+                                            </Button>
+                                            <Popconfirm
+                                              title="Xóa quiz?"
+                                              onConfirm={() => handleDeleteQuiz(quiz.id)}
+                                              okText="Xóa"
+                                              cancelText="Hủy"
+                                            >
+                                              <Button
+                                                type="text"
+                                                danger
+                                                size="small"
+                                                icon={<DeleteOutlined />}
+                                              />
+                                            </Popconfirm>
+                                          </Space>
+                                        </div>
+                                      </Card>
+                                    </div>
+                                  )}
+
+                                  {/* Empty state for lessons */}
+                                  {lessons.length === 0 && !quiz && (
+                                    <Empty
+                                      description="Chưa có bài học hoặc quiz"
+                                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                      style={{ padding: 16 }}
+                                    >
+                                      <Space>
+                                        <Button
+                                          type="primary"
+                                          size="small"
+                                          icon={<FileTextOutlined />}
+                                          onClick={() => handleOpenLessonForm(module.id)}
+                                        >
+                                          Thêm bài học
+                                        </Button>
+                                        <Button
+                                          size="small"
+                                          icon={<QuestionCircleOutlined />}
+                                          onClick={() => handleOpenQuizCreate(module.id)}
+                                        >
+                                          Tạo quiz
+                                        </Button>
+                                      </Space>
+                                    </Empty>
+                                  )}
+                                </div>
+                              )}
+                            </Card>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </Card>
 
       {/* Modal Chi tiết */}
@@ -1201,7 +1566,7 @@ export default function LearnManagement() {
           <Form.Item label="Quy tắc (mỗi dòng một quy tắc)" name="rules">
             <TextArea rows={2} placeholder="Mỗi dòng một quy tắc" />
           </Form.Item>
-          <Divider orientation="left">Câu hỏi</Divider>
+          <Divider>Câu hỏi</Divider>
           <Form.List name="questions">
             {(fields, { add, remove }) => (
               <>
@@ -1327,8 +1692,20 @@ export default function LearnManagement() {
         }}
         footer={null}
         width={720}
+        destroyOnClose={true}
       >
-        {quizEditData && <QuizEditForm quiz={quizEditData} onSave={handleSaveQuizEdit} onCancel={() => setQuizEditModalOpen(false)} saving={quizEditSaving} />}
+        {quizEditData && (
+          <QuizEditForm
+            key={quizEditData.id}
+            quiz={quizEditData}
+            onSave={handleSaveQuizEdit}
+            onCancel={() => {
+              setQuizEditModalOpen(false);
+              setQuizEditData(null);
+            }}
+            saving={quizEditSaving}
+          />
+        )}
       </Modal>
     </Space>
   );
@@ -1347,6 +1724,59 @@ function QuizEditForm({
   saving: boolean;
 }) {
   const [form] = Form.useForm();
+
+  // Reset form khi quiz data thay đổi để đảm bảo dữ liệu được load đúng
+  useEffect(() => {
+    if (quiz && quiz.questions && quiz.questions.length > 0) {
+      // Reset form trước để clear các giá trị cũ
+      form.resetFields();
+      
+      // Chuẩn bị form values với đầy đủ options
+      const formValues = {
+        title: quiz.title || "",
+        timeLimitMinutes: quiz.timeLimitMinutes || 0,
+        difficulty: quiz.difficulty || "BASIC",
+        objective: quiz.objective || "",
+        rules: (quiz.rules ?? []).join("\n"),
+        questions: (quiz.questions ?? []).map((q) => ({
+          id: q.id,
+          questionText: q.questionText || "",
+          hintText: q.hintText || "",
+          orderIndex: q.orderIndex ?? 0,
+          options: (q.options ?? []).map((opt) => {
+            console.log("[QuizEditForm] Mapping option:", {
+              id: opt.id,
+              label: opt.label,
+              optionText: opt.optionText,
+              isCorrect: opt.isCorrect,
+              isCorrectType: typeof opt.isCorrect,
+            });
+            return {
+              id: opt.id,
+              label: opt.label || "",
+              optionText: opt.optionText || "",
+              isCorrect: opt.isCorrect === true || opt.isCorrect === "true" || opt.isCorrect === 1,
+            };
+          }),
+        })),
+      };
+      
+      console.log("[QuizEditForm] Setting form values:", formValues);
+      console.log("[QuizEditForm] Questions count:", formValues.questions.length);
+      formValues.questions.forEach((q, i) => {
+        console.log(`[QuizEditForm] Question ${i + 1}:`, {
+          questionText: q.questionText,
+          optionsCount: q.options.length,
+          options: q.options,
+        });
+      });
+      
+      // Set form values sau một chút delay để đảm bảo form đã được render
+      setTimeout(() => {
+        form.setFieldsValue(formValues);
+      }, 100);
+    }
+  }, [quiz, form]);
 
   return (
     <Form
@@ -1380,7 +1810,7 @@ function QuizEditForm({
       <Form.Item label="Quy tắc (mỗi dòng một quy tắc)" name="rules">
         <TextArea rows={3} />
       </Form.Item>
-      <Divider orientation="left">Câu hỏi và đáp án</Divider>
+      <Divider>Câu hỏi và đáp án</Divider>
       <Form.List name="questions">
         {(fields, { add, remove }) => (
           <>

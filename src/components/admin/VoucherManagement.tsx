@@ -81,7 +81,9 @@ export default function VoucherManagement() {
 
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [formEditId, setFormEditId] = useState<number | null>(null);
-  const [formEditRecord, setFormEditRecord] = useState<AdminVoucher | null>(null);
+  const [formEditRecord, setFormEditRecord] = useState<AdminVoucher | null>(
+    null,
+  );
   const [form] = Form.useForm<CreateVoucherRequest & { isActive?: boolean }>();
   const [formSaving, setFormSaving] = useState(false);
 
@@ -459,9 +461,7 @@ export default function VoucherManagement() {
               </Button>
               <Space>
                 <Button onClick={closeForm}>Hủy</Button>
-                <Button
-                  onClick={() => toggleActive(formEditRecord)}
-                >
+                <Button onClick={() => toggleActive(formEditRecord)}>
                   {formEditRecord.isActive ? "Tắt" : "Bật"}
                 </Button>
                 <Button
@@ -477,7 +477,9 @@ export default function VoucherManagement() {
               </Space>
             </div>
           ) : (
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <div
+              style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}
+            >
               <Button onClick={closeForm}>Hủy</Button>
               <Button
                 type="primary"
