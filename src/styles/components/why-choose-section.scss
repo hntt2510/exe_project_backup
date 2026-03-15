@@ -1,0 +1,96 @@
+// ============================================
+// Why Choose Section - Vì sao chọn Cội Việt
+// 4 benefit cards, responsive
+// ============================================
+
+@use '../variables';
+@use '../mixins';
+
+.why-choose {
+  background: #fff;
+  border-top: 1px solid variables.$color-gray-200;
+
+  &__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 variables.$spacing-md;
+
+    @include mixins.respond-to(md) {
+      padding: 0 variables.$spacing-lg;
+    }
+  }
+
+  &__title {
+    font-family: 'iCiel Lodestone', 'Be Vietnam Pro', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text, #1a1a1a);
+    margin: 0 0 2rem;
+    text-align: left;
+
+    @include mixins.respond-to(md) {
+      font-size: 1.75rem;
+      margin-bottom: 2.5rem;
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: variables.$spacing-xl;
+
+    @include mixins.respond-to(sm) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @include mixins.respond-to(lg) {
+      grid-template-columns: repeat(4, 1fr);
+      gap: variables.$spacing-2xl;
+    }
+  }
+
+  &__card {
+    text-align: left;
+    padding: variables.$spacing-lg;
+    transition: transform 0.2s;
+
+    &:hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  &__icon-wrap {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+  }
+
+  &__icon {
+    color: #d97706;
+    flex-shrink: 0;
+  }
+
+  &__card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text, #1a1a1a);
+    margin: 0 0 0.5rem;
+    line-height: 1.3;
+
+    @include mixins.respond-to(md) {
+      font-size: 1.15rem;
+    }
+  }
+
+  &__card-desc {
+    font-size: 0.95rem;
+    color: var(--color-text-light, #6b7280);
+    line-height: 1.6;
+    margin: 0;
+  }
+}

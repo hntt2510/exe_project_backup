@@ -7,6 +7,7 @@ import {
     QuickLearnSection,
     InspirationSection,
     TestimonialsSection,
+    WhyChooseSection,
     LeadFormSection,
 } from '../components/home';
 import { getHomePageData } from '../services/api';
@@ -90,6 +91,7 @@ export default function HomePage() {
             <QuickLearnSection blogPosts={data.blogPosts} videos={data.videos} />
             <InspirationSection />
             <TestimonialsSection testimonials={data.userMemories} />
+            <WhyChooseSection />
             <LeadFormSection />
         </main>
     );
