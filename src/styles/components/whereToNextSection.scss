@@ -1,0 +1,195 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+$accent: var(--color-primary, #8B0000);
+$accent-light: var(--color-primary-light, #dc2626);
+$card-width: 300px;
+$card-height: 380px;
+
+.where-to-next {
+  width: 100%;
+  padding: 2.5rem 0 0;
+  background: #fff;
+  position: relative;
+
+  @include respond-to(md) {
+    padding: 3rem 0 0;
+  }
+}
+
+.where-to-next__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1140px;
+  margin: 0 auto 1.5rem;
+  padding: 0 1rem;
+
+  @include respond-to(md) {
+    padding: 0 2rem;
+  }
+}
+
+.where-to-next__title {
+  font-family: 'iCiel Lodestone', 'Be Vietnam Pro', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: $color-gray-900;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 0;
+
+  @include respond-to(md) {
+    font-size: 1.75rem;
+  }
+}
+
+.where-to-next__see-more {
+  font-size: 0.95rem;
+  color: $accent-light;
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.where-to-next__carousel {
+  position: relative;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 3rem 2rem;
+
+  @media (max-width: 768px) {
+    padding: 0 2.5rem 1.5rem;
+  }
+}
+
+.where-to-next__cards {
+  display: flex;
+  gap: 1.25rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.5rem 0;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.where-to-next__card {
+  flex-shrink: 0;
+  width: $card-width;
+  height: $card-height;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  scroll-snap-align: start;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  transition: transform 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+  }
+
+  @media (max-width: 768px) {
+    width: 260px;
+    height: 320px;
+  }
+}
+
+.where-to-next__card-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-color: $color-gray-200;
+}
+
+.where-to-next__card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 50%);
+}
+
+.where-to-next__card-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1.5rem;
+  color: #fff;
+}
+
+.where-to-next__card-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+
+  @include respond-to(md) {
+    font-size: 1.65rem;
+  }
+}
+
+.where-to-next__card-count {
+  font-size: 0.9rem;
+  opacity: 0.95;
+}
+
+.where-to-next__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  color: $accent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  transition: background 0.2s, color 0.2s;
+  z-index: 10;
+
+  &:hover {
+    background: $accent;
+    color: #fff;
+  }
+
+  &--prev {
+    left: 0.5rem;
+  }
+
+  &--next {
+    right: 0.5rem;
+  }
+
+  @media (max-width: 768px) {
+    width: 40px;
+    height: 40px;
+
+    &--prev {
+      left: 0.25rem;
+    }
+
+    &--next {
+      right: 0.25rem;
+    }
+  }
+}
+
+.where-to-next__footer {
+  height: 8px;
+  background: $accent;
+  width: 100%;
+}

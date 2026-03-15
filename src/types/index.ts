@@ -144,9 +144,20 @@ export interface PublicArtisan {
 }
 
 // Blog Post
+export interface BlogPostProvince {
+  id: number;
+  name: string;
+  slug: string;
+  region?: string;
+  description?: string;
+  bestSeason?: string;
+  transportation?: string;
+  culturalTips?: string;
+}
+
 export interface BlogPost {
   id: number;
-  authorId: number;
+  authorId?: number;
   authorName?: string;
   title: string;
   slug: string;
@@ -155,11 +166,13 @@ export interface BlogPost {
   featuredImageUrl: string;
   provinceId?: number;
   provinceName?: string;
+  province?: BlogPostProvince;
+  images?: string; // comma-separated URLs
   status: string;
-  viewCount: number;
+  viewCount?: number;
   publishedAt?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 // Video
@@ -207,6 +220,31 @@ export interface Review {
   comment: string;
   images: string[];
   createdAt: string;
+}
+
+// Lead (POST /api/leads)
+export interface LeadRequest {
+  name: string;
+  email: string;
+  phone: string;
+  tourId?: number;
+  message?: string;
+  source: string;
+}
+
+export interface Lead {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  tourId: number;
+  tourTitle?: string;
+  message?: string;
+  source: string;
+  status: string;
+  adminNote?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Home Page Response

@@ -19,14 +19,17 @@ export default function Tours() {
   const [error, setError] = useState<string | null>(null);
 
   const [searchParams] = useSearchParams();
+  const provinceFromUrl = searchParams.get('province');
   const [search, setSearch] = useState('');
-  const [selectedProvinceId, setSelectedProvinceId] = useState(() => {
-    const p = searchParams.get('province');
-    return p ? p : 'all';
-  });
+  const [selectedProvinceId, setSelectedProvinceId] = useState(() => provinceFromUrl || 'all');
   const [selectedArtisanId, setSelectedArtisanId] = useState('all');
   const [sortBy, setSortBy] = useState<SortOption>('latest');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Đồng bộ filter khi URL có ?province= (vd: từ WhereToNextSection)
+  useEffect(() => {
+    if (provinceFromUrl) setSelectedProvinceId(provinceFromUrl);
+  }, [provinceFromUrl]);
 
   useEffect(() => {
     let mounted = true;

@@ -23,47 +23,27 @@ export default function TourExperienceSection({
   useEffect(() => {
     if (tours && tours.length > 0) {
       setTourItems(tours);
+      setLoading(false);
+      return;
     }
-  }, [tours]);
-
-  useEffect(() => {
     let mounted = true;
-
     const fetchTours = async () => {
-      if (!tours || tours.length === 0) {
-        setLoading(true);
-      }
+      setLoading(true);
       setError(null);
-
       try {
-        console.log('[TourExperienceSection] 🚀 Fetching tours from /api/tours/public...');
         const data = await getPublicTours();
-        console.log('[TourExperienceSection] ✅ API data received:', {
-          tours: data?.length ?? 0,
-        });
         if (!mounted) return;
-        const fetchedTours = data ?? [];
-        if (fetchedTours.length > 0 || !tours || tours.length === 0) {
-          setTourItems(fetchedTours);
-        }
+        setTourItems(data ?? []);
       } catch (err) {
-        console.error('[TourExperienceSection] ❌ API error:', err);
         if (!mounted) return;
         setError('Không thể tải dữ liệu tour trải nghiệm');
       } finally {
-        if (mounted) {
-          console.log('[TourExperienceSection] 🏁 Fetch completed');
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
-
     fetchTours();
-
-    return () => {
-      mounted = false;
-    };
-  }, [limit, tours]);
+    return () => { mounted = false; };
+  }, [tours, limit]);
 
   const displayTours = useMemo(
     () => tourItems.slice(0, Math.max(1, limit)),

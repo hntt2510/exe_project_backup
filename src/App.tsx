@@ -19,11 +19,19 @@ import { ProfilePage } from "./components/profile";
 import { About } from "./components/about";
 import { ArtisanPage, ArtisanDetailPage } from "./components/artisan";
 import { BlogPage, BlogDetailPage } from "./components/blog";
-import { LearnPage, LessonDetailPage, QuizPage, QuizResultsPage } from "./pages/learn";
+import {
+  LearnPage,
+  LessonDetailPage,
+  LessonPage,
+  QuizPage,
+  QuizResultsPage,
+} from "./pages/learn/index";
 import PolicyPage from "./pages/PolicyPage";
 import ContactPage from "./pages/ContactPage";
+import BookingReviewPage from "./pages/BookingReviewPage";
 import FAQPage from "./pages/FAQPage";
 import GuidePage from "./pages/GuidePage";
+import AIChatBox from "./components/AIChatBox";
 
 // Admin Pages
 import AdminDashboardPage from "./pages/admin/AdminDashboard";
@@ -47,6 +55,7 @@ import StaffContentManagementPage from "./pages/staff/ContentManagement";
 function App() {
   return (
     <Router>
+      <AIChatBox />
       <Routes>
         {/* Auth Routes - No layout wrapper */}
         <Route path="/login" element={<Login />} />
@@ -72,6 +81,7 @@ function App() {
           <Route path="/payment-return/momo" element={<PaymentReturnPage />} />
           <Route path="/payment-failure" element={<PaymentFailurePage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/bookings/:bookingId/review" element={<BookingReviewPage />} />
           <Route path="/artisans" element={<ArtisanPage />} />
           <Route path="/artisans/:id" element={<ArtisanDetailPage />} />
           <Route path="/blog" element={<BlogPage />} />
@@ -83,6 +93,7 @@ function App() {
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/learn" element={<LearnPage />} />
           <Route path="/learn/:moduleId" element={<LessonDetailPage />} />
+          <Route path="/lesson" element={<LessonPage />} />
           <Route path="/learn/:moduleId/quiz" element={<QuizPage />} />
           <Route path="/learn/:moduleId/quiz/results" element={<QuizResultsPage />} />
         </Route>

@@ -1,15 +1,14 @@
 @use '../../variables' as *;
 
 // ============================================
-// Blog Grid — 2 columns, paper texture bg
+// Blog Grid — 3 columns, clean bg
 // ============================================
 .blog-grid {
   width: 100%;
-  background: url('/paper-bg.png') center / cover repeat;
   padding: $spacing-3xl 0;
 
   &__inner {
-    max-width: 1120px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 0 $spacing-lg;
   }
@@ -19,13 +18,12 @@
     grid-template-columns: 1fr;
     gap: $spacing-2xl $spacing-xl;
 
-    @media (min-width: $breakpoint-md) {
+    @media (min-width: $breakpoint-sm) {
       grid-template-columns: repeat(2, 1fr);
     }
 
-    @media (max-width: $breakpoint-sm) {
-      max-width: 100%;
-      margin: 0;
+    @media (min-width: $breakpoint-lg) {
+      grid-template-columns: repeat(3, 1fr);
     }
   }
 
@@ -44,25 +42,19 @@
   }
 }
 
-// Blog skeleton
+// Blog skeleton — vertical card
 .blog-skeleton {
-  display: grid;
-  grid-template-columns: 40% 1fr;
-  gap: $spacing-lg;
+  display: flex;
+  flex-direction: column;
   background: $color-white;
   border-radius: $radius-lg;
   overflow: hidden;
   box-shadow: $shadow-sm;
-  min-height: 180px;
-
-  @media (max-width: $breakpoint-sm) {
-    grid-template-columns: 1fr;
-  }
 
   &__img {
     width: 100%;
-    height: 100%;
-    min-height: 180px;
+    height: 0;
+    padding-bottom: 56.25%;
     background: linear-gradient(90deg,
       $color-gray-200 25%,
       $color-gray-100 50%,
@@ -73,6 +65,7 @@
 
   &__content {
     padding: $spacing-lg;
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: $spacing-sm;

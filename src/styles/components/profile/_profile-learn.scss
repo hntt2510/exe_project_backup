@@ -146,12 +146,97 @@
     color: $color-gray-500;
   }
 
-  // Courses grid
+  // Bài đã lưu - Carousel
+  &__saved {
+    margin-top: 2rem;
+  }
+
+  &__saved-title {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: $color-gray-700;
+    margin: 0 0 1rem;
+  }
+
+  &__saved-empty {
+    margin: 0;
+    font-size: $font-size-sm;
+    color: $color-gray-500;
+  }
+
+  &__carousel {
+    display: flex;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  &__carousel-btn {
+    flex-shrink: 0;
+    width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid $color-gray-300;
+    border-radius: $radius-md;
+    background: $color-white;
+    color: $color-gray-600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover:not(:disabled) {
+      background: $color-gray-50;
+      border-color: $color-primary;
+      color: $color-primary;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+
+  &__carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.35rem;
+    margin-top: 1rem;
+  }
+
+  &__carousel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: none;
+    background: $color-gray-300;
+    cursor: pointer;
+    transition: background 0.2s ease;
+
+    &--active {
+      background: $color-primary;
+      width: 10px;
+      height: 10px;
+    }
+
+    &:hover:not(.profile-learn__carousel-dot--active) {
+      background: $color-gray-400;
+    }
+  }
+
+  // Courses grid (3 cột cố định cho carousel)
   &__courses {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.25rem;
-    margin-top: 1rem;
+    flex: 1;
+    min-width: 0;
+
+    @media (max-width: $breakpoint-md) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: $breakpoint-sm) {
+      grid-template-columns: 1fr;
+    }
   }
 
   &__course-card {

@@ -34,6 +34,8 @@ export const isSessionExpired = (): boolean => {
   return elapsed > SESSION_TIMEOUT_MS;
 };
 
+const AI_CHAT_STORAGE_KEY = "aiChatMessages";
+
 export const clearAuthSession = () => {
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
@@ -41,4 +43,6 @@ export const clearAuthSession = () => {
   localStorage.removeItem("userAccount");
   localStorage.removeItem("userInfo");
   localStorage.removeItem(SESSION_LOGIN_TIME_KEY);
+  sessionStorage.removeItem(AI_CHAT_STORAGE_KEY);
+  window.dispatchEvent(new CustomEvent("auth-logout"));
 };

@@ -1,12 +1,11 @@
 @use '../../variables' as *;
 
 // ============================================
-// Blog Card — horizontal layout (image left ~40%, content right)
+// Blog Card — vertical layout (image top, content bottom)
 // ============================================
 .blog-card {
-  display: grid;
-  grid-template-columns: 40% 1fr;
-  gap: 0;
+  display: flex;
+  flex-direction: column;
   background: $color-white;
   border-radius: $radius-lg;
   overflow: hidden;
@@ -15,28 +14,17 @@
   text-decoration: none;
   color: inherit;
   cursor: pointer;
-  min-height: 200px;
 
   &:hover {
     box-shadow: $shadow-lg;
-    transform: translateY(-2px);
-  }
-
-  @media (max-width: $breakpoint-sm) {
-    grid-template-columns: 1fr;
-    min-height: auto;
+    transform: translateY(-4px);
   }
 
   &__img-wrap {
     width: 100%;
-    min-height: 200px;
+    aspect-ratio: 16 / 9;
     overflow: hidden;
     background: $color-gray-200;
-
-    @media (max-width: $breakpoint-sm) {
-      min-height: 180px;
-      aspect-ratio: 16 / 9;
-    }
   }
 
   &__img {

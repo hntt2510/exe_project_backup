@@ -1,9 +1,11 @@
-import { Typography, Button } from 'antd';
+import { useRef } from 'react';
+import { Typography, Button, Image } from 'antd';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   Search,
   FileEdit,
+  CheckCircle as CheckIcon,
   CreditCard,
   Ticket,
   ArrowRight,
@@ -13,42 +15,80 @@ import '../styles/pages/_guide.scss';
 
 const { Title, Paragraph, Text } = Typography;
 
-const steps = [
+interface GuideStep {
+  number: string;
+  title: string;
+  description: string;
+  images: string[];
+  color: string;
+  icon: React.ComponentType<{ size?: number }>;
+  link?: string;
+  linkLabel?: string;
+}
+
+const steps: GuideStep[] = [
   {
-    icon: Search,
     number: '01',
     title: 'Chọn tour phù hợp',
     description:
-      'Truy cập trang Tour, lọc theo tỉnh thành hoặc nghệ nhân. Xem chi tiết mô tả, thời lượng, giá và lịch trình. Chọn ngày và số lượng khách.',
+      'Truy cập trang Tour, sử dụng ô tìm kiếm và bộ lọc theo tỉnh thành hoặc nghệ nhân để tìm tour phù hợp. Xem chi tiết mô tả, thời lượng, giá và lịch trình. Khi đã chọn tour ưng ý, bấm nút "Đặt ngay" để bắt đầu đặt chỗ.',
+    images: ['/huongdan/1.png', '/huongdan/2.png', '/huongdan/3.png'],
     color: 'primary',
+    icon: Search,
+    link: '/tours',
+    linkLabel: 'Xem danh sách tour',
   },
   {
-    icon: FileEdit,
     number: '02',
-    title: 'Điền thông tin khách',
+    title: 'Điền thông tin',
     description:
-      'Nhập họ tên, số điện thoại, email và thông tin cần thiết cho từng khách. Kiểm tra chính sách hủy và điều khoản trước khi tiếp tục.',
+      'Điền đầy đủ họ tên, email và số điện thoại. Chọn ngày khởi hành, giờ khởi hành, số lượng người tham gia và loại tour (Cá nhân, Nhóm, Gia đình). Có thể thêm ghi chú cho nhà tổ chức. Đồng ý với điều khoản dịch vụ và chính sách hủy trước khi bấm Xác nhận.',
+    images: ['/huongdan/4.png', '/huongdan/5.png'],
     color: 'amber',
+    icon: FileEdit,
   },
   {
-    icon: CreditCard,
     number: '03',
-    title: 'Thanh toán an toàn',
+    title: 'Xác nhận thông tin',
     description:
-      'Chọn phương thức thanh toán (VNPay, MoMo, thẻ ATM, Visa/MasterCard). Thanh toán trong thời gian quy định để giữ chỗ. Bạn sẽ nhận xác nhận qua email.',
+      'Kiểm tra kỹ thông tin tour đã chọn, thông tin khách và lịch khởi hành. Nếu có sai sót, bấm "Quay lại chỉnh sửa" để sửa. Khi đã chắc chắn đúng, tick các ô xác nhận và bấm "Xác nhận và thanh toán".',
+    images: ['/huongdan/6.png'],
     color: 'teal',
+    icon: CheckIcon,
   },
   {
-    icon: Ticket,
     number: '04',
+    title: 'Thanh toán',
+    description:
+      'Chọn phương thức thanh toán: VNPay (thanh toán trực tuyến), Momo/Ví điện tử, hoặc Tiền mặt (trả tại điểm hẹn). Có thể nhập mã voucher để giảm giá. Đồng ý điều khoản và bấm "Thanh toán" để hoàn tất.',
+    images: ['/huongdan/7.png'],
+    color: 'green',
+    icon: CreditCard,
+  },
+  {
+    number: '05',
     title: 'Nhận E-ticket và tham gia',
     description:
-      'E-ticket được gửi qua email và lưu trong tài khoản. Mang theo bản in hoặc màn hình điện thoại khi đến điểm tập trung. Chúc bạn có trải nghiệm đáng nhớ!',
-    color: 'green',
+      'Sau khi thanh toán thành công, E-ticket sẽ được gửi qua email và lưu trong tài khoản của bạn. Mang theo bản in hoặc hiển thị trên màn hình điện thoại khi đến điểm tập trung. Chúc bạn có trải nghiệm văn hóa đáng nhớ!',
+    images: [],
+    color: 'primary',
+    icon: Ticket,
   },
 ];
 
 export default function GuidePage() {
+  const scrollYRef = useRef(0);
+
+  const handleImageClickCapture = () => {
+    scrollYRef.current = window.scrollY;
+  };
+
+  const handlePreviewOpenChange = (_visible: boolean) => {
+    const y = scrollYRef.current;
+    requestAnimationFrame(() => window.scrollTo(0, y));
+    setTimeout(() => window.scrollTo(0, y), 20);
+  };
+
   return (
     <div className="guide-page">
       <section className="guide-page__hero">
@@ -65,7 +105,7 @@ export default function GuidePage() {
           >
             <Text className="guide-page__badge">Hướng dẫn</Text>
             <Title level={1} className="guide-page__title">
-              Đặt tour <span className="guide-page__title-highlight">trong 4 bước</span>
+              Đặt tour <span className="guide-page__title-highlight">trong 5 bước</span>
             </Title>
             <Paragraph className="guide-page__subtitle">
               Quy trình đặt tour trải nghiệm văn hóa đơn giản, minh bạch và an toàn. Làm theo các bước bên dưới để bắt đầu hành trình.
@@ -76,15 +116,15 @@ export default function GuidePage() {
 
       <section className="guide-page__steps">
         <div className="guide-page__container">
-          <div className="guide-page__steps-grid">
+          <div className="guide-page__steps-list">
             {steps.map((step, index) => (
-              <motion.div
+              <motion.article
                 key={index}
                 className="guide-page__step-card"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                transition={{ duration: 0.5, delay: index * 0.08 }}
               >
                 <div className="guide-page__step-header">
                   <div
@@ -93,19 +133,49 @@ export default function GuidePage() {
                     <step.icon size={24} />
                   </div>
                   <span className="guide-page__step-number">{step.number}</span>
+                  <Title level={3} className="guide-page__step-title">
+                    {step.title}
+                  </Title>
                 </div>
-                <Title level={4} className="guide-page__step-title">
-                  {step.title}
-                </Title>
                 <Paragraph className="guide-page__step-desc">
                   {step.description}
                 </Paragraph>
-                {index < steps.length - 1 && (
-                  <div className="guide-page__step-connector">
-                    <ArrowRight size={20} />
-                  </div>
+                {step.images.length > 0 && (
+                  <Image.PreviewGroup
+                    preview={{
+                      onOpenChange: handlePreviewOpenChange,
+                    }}
+                  >
+                    <div
+                      className="guide-page__step-images"
+                      onClickCapture={handleImageClickCapture}
+                    >
+                      {step.images.map((src, i) => (
+                        <div key={i} className="guide-page__step-image-wrapper">
+                          <Image
+                            src={src}
+                            alt={`Bước ${step.number} - ${i + 1}`}
+                            className="guide-page__step-image"
+                            rootClassName="guide-page__step-image-root"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </Image.PreviewGroup>
                 )}
-              </motion.div>
+                {step.link && step.linkLabel && (
+                  <Link to={step.link} className="guide-page__step-link">
+                    <Button
+                      type="primary"
+                      size="middle"
+                      className="guide-page__step-btn"
+                    >
+                      {step.linkLabel}
+                      <ArrowRight size={18} />
+                    </Button>
+                  </Link>
+                )}
+              </motion.article>
             ))}
           </div>
 

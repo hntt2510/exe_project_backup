@@ -3,6 +3,7 @@ import { message, Spin } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { AuthLoginResponse } from "../services/authApi";
 import { clearAuthSession, persistAuthSession } from "../utils/authSession";
+import { consumeLoginRedirect } from "../utils/loginRedirectCookie";
 
 type OAuthCallbackPayload = {
   success: boolean;
@@ -176,7 +177,20 @@ const GoogleAuthCallback = () => {
     }
 
     message.success("Đăng nhập Google thành công!");
-    navigate("/", { replace: true });
+
+    // Ưu tiên redirect về trang thanh toán (từ cookie) nếu có
+    const redirect = consumeLoginRedirect();
+    if (redirect?.path) {
+      navigate(redirect.path, {
+        replace: true,
+        state: redirect.state ? {
+          contactInfo: redirect.state.contactInfo,
+          bookingDetails: redirect.state.bookingDetails,
+        } : undefined,
+      });
+    } else {
+      navigate("/", { replace: true });
+    }
   }, [location.hash, location.search, navigate]);
 
   return (

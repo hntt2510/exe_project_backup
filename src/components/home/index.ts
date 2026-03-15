@@ -1,5 +1,8 @@
 export { default as HeroSection } from './HeroSection';
 export { default as MapSection } from './MapSection';
+export { default as WhereToNextSection } from './WhereToNextSection';
 export { default as TourExperienceSection } from './TourExperienceSection';
 export { default as QuickLearnSection } from './QuickLearnSection';
+export { default as InspirationSection } from './InspirationSection';
 export { default as TestimonialsSection } from './TestimonialsSection';
+export { default as LeadFormSection } from './LeadFormSection';

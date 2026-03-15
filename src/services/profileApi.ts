@@ -161,6 +161,29 @@ export const getBookingById = async (id: number): Promise<UserBooking> => {
   return res.data.data;
 };
 
+// ========== Reviews ==========
+
+export interface CreateReviewRequest {
+  bookingId: number;
+  rating: number;
+  comment: string;
+  images?: File[];
+}
+
+export const createReview = async (data: CreateReviewRequest): Promise<unknown> => {
+  const formData = new FormData();
+  formData.append('bookingId', String(data.bookingId));
+  formData.append('rating', String(data.rating));
+  formData.append('comment', data.comment);
+  if (data.images?.length) {
+    data.images.forEach((file) => formData.append('images', file));
+  }
+  const res = await api.post<ApiResponse<unknown>>('/api/reviews', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data.data;
+};
+
 // ========== Vouchers ==========
 
 export const getUserVouchers = async (): Promise<UserVoucher[]> => {
@@ -177,5 +200,11 @@ export const getLearnStats = async (): Promise<LearnStats> => {
 
 export const getLearnCourses = async (): Promise<FeaturedCourse[]> => {
   const res = await api.get<ApiResponse<FeaturedCourse[]>>('/api/learn/users/me/courses');
+  return res.data.data;
+};
+
+/** Bài đã lưu - modules chứa lesson user đã lưu (save button) */
+export const getSavedLessons = async (): Promise<FeaturedCourse[]> => {
+  const res = await api.get<ApiResponse<FeaturedCourse[]>>('/api/learn/users/me/saved-lessons');
   return res.data.data;
 };

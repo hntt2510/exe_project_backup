@@ -37,11 +37,11 @@
 @use 'components/footer';
 @use 'components/hero-section';
 @use 'components/testimonials';
+@use 'components/lead-form';
 @use 'components/layout-alt';
-@use 'components/learn' as learn-components;
-@use 'components/learnDetail' as lesson-detail-components;
 @use 'components/artisan' as artisan-components;
 @use 'components/blog' as blog-components;
+@use 'components/ai-chatbox';
 
 // Pages
 @use 'pages/home';
@@ -50,10 +50,7 @@
 @use 'pages/forgot-password';
 @use 'pages/verify-code';
 @use 'pages/reset-password';
-@use 'pages/learn';
-@use 'components/lessonDetailPagescss' as lesson-detail-page;
-@use 'pages/quiz';
-@use 'pages/quiz-results';
+@use 'features/learn' as learn-feature;
 @use 'pages/about';
 @use 'pages/policy';
 @use 'pages/contact';

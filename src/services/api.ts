@@ -15,12 +15,14 @@ import type {
   LearnLesson,
   LearnCategory,
   LearnUserStats,
+  Lead,
+  LeadRequest,
 } from "../types";
 
 // API Base Configuration
 // Must use ngrok URL directly - backend requires auth and redirects to OAuth2/Google.
 // Vite proxy cannot bypass this CORS requirement.
-export const API_BASE_URL = "https://exe-1-k8ma.onrender.com/";
+export const API_BASE_URL = "https://legally-actual-mollusk.ngrok-free.app/";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -73,30 +75,36 @@ export function getApiErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Đã xảy ra lỗi.";
 }
 
-// ========== In-memory cache (load 1 lần, dùng chung) ==========
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 phút
-const cache = new Map<string, { data: unknown; ts: number }>();
-const ENABLE_API_CACHE = !import.meta.env.DEV;
+// ========== Session cache (1 lần fetch, lưu đến khi đóng tab) ==========
+// Cache không hết hạn trong session - chỉ load 1 lần mỗi endpoint
+const cache = new Map<string, unknown>();
+const inFlight = new Map<string, Promise<unknown>>();
 
-function getCached<T>(key: string): T | undefined {
-  if (!ENABLE_API_CACHE) return undefined;
-  const entry = cache.get(key);
-  if (!entry) return undefined;
-  if (Date.now() - entry.ts > CACHE_TTL_MS) {
-    cache.delete(key);
-    return undefined;
-  }
-  return entry.data as T;
-}
+export async function cachedFetch<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+  const cached = cache.get(key) as T | undefined;
+  if (cached !== undefined) return cached;
 
-function setCached(key: string, data: unknown): void {
-  if (!ENABLE_API_CACHE) return;
-  cache.set(key, { data, ts: Date.now() });
+  const existing = inFlight.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+
+  const promise = fetcher()
+    .then((data) => {
+      cache.set(key, data);
+      inFlight.delete(key);
+      return data;
+    })
+    .catch((err) => {
+      inFlight.delete(key);
+      throw err;
+    });
+  inFlight.set(key, promise);
+  return promise;
 }
 
 /** Xóa cache (gọi sau khi admin sửa data nếu cần). */
 export function clearApiCache(): void {
   cache.clear();
+  inFlight.clear();
 }
 
 // ========== Home API ==========
@@ -104,62 +112,53 @@ export const getHomePageData = async (
   limit = 10,
 ): Promise<HomePageResponse> => {
   const key = `home:${limit}`;
-  const cached = getCached<HomePageResponse>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<HomePageResponse>>(
-    `/api/public/home?limit=${limit}`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(key, async () => {
+    const response = await api.get<ApiResponse<HomePageResponse>>(
+      `/api/public/home?limit=${limit}`,
+    );
+    const data = response.data.data;
+    // Đồng bộ vào cache con - tránh gọi lại provinces, blogPosts, videos
+    if (data.provinces?.length) cache.set("provinces", data.provinces);
+    if (data.blogPosts?.length) cache.set("blogPosts", data.blogPosts);
+    if (data.videos?.length) cache.set("videos", data.videos);
+    return data;
+  });
 };
 
 // ========== Provinces API ==========
 export const getProvinces = async (): Promise<Province[]> => {
-  const key = "provinces";
-  const cached = getCached<Province[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<Province[]>>(
-    "/api/provinces/public",
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch("provinces", async () => {
+    const response = await api.get<ApiResponse<Province[]>>(
+      "/api/provinces/public",
+    );
+    return response.data.data;
+  });
 };
 
 export const getProvinceById = async (id: number): Promise<Province> => {
-  const key = `province:id:${id}`;
-  const cached = getCached<Province>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<Province>>(
-    `/api/provinces/public/${id}`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`province:id:${id}`, async () => {
+    const response = await api.get<ApiResponse<Province>>(
+      `/api/provinces/public/${id}`,
+    );
+    return response.data.data;
+  });
 };
 
 export const getProvinceBySlug = async (slug: string): Promise<Province> => {
-  const key = `province:slug:${slug}`;
-  const cached = getCached<Province>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<Province>>(
-    `/api/provinces/public/slug/${slug}`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`province:slug:${slug}`, async () => {
+    const response = await api.get<ApiResponse<Province>>(
+      `/api/provinces/public/slug/${slug}`,
+    );
+    return response.data.data;
+  });
 };
 
 // ========== Tours API ==========
 export const getTours = async (): Promise<Tour[]> => {
-  const key = "tours";
-  const cached = getCached<Tour[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<Tour[]>>("/api/tours/public");
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch("tours", async () => {
+    const response = await api.get<ApiResponse<Tour[]>>("/api/tours/public");
+    return response.data.data;
+  });
 };
 
 type PublicTourResponse = {
@@ -239,244 +238,193 @@ function normalizeTour(raw: Record<string, unknown>): Tour {
 }
 
 export const getPublicTours = async (): Promise<Tour[]> => {
-  const key = "publicTours";
-  const cached = getCached<Tour[]>(key);
-  if (cached !== undefined) return cached;
-  const response =
-    await api.get<ApiResponse<PublicTourResponse[]>>("/api/tours/public");
-  const raw = response.data.data ?? [];
-  const data = raw.map((item) => ({
-    id: item.id,
-    provinceId: item.province?.id ?? 0,
-    provinceName: item.province?.name,
-    title: item.title,
-    slug: item.slug,
-    description: item.description,
-    bestSeason: item.bestSeason,
-    transportation: item.transportation,
-    culturalTips: item.culturalTips,
-    durationHours: item.durationHours,
-    maxParticipants: item.maxParticipants ?? 0,
-    price: item.price,
-    thumbnailUrl: item.thumbnailUrl,
-    images: parseTourImages(item.images),
-    artisanId: item.artisan?.id,
-    artisanName: item.artisan?.fullName,
-    averageRating: item.averageRating ?? 0,
-    totalReviews: 0,
-    totalBookings: item.totalBookings,
-    createdAt: item.createdAt ?? "",
-    updatedAt: item.createdAt ?? "",
-  }));
-  setCached(key, data);
-  return data;
+  return cachedFetch("publicTours", async () => {
+    const response =
+      await api.get<ApiResponse<PublicTourResponse[]>>("/api/tours/public");
+    const raw = response.data.data ?? [];
+    return raw.map((item) => ({
+      id: item.id,
+      provinceId: item.province?.id ?? 0,
+      provinceName: item.province?.name,
+      title: item.title,
+      slug: item.slug,
+      description: item.description,
+      bestSeason: item.bestSeason,
+      transportation: item.transportation,
+      culturalTips: item.culturalTips,
+      durationHours: item.durationHours,
+      maxParticipants: item.maxParticipants ?? 0,
+      price: item.price,
+      thumbnailUrl: item.thumbnailUrl,
+      images: parseTourImages(item.images),
+      artisanId: item.artisan?.id,
+      artisanName: item.artisan?.fullName,
+      averageRating: item.averageRating ?? 0,
+      totalReviews: 0,
+      totalBookings: item.totalBookings,
+      createdAt: item.createdAt ?? "",
+      updatedAt: item.createdAt ?? "",
+    }));
+  });
 };
 
 export const getTourById = async (id: number): Promise<Tour> => {
-  const key = `tour:${id}`;
-  const cached = getCached<Tour>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<Record<string, unknown>>>(
-    `/api/tours/public/${id}`,
-  );
-  const raw = response.data.data ?? {};
-  const data = normalizeTour(raw);
-  setCached(key, data);
-  return data;
+  return cachedFetch(`tour:${id}`, async () => {
+    const response = await api.get<ApiResponse<Record<string, unknown>>>(
+      `/api/tours/public/${id}`,
+    );
+    const raw = response.data.data ?? {};
+    return normalizeTour(raw);
+  });
 };
 
 export const getToursByProvince = async (
   provinceId: number,
 ): Promise<Tour[]> => {
-  const key = `tours:province:${provinceId}`;
-  const cached = getCached<Tour[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<
-    ApiResponse<Array<Record<string, unknown>>>
-  >(`/api/tours/public/province/${provinceId}`);
-  const rawList = response.data.data ?? [];
-  const data = rawList.map((r) => normalizeTour(r));
-  setCached(key, data);
-  return data;
+  return cachedFetch(`tours:province:${provinceId}`, async () => {
+    const response = await api.get<
+      ApiResponse<Array<Record<string, unknown>>>
+    >(`/api/tours/public/province/${provinceId}`);
+    const rawList = response.data.data ?? [];
+    return rawList.map((r) => normalizeTour(r));
+  });
 };
 
 // ========== Tour Highlights & Culture Items (per tour) ==========
 export const getTourHighlights = async (
   tourId: number,
 ): Promise<CultureItem[]> => {
-  const key = `tour:${tourId}:highlights`;
-  const cached = getCached<CultureItem[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<CultureItem[]>>(
-    `/api/tours/public/${tourId}/highlights`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`tour:${tourId}:highlights`, async () => {
+    const response = await api.get<ApiResponse<CultureItem[]>>(
+      `/api/tours/public/${tourId}/highlights`,
+    );
+    return response.data.data;
+  });
 };
 
 export const getTourCultureItems = async (
   tourId: number,
 ): Promise<CultureItem[]> => {
-  const key = `tour:${tourId}:cultureItems`;
-  const cached = getCached<CultureItem[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<CultureItem[]>>(
-    `/api/tours/public/${tourId}/culture-items`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`tour:${tourId}:cultureItems`, async () => {
+    const response = await api.get<ApiResponse<CultureItem[]>>(
+      `/api/tours/public/${tourId}/culture-items`,
+    );
+    return response.data.data;
+  });
 };
 
 // ========== Reviews API ==========
 export const getTourReviews = async (tourId: number): Promise<Review[]> => {
-  const key = `reviews:tour:${tourId}`;
-  const cached = getCached<Review[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<Review[]>>(
-    `/api/reviews/tour/${tourId}`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`reviews:tour:${tourId}`, async () => {
+    const response = await api.get<ApiResponse<Review[]>>(
+      `/api/reviews/tour/${tourId}`,
+    );
+    return response.data.data;
+  });
 };
 
 // ========== Culture Items API ==========
 export const getCultureItems = async (): Promise<CultureItem[]> => {
-  const key = "cultureItems";
-  const cached = getCached<CultureItem[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<CultureItem[]>>(
-    "/api/culture-items/public",
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch("cultureItems", async () => {
+    const response = await api.get<ApiResponse<CultureItem[]>>(
+      "/api/culture-items/public",
+    );
+    return response.data.data;
+  });
 };
 
 export const getCultureItemById = async (id: number): Promise<CultureItem> => {
-  const key = `cultureItem:${id}`;
-  const cached = getCached<CultureItem>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<CultureItem>>(
-    `/api/culture-items/public/${id}`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`cultureItem:${id}`, async () => {
+    const response = await api.get<ApiResponse<CultureItem>>(
+      `/api/culture-items/public/${id}`,
+    );
+    return response.data.data;
+  });
 };
 
 export const getCultureItemsByProvince = async (
   provinceId: number,
 ): Promise<CultureItem[]> => {
-  const key = `cultureItems:province:${provinceId}`;
-  const cached = getCached<CultureItem[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<CultureItem[]>>(
-    `/api/culture-items/public/province/${provinceId}`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`cultureItems:province:${provinceId}`, async () => {
+    const response = await api.get<ApiResponse<CultureItem[]>>(
+      `/api/culture-items/public/province/${provinceId}`,
+    );
+    return response.data.data;
+  });
 };
 
 // ========== Artisans API ==========
 export const getArtisans = async (): Promise<Artisan[]> => {
-  const key = "artisans";
-  const cached = getCached<Artisan[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<Artisan[]>>(
-    "/api/artisans/public",
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch("artisans", async () => {
+    const response = await api.get<ApiResponse<Artisan[]>>(
+      "/api/artisans/public",
+    );
+    return response.data.data;
+  });
 };
 
 export const getArtisanById = async (id: number): Promise<Artisan> => {
-  const key = `artisan:${id}`;
-  const cached = getCached<Artisan>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<Artisan>>(
-    `/api/artisans/public/${id}`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`artisan:${id}`, async () => {
+    const response = await api.get<ApiResponse<Artisan>>(
+      `/api/artisans/public/${id}`,
+    );
+    return response.data.data;
+  });
 };
 
 // ========== Blog Posts API ==========
 export const getBlogPosts = async (): Promise<BlogPost[]> => {
-  const key = "blogPosts";
-  const cached = getCached<BlogPost[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<BlogPost[]>>(
-    "/api/blog-posts/public",
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch("blogPosts", async () => {
+    const response = await api.get<ApiResponse<BlogPost[]>>(
+      "/api/blog-posts/public",
+    );
+    return response.data.data;
+  });
 };
 
 export const getBlogPostById = async (id: number): Promise<BlogPost> => {
-  const key = `blogPost:${id}`;
-  const cached = getCached<BlogPost>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<BlogPost>>(
-    `/api/blog-posts/public/${id}`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`blogPost:${id}`, async () => {
+    const response = await api.get<ApiResponse<BlogPost>>(
+      `/api/blog-posts/public/${id}`,
+    );
+    return response.data.data;
+  });
 };
 
 // ========== Videos API ==========
 export const getVideos = async (): Promise<Video[]> => {
-  const key = "videos";
-  const cached = getCached<Video[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<Video[]>>("/api/videos/public");
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch("videos", async () => {
+    const response = await api.get<ApiResponse<Video[]>>("/api/videos/public");
+    return response.data.data;
+  });
 };
 
 export const getVideoById = async (id: number): Promise<Video> => {
-  const key = `video:${id}`;
-  const cached = getCached<Video>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<Video>>(
-    `/api/videos/public/${id}`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`video:${id}`, async () => {
+    const response = await api.get<ApiResponse<Video>>(
+      `/api/videos/public/${id}`,
+    );
+    return response.data.data;
+  });
 };
 
 // ========== Learn (public) ==========
 export const getPublicLessons = async (): Promise<LearnModuleLesson[]> => {
-  const key = "learn:publicLessons";
-  const cached = getCached<LearnModuleLesson[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<LearnModuleLesson[]>>(
-    "/api/learn/public/lessons",
-  );
-  const data = response.data.data ?? [];
-  setCached(key, data);
-  return data;
+  return cachedFetch("learn:publicLessons", async () => {
+    const response = await api.get<ApiResponse<LearnModuleLesson[]>>(
+      "/api/learn/public/lessons",
+    );
+    return response.data.data ?? [];
+  });
 };
 
 export const getLearnCategories = async (): Promise<LearnCategory[]> => {
-  const key = "learn:categories";
-  const cached = getCached<LearnCategory[]>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<LearnCategory[]>>(
-    "/api/learn/public/categories",
-  );
-  const data = response.data.data ?? [];
-  setCached(key, data);
-  return data;
+  return cachedFetch("learn:categories", async () => {
+    const response = await api.get<ApiResponse<LearnCategory[]>>(
+      "/api/learn/public/categories",
+    );
+    return response.data.data ?? [];
+  });
 };
 
 export const getLearnModules = async (
@@ -485,51 +433,40 @@ export const getLearnModules = async (
   const key = categoryId
     ? `learn:modules:category:${categoryId}`
     : "learn:modules";
-  const cached = getCached<LearnModule[]>(key);
-  if (cached !== undefined) return cached;
-  const url = categoryId
-    ? `/api/learn/public/modules?categoryId=${categoryId}`
-    : "/api/learn/public/modules";
-  const response = await api.get<ApiResponse<LearnModule[]>>(url);
-  const data = response.data.data ?? [];
-  setCached(key, data);
-  return data;
+  return cachedFetch(key, async () => {
+    const url = categoryId
+      ? `/api/learn/public/modules?categoryId=${categoryId}`
+      : "/api/learn/public/modules";
+    const response = await api.get<ApiResponse<LearnModule[]>>(url);
+    return response.data.data ?? [];
+  });
 };
 
 export const getModuleById = async (id: number): Promise<LearnModule> => {
-  const key = `learn:module:${id}`;
-  const cached = getCached<LearnModule>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<LearnModule>>(
-    `/api/learn/public/modules/${id}`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`learn:module:${id}`, async () => {
+    const response = await api.get<ApiResponse<LearnModule>>(
+      `/api/learn/public/modules/${id}`,
+    );
+    return response.data.data;
+  });
 };
 
 export const getLessonById = async (id: number): Promise<LearnLesson> => {
-  const key = `learn:lesson:${id}`;
-  const cached = getCached<LearnLesson>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<LearnLesson>>(
-    `/api/learn/public/lessons/${id}`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`learn:lesson:${id}`, async () => {
+    const response = await api.get<ApiResponse<LearnLesson>>(
+      `/api/learn/public/lessons/${id}`,
+    );
+    return response.data.data;
+  });
 };
 
 export const getQuizById = async (id: number): Promise<LearnQuiz> => {
-  const key = `learn:quiz:${id}`;
-  const cached = getCached<LearnQuiz>(key);
-  if (cached !== undefined) return cached;
-  const response = await api.get<ApiResponse<LearnQuiz>>(
-    `/api/learn/public/quizzes/${id}`,
-  );
-  const data = response.data.data;
-  setCached(key, data);
-  return data;
+  return cachedFetch(`learn:quiz:${id}`, async () => {
+    const response = await api.get<ApiResponse<LearnQuiz>>(
+      `/api/learn/public/quizzes/${id}`,
+    );
+    return response.data.data;
+  });
 };
 
 // ========== Learn user stats (requires auth) ==========
@@ -559,6 +496,50 @@ export const getLearnUserStats = async (): Promise<LearnUserStats | null> => {
   } catch {
     return null;
   }
+};
+
+// ========== AI Chat API ==========
+export interface AIChatResponse {
+  success: boolean;
+  code: number;
+  message: string;
+  data: { reply: string };
+  errors?: object;
+  timestamp: string;
+}
+
+export const sendAIChatMessage = async (content: string): Promise<string> => {
+  const response = await api.post<AIChatResponse>("/api/ai-chat/messages", {
+    content,
+  });
+  const data = response.data.data;
+  if (!data?.reply) throw new Error("Không nhận được phản hồi từ AI.");
+  return data.reply;
+};
+
+// ========== Leads API (public, no auth) ==========
+export interface LeadApiResponse {
+  success: boolean;
+  code: number;
+  message: string;
+  data: Lead;
+  errors?: object;
+  timestamp: string;
+}
+
+export const submitLead = async (payload: LeadRequest): Promise<Lead> => {
+  const body: Record<string, unknown> = {
+    name: payload.name,
+    email: payload.email,
+    phone: payload.phone,
+    message: payload.message ?? "",
+    source: "WEBSITE",
+  };
+  if (payload.tourId != null && payload.tourId > 0) {
+    body.tourId = payload.tourId;
+  }
+  const response = await api.post<LeadApiResponse>("/api/leads", body);
+  return response.data.data;
 };
 
 export default api;

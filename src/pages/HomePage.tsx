@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react';
 import {
     HeroSection,
     MapSection,
+    WhereToNextSection,
     TourExperienceSection,
     QuickLearnSection,
+    InspirationSection,
     TestimonialsSection,
+    LeadFormSection,
 } from '../components/home';
 import { getHomePageData } from '../services/api';
 import type { HomePageResponse } from '../types';
@@ -82,9 +85,12 @@ export default function HomePage() {
 
             <HeroSection />
             <MapSection provinces={data.provinces} />
+            <WhereToNextSection provinces={data.provinces} />
             <TourExperienceSection tours={data.featuredTours} />
-            <QuickLearnSection />
+            <QuickLearnSection blogPosts={data.blogPosts} videos={data.videos} />
+            <InspirationSection />
             <TestimonialsSection testimonials={data.userMemories} />
+            <LeadFormSection />
         </main>
     );
 }

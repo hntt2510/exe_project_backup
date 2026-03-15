@@ -12,6 +12,7 @@
   min-height: 60vh;
   gap: $spacing-md;
   color: $color-text-secondary;
+  padding: $spacing-2xl;
 
   &__spinner {
     width: 48px;
@@ -50,7 +51,7 @@
 
 .blog-detail {
   min-height: 100vh;
-  background: $color-white;
+  background: $color-gray-50;
 }
 
 // Hero banner
@@ -113,7 +114,7 @@
   &__content {
     position: relative;
     z-index: 1;
-    max-width: 800px;
+    max-width: 900px;
     padding: $spacing-3xl $spacing-2xl;
 
     @media (max-width: $breakpoint-sm) {
@@ -148,43 +149,42 @@
   }
 }
 
-// Article body
-.blog-detail-body {
-  max-width: 720px;
+// Main layout: content + sidebar
+.blog-detail-body-wrap {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: $spacing-2xl;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: $spacing-3xl $spacing-lg;
+  padding: $spacing-2xl $spacing-lg $spacing-4xl;
 
-  @media (max-width: $breakpoint-sm) {
-    padding: $spacing-2xl $spacing-md;
+  @media (max-width: $breakpoint-lg) {
+    grid-template-columns: 1fr;
   }
 
-  &__content {
-    font-family: 'Afacad', 'Be Vietnam Pro', sans-serif;
-    font-size: $font-size-base;
-    line-height: 1.85;
-    color: $color-text-secondary;
-    white-space: pre-wrap;
+  @media (max-width: $breakpoint-sm) {
+    padding: $spacing-xl $spacing-md $spacing-3xl;
+  }
+}
 
-    p {
-      margin: 0 0 $spacing-md;
-    }
+// Article body
+.blog-detail-body {
+  min-width: 0;
+  background: $color-white;
+  border-radius: $radius-xl;
+  padding: $spacing-2xl $spacing-3xl;
+  box-shadow: $shadow-sm;
+  border: 1px solid $color-gray-200;
 
-    p:last-child {
-      margin-bottom: 0;
-    }
-
-    img {
-      max-width: 100%;
-      height: auto;
-      border-radius: $radius-md;
-      margin: $spacing-md 0;
-    }
+  @media (max-width: $breakpoint-sm) {
+    padding: $spacing-xl $spacing-lg;
   }
 
   &__breadcrumb {
     display: flex;
     align-items: center;
-    gap: $spacing-sm;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
     font-size: $font-size-sm;
     color: $color-gray-500;
     margin-bottom: $spacing-xl;
@@ -203,5 +203,205 @@
     span {
       color: $color-gray-400;
     }
+
+    &-current {
+      color: $color-gray-600 !important;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      @media (min-width: $breakpoint-md) {
+        max-width: 400px;
+      }
+    }
+  }
+
+  // Prose: styling cho nội dung HTML
+  &__content.prose {
+    font-family: 'Afacad', 'Be Vietnam Pro', sans-serif;
+    font-size: $font-size-base;
+    line-height: 1.85;
+    color: $color-text-secondary;
+
+    // Heading
+    h1, h2, h3, h4 {
+      color: $color-primary;
+      font-weight: $font-weight-bold;
+      margin: $spacing-xl 0 $spacing-md;
+      line-height: 1.35;
+    }
+
+    h1 { font-size: $font-size-2xl; }
+    h2 { font-size: $font-size-xl; }
+    h3 { font-size: $font-size-lg; }
+    h4 { font-size: $font-size-base; }
+
+    h1:first-child, h2:first-child, h3:first-child, h4:first-child {
+      margin-top: 0;
+    }
+
+    // Paragraph
+    p {
+      margin: 0 0 $spacing-md;
+      color: $color-gray-700;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    // Images trong content
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: $radius-md;
+      margin: $spacing-md 0;
+      box-shadow: $shadow-sm;
+    }
+
+    // Lists
+    ul, ol {
+      margin: 0 0 $spacing-md;
+      padding-left: 1.5em;
+      color: $color-gray-700;
+    }
+
+    li {
+      margin-bottom: $spacing-xs;
+    }
+
+    // Links
+    a {
+      color: $color-primary;
+      text-decoration: underline;
+      transition: color $transition-base;
+
+      &:hover {
+        color: $color-primary-hover;
+      }
+    }
+
+    // Blockquote
+    blockquote {
+      margin: $spacing-lg 0;
+      padding: $spacing-md $spacing-lg;
+      border-left: 4px solid $color-primary;
+      background: $color-red-50;
+      color: $color-gray-700;
+      font-style: italic;
+      border-radius: 0 $radius-md $radius-md 0;
+    }
+  }
+
+  // Gallery
+  &__gallery {
+    margin-top: $spacing-2xl;
+    padding-top: $spacing-2xl;
+    border-top: 1px solid $color-gray-200;
+  }
+
+  &__gallery-title {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $color-primary;
+    margin: 0 0 $spacing-lg;
+  }
+
+  &__gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: $spacing-md;
+  }
+
+  &__gallery-item {
+    aspect-ratio: 4/3;
+    border-radius: $radius-md;
+    overflow: hidden;
+    background: $color-gray-100;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform $transition-base;
+    }
+
+    &:hover img {
+      transform: scale(1.05);
+    }
+  }
+}
+
+// Sidebar
+.blog-detail-sidebar {
+  @media (max-width: $breakpoint-lg) {
+    order: -1;
+  }
+}
+
+.blog-detail-sidebar__card {
+  background: $color-white;
+  border-radius: $radius-xl;
+  padding: $spacing-xl;
+  box-shadow: $shadow-sm;
+  border: 1px solid $color-gray-200;
+  position: sticky;
+  top: calc(var(--navbar-h, 88px) + $spacing-lg);
+
+  @media (max-width: $breakpoint-lg) {
+    position: static;
+  }
+}
+
+.blog-detail-sidebar__title {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+  margin: 0 0 $spacing-sm;
+}
+
+.blog-detail-sidebar__region {
+  font-size: $font-size-sm;
+  color: $color-gray-500;
+  margin: 0 0 $spacing-md;
+}
+
+.blog-detail-sidebar__desc {
+  font-size: $font-size-sm;
+  color: $color-gray-700;
+  line-height: 1.6;
+  margin: 0 0 $spacing-md;
+}
+
+.blog-detail-sidebar__meta {
+  font-size: $font-size-sm;
+  color: $color-gray-600;
+  margin-bottom: $spacing-sm;
+  line-height: 1.5;
+
+  strong {
+    color: $color-gray-900;
+    display: inline-block;
+    min-width: 90px;
+  }
+}
+
+.blog-detail-sidebar__tip {
+  font-size: $font-size-sm;
+  color: $color-gray-700;
+  margin-top: $spacing-md;
+  padding: $spacing-sm;
+  background: $color-red-50;
+  border-radius: $radius-md;
+  border-left: 3px solid $color-primary;
+
+  strong {
+    color: $color-primary;
+    display: block;
+    margin-bottom: 4px;
   }
 }

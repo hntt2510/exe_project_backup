@@ -1,11 +1,14 @@
 // ============================================
-// Hero Section (Slider) Component Styles
+// Hero Section - Full-width Carousel (ref: image-slider-html-css-javascript)
+// Layout: Full viewport background | Left overlay with content | Bottom thumbnails
 // ============================================
 
 @use '../variables';
 @use '../mixins';
 
-// Custom Font for Title
+$anim-duration: 0.4s;
+$content-width: 30%; // 3/10 bức ảnh
+
 @font-face {
   font-family: 'iCiel Lodestone';
   src: url('../../assets/iCielBCLodestone-Regular.ttf') format('truetype');
@@ -14,7 +17,6 @@
   font-display: swap;
 }
 
-// Custom Font for Regular Text
 @font-face {
   font-family: 'Afacad';
   src: url('../../assets/Afacad-VariableFont_wght.ttf') format('truetype');
@@ -23,366 +25,340 @@
   font-display: swap;
 }
 
-// Custom Font for Special Text (Italic)
-@font-face {
-  font-family: 'Afacad Italic';
-  src: url('../../assets/Afacad-Italic-VariableFont_wght.ttf') format('truetype');
-  font-weight: 100 900;
-  font-style: italic;
-  font-display: swap;
+@keyframes hero-progress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes hero-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .hero-section {
   position: relative;
-  height: 600px;
+  width: 100%;
+  min-height: 100vh;
   overflow: hidden;
+  background-color: #1a1a1a;
 
   @include mixins.respond-to(md) {
-    height: 700px;
+    min-height: 100vh;
   }
 
-  @include mixins.respond-to(lg) {
+  // Carousel container - full viewport background
+  &__carousel {
+    position: relative;
+    width: 100%;
     height: 100vh;
+    min-height: 600px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
   }
 
-  // Slider Images
-  &__slide {
+  // Progress bar (time running) - ref: .carousel .timeRunning
+  &__progress {
     position: absolute;
-    inset: 0;
-    transition: all 1000ms ease-in-out;
-
-    &--active {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    &--inactive {
-      opacity: 0;
-      transform: scale(1.1);
-    }
-
-    &-image {
-      width: 100%;
-      height: 100%;
-      background-size: cover;
-      background-position: center;
-      transition: transform 10000ms ease-linear;
-
-      &--active {
-        transform: scale(1.1);
-      }
-    }
+    left: 0;
+    top: 0;
+    z-index: 100;
+    width: 0%;
+    height: 4px;
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    pointer-events: none;
+    animation: hero-progress 7s linear 1 forwards;
   }
 
-  // Gradient Overlays
-  &__overlay {
+  // Chữ in trực tiếp lên ảnh - căn giữa hơn, không lệch trái quá
+  &__content {
     position: absolute;
-    inset: 0;
+    top: 50%;
+    left: 12%;
+    transform: translateY(-50%);
+    width: $content-width;
+    max-width: 420px;
+    padding: 2rem 3rem 2rem 0;
     z-index: 10;
 
-    &--top {
-      background: linear-gradient(
-        to bottom right,
-        rgba(0, 0, 0, 0.6),
-        rgba(0, 0, 0, 0.4),
-        transparent
-      );
+    @include mixins.respond-to(md) {
+      left: 15%;
+      padding: 2.5rem 3rem 2.5rem 0;
     }
 
-    &--bottom {
-      background: linear-gradient(
-        to top,
-        rgba(0, 0, 0, 0.8),
-        transparent,
-        transparent
-      );
+    @media (max-width: 767px) {
+      width: 100%;
+      max-width: none;
+      left: 1.5rem;
+      padding: 2rem 1.5rem 2rem 0;
+      top: auto;
+      bottom: 0;
+      transform: none;
+      padding-bottom: 12rem;
     }
   }
 
-  // Content
-  &__content {
-    position: relative;
-    height: 100%;
-    z-index: 20;
-    display: flex;
-    align-items: center;
+  &__brand {
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: rgba(255, 255, 255, 0.9);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 0, 0, 0.3);
   }
 
-  &__container {
-    width: 100%;
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 0 40px;
+  &__heading {
+    font-family: 'iCiel Lodestone', 'Be Vietnam Pro', sans-serif;
+    font-size: 2rem;
+    font-weight: normal;
+    color: #fff;
+    line-height: 1.2;
+    margin: 0 0 1rem;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 24px rgba(0, 0, 0, 0.3);
 
     @include mixins.respond-to(md) {
-      padding: 0 64px;
+      font-size: 2.5rem;
     }
 
     @include mixins.respond-to(lg) {
-      padding: 0 96px;
+      font-size: 3.25rem;
     }
   }
 
-  &__wrapper {
-    max-width: 768px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    padding: 40px 0;
+  &__heading-accent {
+    color: #f59e0b;
+    display: block;
+    margin-top: 0.25rem;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 24px rgba(0, 0, 0, 0.3);
+  }
+
+  &__description {
+    font-family: 'Afacad', 'Be Vietnam Pro', sans-serif;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.95);
+    line-height: 1.6;
+    margin: 0 0 1.5rem;
+    max-width: 380px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 0, 0, 0.3);
 
     @include mixins.respond-to(md) {
-      gap: 32px;
+      font-size: 1.1rem;
+    }
+
+    @media (max-width: 767px) {
+      max-width: none;
     }
   }
 
-  // Slide Number Indicator
-  &__slide-number {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
-
-    &-line {
-      height: 1px;
-      width: 64px;
-      background: rgba(255, 255, 255, 0.4);
-    }
-
-    &-text {
-      color: rgba(255, 255, 255, 0.6);
-      font-size: 14px;
-      font-weight: 500;
-      padding: 0 12px;
-    }
-  }
-
-  // Title Section
-  &__title-section {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    padding: 0 12px;
-
-    &-subtitle {
-      font-family: 'Afacad Italic', 'Be Vietnam Pro', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      color: rgba(255, 255, 255, 0.8);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 0 4px;
-
-      @include mixins.respond-to(md) {
-        font-size: 16px;
-      }
-    }
-
-    &-main {
-      font-family: 'iCiel Lodestone', 'Be Vietnam Pro', sans-serif;
-      font-size: 36px;
-      font-weight: normal;
-      color: white;
-      line-height: 1.2;
-      padding: 0 8px;
-
-      @include mixins.respond-to(md) {
-        font-size: 60px;
-      }
-
-      @include mixins.respond-to(lg) {
-        font-size: 72px;
-      }
-
-      &-highlight {
-        color: #ffd700;
-        position: relative;
-
-        &::after {
-          content: '';
-          position: absolute;
-          bottom: -8px;
-          left: 0;
-          width: 100%;
-          height: 4px;
-          background: rgba(255, 215, 0, 0.3);
-        }
-      }
-    }
-
-    &-description {
-      font-family: 'Afacad', 'Be Vietnam Pro', sans-serif;
-      font-size: 18px;
-      color: #e5e7eb;
-      line-height: 1.6;
-      max-width: 672px;
-      padding: 0 8px;
-
-      @include mixins.respond-to(md) {
-        font-size: 20px;
-      }
-    }
-  }
-
-  // Buttons
   &__buttons {
     display: flex;
-    flex-direction: column;
-    gap: 24px;
-    padding: 40px 48px 0;
-
-    @include mixins.respond-to(sm) {
-      flex-direction: row;
-    }
+    flex-wrap: wrap;
+    gap: 0.75rem;
   }
 
   &__button {
     font-family: 'Afacad', 'Be Vietnam Pro', sans-serif;
-    width: 300px;
-    height: 48px;
-    padding: 24px 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    border-radius: 9999px;
-    font-size: 20px;
-    font-weight: 700;
-    transition: all 300ms;
+    padding: 0.7rem 1.4rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
     border: 2px solid;
-    text-decoration: none;
 
     &--primary {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.2);
-      color: rgba(255, 255, 255, 0.7);
-      backdrop-filter: blur(4px);
+      background: #fff;
+      color: #1a1a1a;
+      border-color: transparent;
 
       &:hover {
-        background: #cc0000;
-        border-color: #cc0000;
-        color: white;
-        transform: scale(1.05);
+        background: #f59e0b;
+        border-color: #f59e0b;
+        color: #fff;
       }
     }
 
     &--secondary {
-      width: 250px;
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.2);
-      color: #ffd700;
-      backdrop-filter: blur(4px);
+      background: transparent;
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.9);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 
       &:hover {
-        background: #cc0000;
-        border-color: #cc0000;
-        color: white;
-        transform: scale(1.05);
+        background: rgba(255, 255, 255, 0.15);
       }
-    }
-
-    &-icon {
-      width: 28px;
-      height: 28px;
-      transition: transform 300ms;
-    }
-
-    &--primary:hover &-icon {
-      transform: translateX(4px);
     }
   }
 
-  // Slide Indicators
-  &__indicators {
-    position: absolute;
-    bottom: 48px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 30;
+  // Slider arrows - ref: .arrows
+  &__arrows {
     display: flex;
-    gap: 12px;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
   }
 
-  &__indicator {
-    border-radius: 9999px;
-    transition: all 500ms;
-    cursor: pointer;
+  &__arrow {
+    width: 44px;
+    height: 44px;
     border: none;
-    background: transparent;
-
-    &--active {
-      width: 48px;
-      height: 8px;
-      background: #ffd700;
-      box-shadow: 0 10px 15px -3px rgba(255, 215, 0, 0.5);
-    }
-
-    &--inactive {
-      width: 8px;
-      height: 8px;
-      background: rgba(255, 255, 255, 0.4);
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.6);
-      }
-    }
-  }
-
-  // Navigation Buttons
-  &__navigation {
-    position: absolute;
-    inset: 0;
-    z-index: 20;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 32px;
-    pointer-events: none;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
 
-    @include mixins.respond-to(md) {
-      padding: 0 48px;
-    }
-
-    &-button {
-      pointer-events: auto;
-      background: transparent;
-      border: none;
-      color: rgba(255, 255, 255, 0.3);
-      padding: 16px 20px;
-      transition: all 300ms;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      &:hover {
-        color: white;
-      }
-
-      &-icon {
-        width: 32px;
-        height: 32px;
-        transition: transform 300ms;
-      }
-
-      &--prev:hover &-icon {
-        transform: translateX(-4px);
-      }
-
-      &--next:hover &-icon {
-        transform: translateX(4px);
-      }
+    &:hover {
+      background: #f59e0b;
+      color: #fff;
     }
   }
 
-  // Decorative Elements
-  &__decoration {
+  // Cards ảnh bên phải, nút <> giữa phía dưới
+  &__thumbnails {
     position: absolute;
-    bottom: 0;
+    bottom: 3rem;
     left: 0;
     right: 0;
-    height: 128px;
-    background: linear-gradient(to top, white, transparent);
-    z-index: 0;
+    z-index: 10;
+    padding: 0 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1rem;
+
+    @media (max-width: 767px) {
+      bottom: 5rem;
+      padding: 0 0.5rem;
+      align-items: center;
+    }
+  }
+
+  &__thumbnails-list {
+    display: flex;
+    gap: 0.875rem;
+    overflow-x: auto;
+    padding: 0.5rem 0;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    flex-direction: row;
+    justify-content: flex-end;
+
+    &::-webkit-scrollbar {
+      height: 4px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 2px;
+    }
+  }
+
+  &__thumb-arrows {
+    display: flex;
+    gap: 0.5rem;
+    align-self: center;
+    justify-content: center;
+  }
+
+  // Card to hơn 1 xíu
+  &__thumb-item {
+    flex-shrink: 0;
+    width: 190px;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    scroll-snap-align: start;
+    border: 3px solid transparent;
+    transition: border-color $anim-duration, transform 0.2s;
+    background: rgba(0, 0, 0, 0.6);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+    &:hover {
+      transform: translateY(-2px);
+    }
+
+    &--active {
+      border-color: #f59e0b;
+    }
+
+    @include mixins.respond-to(md) {
+      width: 210px;
+    }
+  }
+
+  &__thumb-image {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background-size: cover;
+    background-position: center;
+    display: block;
+  }
+
+
+  &__thumb-arrow {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+
+    &:hover {
+      background: #f59e0b;
+    }
+  }
+
+  // Dots - mobile only
+  &__dots {
+    position: absolute;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 15;
+    display: flex;
+    gap: 0.5rem;
+
+    @include mixins.respond-to(lg) {
+      display: none;
+    }
+  }
+
+  &__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.2s, transform 0.2s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    &--active {
+      background: #f59e0b;
+      transform: scale(1.2);
+    }
   }
 }

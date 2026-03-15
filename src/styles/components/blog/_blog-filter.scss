@@ -1,0 +1,75 @@
+@use '../../variables' as *;
+
+.blog-filter {
+  background: $color-white;
+  border-radius: $radius-xl;
+  padding: $spacing-xl;
+  box-shadow: $shadow-sm;
+  margin-bottom: $spacing-2xl;
+  border: 1px solid $color-gray-200;
+
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-lg;
+    align-items: flex-end;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    min-width: 160px;
+  }
+
+  &__label {
+    font-size: $font-size-sm;
+    color: $color-gray-600;
+    margin-bottom: $spacing-sm;
+    font-weight: $font-weight-medium;
+  }
+
+  &__select {
+    height: 44px;
+    padding: 0 $spacing-md;
+    font-size: $font-size-base;
+    color: $color-gray-900;
+    background: $color-gray-50;
+    border: 1px solid $color-gray-200;
+    border-radius: $radius-md;
+    cursor: pointer;
+
+    &:focus {
+      outline: none;
+      border-color: $color-primary;
+    }
+  }
+
+  &__reset {
+    padding: 0 $spacing-lg;
+    height: 44px;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $color-gray-700;
+    background: $color-white;
+    border: 1px solid $color-gray-300;
+    border-radius: $radius-md;
+    cursor: pointer;
+    transition: all $transition-base;
+
+    &:hover {
+      border-color: $color-primary;
+      color: $color-primary;
+      background: $color-red-50;
+    }
+  }
+
+  &__summary {
+    margin-top: $spacing-md;
+    font-size: $font-size-sm;
+    color: $color-gray-600;
+
+    strong {
+      color: $color-primary;
+    }
+  }
+}

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Review } from '../../types';
@@ -109,7 +109,7 @@ export default function TestimonialsSection() {
   return (
     <section className="section-container testimonials">
       <div className="testimonials__container">
-        <h2 className="section-title">ĐÁNH GIÁ KHÁCH HÀNG</h2>
+        <h2 className="section-title">ĐÁNH GIÁ CỦA KHÁCH HÀNG</h2>
         <p className="section-subtitle">
           Những trải nghiệm tuyệt vời từ những du khách yêu thích Tây Nguyên
         </p>

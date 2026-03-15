@@ -14,9 +14,11 @@ import {
   type PaymentMethod,
   type Voucher,
 } from '../../services/paymentApi';
+import { getUserVouchers, type UserVoucher } from '../../services/profileApi';
 import type { Tour, Province } from '../../types';
 import type { ContactInfo } from '../tourBooking/ContactForm';
 import type { BookingDetailsData } from '../tourBooking/BookingDetails';
+import { setLoginRedirect } from '../../utils/loginRedirectCookie';
 import '../../styles/components/paymentMethodscss/_payment-page.scss';
 
 /** Retry wrapper — tự động retry khi gặp timeout/network error (Render cold start) */
@@ -93,6 +95,7 @@ export default function PaymentPage() {
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [voucherAnimating, setVoucherAnimating] = useState(false);
+  const [userVouchers, setUserVouchers] = useState<UserVoucher[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -124,6 +127,15 @@ export default function PaymentPage() {
       navigate(`/tours/${id}/booking`, { replace: true });
     }
   }, [loading, state, id, navigate]);
+
+  // Load user vouchers (khi đã đăng nhập) — hiển thị trong bước thanh toán
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return;
+    getUserVouchers()
+      .then((data) => setUserVouchers(data ?? []))
+      .catch(() => setUserVouchers([]));
+  }, []);
 
   // Voucher apply handler
   const handleApplyVoucher = async () => {
@@ -173,6 +185,26 @@ export default function PaymentPage() {
     setVoucherAnimating(false);
   };
 
+  const handleSelectUserVoucher = (uv: UserVoucher) => {
+    if (!tour) return;
+    const unitPrice = bookingDetails.schedulePrice ?? tour.price;
+    const totalPrice = bookingDetails.participants * unitPrice;
+    if (totalPrice < uv.minPurchase) {
+      setVoucherError(
+        `Đơn hàng tối thiểu ${uv.minPurchase.toLocaleString('vi-VN')}đ để áp dụng voucher này.`,
+      );
+      return;
+    }
+    if (!uv.isActive) {
+      setVoucherError('Voucher này không còn khả dụng.');
+      return;
+    }
+    setVoucherError(null);
+    setAppliedVoucher(uv as Voucher);
+    setVoucherAnimating(true);
+    setTimeout(() => setVoucherAnimating(false), 1200);
+  };
+
   const canSubmit = (): boolean => {
     if (!agreedToTerms) return false;
     // VNPay, MoMo, CASH — no extra fields needed, just agree to terms
@@ -187,6 +219,10 @@ export default function PaymentPage() {
     if (!token) {
       setErrorMsg('Bạn cần đăng nhập để thực hiện thanh toán.');
       setTimeout(() => {
+        setLoginRedirect({
+          path: location.pathname,
+          state: { contactInfo, bookingDetails },
+        });
         navigate('/login', {
           state: { from: location.pathname, contactInfo, bookingDetails },
         });
@@ -420,6 +456,39 @@ export default function PaymentPage() {
             {/* Voucher */}
             <div className="payment-page__voucher">
               <label className="payment-page__voucher-label">Mã giảm giá (Voucher)</label>
+              {/* Voucher từ profile — hiển thị khi đặt tour */}
+              {userVouchers.length > 0 && (
+                <div className="payment-page__voucher-mine">
+                  <p className="payment-page__voucher-mine-title">Voucher của bạn</p>
+                  <div className="payment-page__voucher-mine-list">
+                    {userVouchers
+                      .filter((v) => v.isActive)
+                      .map((v) => {
+                        const unitPrice = bookingDetails.schedulePrice ?? tour!.price;
+                        const totalPrice = bookingDetails.participants * unitPrice;
+                        const canUse = totalPrice >= v.minPurchase;
+                        const isSelected = appliedVoucher?.code === v.code;
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            className={`payment-page__voucher-mine-item ${isSelected ? 'payment-page__voucher-mine-item--selected' : ''} ${!canUse ? 'payment-page__voucher-mine-item--disabled' : ''}`}
+                            onClick={() => canUse && handleSelectUserVoucher(v)}
+                            disabled={!canUse}
+                          >
+                            <span className="payment-page__voucher-mine-code">{v.code}</span>
+                            <span className="payment-page__voucher-mine-desc">
+                              {v.discountType === 'PERCENTAGE'
+                                ? `Giảm ${v.discountValue}%`
+                                : `Giảm ${v.discountValue.toLocaleString('vi-VN')}đ`}
+                              {!canUse && ` — Đơn tối thiểu ${v.minPurchase.toLocaleString('vi-VN')}đ`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
               {appliedVoucher ? (
                 <div className="payment-page__voucher-applied">
                   <div className="payment-page__voucher-applied-info">
@@ -439,8 +508,12 @@ export default function PaymentPage() {
                   </button>
                 </div>
               ) : (
-                <div className="payment-page__voucher-input-row">
-                  <input
+                <>
+                  {userVouchers.length > 0 && (
+                    <p className="payment-page__voucher-or">Hoặc nhập mã khác</p>
+                  )}
+                  <div className="payment-page__voucher-input-row">
+                    <input
                     type="text"
                     className="payment-page__voucher-input"
                     placeholder="Nhập mã voucher"
@@ -461,6 +534,7 @@ export default function PaymentPage() {
                     {voucherLoading ? 'Đang kiểm tra...' : 'Áp dụng'}
                   </button>
                 </div>
+                </>
               )}
               {voucherError && (
                 <p className="payment-page__voucher-error">{voucherError}</p>

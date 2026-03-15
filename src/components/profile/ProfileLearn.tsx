@@ -1,13 +1,28 @@
-import { Award, BookOpen, TrendingUp, Flame, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { Award, BookOpen, TrendingUp, Flame, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { LearnStats, FeaturedCourse } from '../../services/profileApi';
 import '../../styles/components/profile/_profile-learn.scss';
 
+const COURSES_PER_PAGE = 3;
+
 interface ProfileLearnProps {
   stats: LearnStats | null;
+  savedCourses?: FeaturedCourse[];
 }
 
-export default function ProfileLearn({ stats }: ProfileLearnProps) {
+export default function ProfileLearn({ stats, savedCourses = [] }: ProfileLearnProps) {
+  // Chỉ hiển thị bài đã lưu từ API /api/learn/users/me/saved-lessons
+  const courses = savedCourses;
+  const [coursePage, setCoursePage] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(courses.length / COURSES_PER_PAGE));
+  const canPrev = coursePage > 0;
+  const canNext = coursePage < totalPages - 1;
+  const visibleCourses = courses.slice(
+    coursePage * COURSES_PER_PAGE,
+    coursePage * COURSES_PER_PAGE + COURSES_PER_PAGE,
+  );
+
   if (!stats) {
     return (
       <div className="profile-learn">
@@ -74,31 +89,73 @@ export default function ProfileLearn({ stats }: ProfileLearnProps) {
         </div>
       </div>
 
-      {/* Featured courses */}
-      {stats.featuredCourses.length > 0 && (
-        <div className="profile-learn__courses">
-          {stats.featuredCourses.map((course: FeaturedCourse) => (
-            <Link
-              key={course.id}
-              to={`/learn/${course.id}`}
-              className="profile-learn__course-card"
+      {/* Bài đã lưu - Carousel 3 bài với nút trái/phải */}
+      <div className="profile-learn__saved">
+        <h4 className="profile-learn__saved-title">Bài đã lưu</h4>
+        {courses.length > 0 ? (
+          <>
+            <div className="profile-learn__carousel">
+            <button
+              type="button"
+              className="profile-learn__carousel-btn profile-learn__carousel-btn--prev"
+              onClick={() => setCoursePage((p) => Math.max(0, p - 1))}
+              disabled={!canPrev}
+              aria-label="Xem trước"
             >
-              <img
-                src={course.thumbnailUrl}
-                alt={course.title}
-                className="profile-learn__course-img"
-              />
-              <h4 className="profile-learn__course-title">{course.title}</h4>
-              <span className="profile-learn__course-date">
-                {course.lessonsCount} bài học
-              </span>
-              <span className="profile-learn__course-link">
-                Xem lại bài giảng <ArrowRight size={12} />
-              </span>
-            </Link>
-          ))}
-        </div>
-      )}
+              <ChevronLeft size={24} />
+            </button>
+            <div className="profile-learn__courses">
+              {visibleCourses.map((course: FeaturedCourse) => (
+                <Link
+                  key={course.id}
+                  to={`/learn/${course.id}`}
+                  className="profile-learn__course-card"
+                >
+                  <img
+                    src={course.thumbnailUrl || ''}
+                    alt={course.title}
+                    className="profile-learn__course-img"
+                  />
+                  <h4 className="profile-learn__course-title">{course.title}</h4>
+                  <span className="profile-learn__course-date">
+                    {course.lessonsCount ?? 0} bài học
+                  </span>
+                  <span className="profile-learn__course-link">
+                    Xem lại bài giảng <ArrowRight size={12} />
+                  </span>
+                </Link>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="profile-learn__carousel-btn profile-learn__carousel-btn--next"
+              onClick={() => setCoursePage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={!canNext}
+              aria-label="Xem sau"
+            >
+              <ChevronRight size={24} />
+            </button>
+          </div>
+          {totalPages > 1 && (
+            <div className="profile-learn__carousel-dots">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={`profile-learn__carousel-dot ${i === coursePage ? 'profile-learn__carousel-dot--active' : ''}`}
+                  onClick={() => setCoursePage(i)}
+                  aria-label={`Trang ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
+          </>
+        ) : (
+          <p className="profile-learn__saved-empty">
+            Bạn chưa lưu bài nào. Nhấn nút &quot;Lưu để xem sau&quot; khi xem bài học để lưu.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

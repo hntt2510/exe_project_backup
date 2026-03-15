@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authLogin, startGoogleOAuth2Login, type LoginRequest } from "../services/authApi";
 import { message } from "antd";
 import { persistAuthSession } from "../utils/authSession";
+import { consumeLoginRedirect } from "../utils/loginRedirectCookie";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -100,6 +101,19 @@ const Login = () => {
       }
 
       message.success("Đăng nhập thành công!");
+
+      // Ưu tiên redirect về trang thanh toán (từ cookie) nếu có
+      const redirect = consumeLoginRedirect();
+      if (redirect?.path) {
+        navigate(redirect.path, {
+          replace: true,
+          state: redirect.state ? {
+            contactInfo: redirect.state.contactInfo,
+            bookingDetails: redirect.state.bookingDetails,
+          } : undefined,
+        });
+        return;
+      }
 
       // Chuyển hướng dựa trên role
       if (response.role === "ADMIN") {

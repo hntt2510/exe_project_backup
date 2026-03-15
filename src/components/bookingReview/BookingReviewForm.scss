@@ -1,0 +1,214 @@
+@use '../../styles/variables' as *;
+
+.booking-review-form {
+  max-width: 560px;
+  margin: 0 auto;
+
+  &__card {
+    padding: 2rem;
+    background: linear-gradient(180deg, #fff 0%, #fef9f9 100%);
+    border-radius: 1.25rem;
+    box-shadow: 0 8px 32px rgba(139, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(139, 0, 0, 0.08);
+  }
+
+  &__tour {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid $color-gray-200;
+  }
+
+  &__tour-title {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $color-text-primary;
+    margin: 0 0 0.5rem;
+  }
+
+  &__tour-meta {
+    font-size: $font-size-sm;
+    color: $color-gray-500;
+    margin: 0;
+  }
+
+  &__field {
+    margin-bottom: 1.5rem;
+  }
+
+  &__label {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+    margin-bottom: 0.5rem;
+  }
+
+  &__stars {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  &__star {
+    padding: 0.35rem;
+    border: none;
+    background: none;
+    color: $color-gray-300;
+    cursor: pointer;
+    transition: color 0.15s ease, transform 0.15s ease;
+
+    &:hover {
+      transform: scale(1.15);
+    }
+
+    &--active {
+      color: #fbbf24;
+    }
+  }
+
+  &__rating-hint {
+    font-size: $font-size-xs;
+    color: $color-gray-500;
+    margin: 0.25rem 0 0;
+  }
+
+  &__textarea {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    border: 1px solid $color-gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 100px;
+
+    &:focus {
+      outline: none;
+      border-color: $color-primary;
+      box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.12);
+    }
+
+    &::placeholder {
+      color: $color-gray-400;
+    }
+  }
+
+  &__char-count {
+    display: block;
+    font-size: $font-size-xs;
+    color: $color-gray-400;
+    margin-top: 0.25rem;
+    text-align: right;
+  }
+
+  // Image upload
+  &__images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  &__image-wrap {
+    position: relative;
+    width: 88px;
+    height: 88px;
+    border-radius: $radius-md;
+    overflow: hidden;
+    border: 1px solid $color-gray-200;
+  }
+
+  &__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &__image-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+  }
+
+  &__upload {
+    width: 88px;
+    height: 88px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed $color-gray-300;
+    border-radius: $radius-md;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: $color-primary;
+      background: $color-red-50;
+    }
+  }
+
+  &__upload-input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+  }
+
+  &__upload-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    color: $color-gray-500;
+    font-size: $font-size-xs;
+
+    svg {
+      color: $color-gray-400;
+    }
+  }
+
+  &__error {
+    padding: 0.75rem 1rem;
+    background: #fef2f2;
+    color: #991b1b;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    margin-bottom: 1rem;
+  }
+
+  &__submit {
+    width: 100%;
+    padding: 1rem 1.5rem;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: #fff;
+    background: linear-gradient(135deg, $color-primary 0%, $color-primary-hover 100%);
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+
+    &:hover:not(:disabled) {
+      opacity: 0.95;
+    }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+  }
+}

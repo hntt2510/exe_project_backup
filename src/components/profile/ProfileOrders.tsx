@@ -1,5 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Search, Eye, FileX, MessageCircle, X, Calendar, Clock, MapPin, Users, Mail, Phone, User as UserIcon, CreditCard, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Search, Eye, FileX, MessageCircle, X, Calendar, Clock, MapPin, Users, Mail, Phone,
+  User as UserIcon, CreditCard, Tag, ChevronLeft, ChevronRight, Star, Package, Sparkles, CheckCircle2,
+} from 'lucide-react';
 import type { UserBooking } from '../../services/profileApi';
 import '../../styles/components/profile/_profile-orders.scss';
 
@@ -8,6 +12,8 @@ interface ProfileOrdersProps {
 }
 
 const ITEMS_PER_PAGE = 10;
+
+type TabKey = 'all' | 'upcoming' | 'completed';
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
   PENDING: { label: 'Chờ xác nhận', cls: 'pending' },
@@ -59,24 +65,47 @@ function mapPaymentMethod(method: string | undefined): string {
   }
 }
 
-type FilterStatus = 'ALL' | 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+/** Tour sắp đi: trong vòng 3 ngày (hôm nay đến hôm nay + 3 ngày) */
+function isUpcomingWithin3Days(booking: UserBooking): boolean {
+  if (booking.status === 'CANCELLED') return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tourDate = new Date(booking.tourDate);
+  tourDate.setHours(0, 0, 0, 0);
+  const diff = Math.floor((tourDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  return diff >= 0 && diff <= 3;
+}
+
+/** Tour đã hoàn thành: đã qua ngày xuất phát + đã thanh toán */
+function isCompleted(booking: UserBooking): boolean {
+  if (booking.status === 'CANCELLED' || booking.paymentStatus !== 'PAID') return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tourDate = new Date(booking.tourDate);
+  tourDate.setHours(0, 0, 0, 0);
+  return today > tourDate;
+}
+
+/** Đủ điều kiện feedback: đã thanh toán + đã qua ngày xuất phát ít nhất 1 ngày */
+function isEligibleForFeedback(booking: UserBooking): boolean {
+  if (booking.paymentStatus !== 'PAID') return false;
+  return isCompleted(booking);
+}
 
 // ---------------------------------------------------------------------------
-// Ticket Modal – hiển thị giống e-ticket card
+// Ticket Modal
 // ---------------------------------------------------------------------------
-function TicketModal({ booking, onClose }: { booking: UserBooking; onClose: () => void }) {
+function TicketModal({ booking, onClose, onFeedback }: { booking: UserBooking; onClose: () => void; onFeedback?: (id: number) => void }) {
   const statusInfo = STATUS_MAP[booking.status] ?? { label: booking.status, cls: 'default' };
-  const paymentInfo = PAYMENT_STATUS_MAP[booking.paymentStatus] ?? { label: booking.paymentStatus, cls: 'default' };
+  const canFeedback = isEligibleForFeedback(booking);
 
   return (
     <div className="ticket-modal-overlay" onClick={onClose}>
       <div className="ticket-modal" onClick={(e) => e.stopPropagation()}>
-        {/* Close */}
         <button className="ticket-modal__close" onClick={onClose} aria-label="Đóng">
           <X size={20} />
         </button>
 
-        {/* Header */}
         <div className="ticket-modal__header">
           <div className="ticket-modal__header-info">
             <span className={`ticket-modal__badge ticket-modal__badge--${statusInfo.cls}`}>
@@ -86,22 +115,18 @@ function TicketModal({ booking, onClose }: { booking: UserBooking; onClose: () =
           </div>
         </div>
 
-        {/* Divider */}
         <div className="ticket-modal__divider">
           <div className="ticket-modal__divider-notch ticket-modal__divider-notch--left" />
           <div className="ticket-modal__divider-line" />
           <div className="ticket-modal__divider-notch ticket-modal__divider-notch--right" />
         </div>
 
-        {/* Body */}
         <div className="ticket-modal__body">
-          {/* Code */}
           <div className="ticket-modal__code-section">
             <span className="ticket-modal__code-label">Mã đặt tour</span>
             <span className="ticket-modal__code-value">{booking.bookingCode}</span>
           </div>
 
-          {/* Grid */}
           <div className="ticket-modal__grid">
             <div className="ticket-modal__field">
               <div className="ticket-modal__field-icon"><Calendar size={16} /></div>
@@ -133,7 +158,6 @@ function TicketModal({ booking, onClose }: { booking: UserBooking; onClose: () =
             </div>
           </div>
 
-          {/* Contact */}
           <div className="ticket-modal__section">
             <h4 className="ticket-modal__section-title">Thông tin liên hệ</h4>
             <div className="ticket-modal__info-rows">
@@ -155,7 +179,6 @@ function TicketModal({ booking, onClose }: { booking: UserBooking; onClose: () =
             </div>
           </div>
 
-          {/* Payment */}
           <div className="ticket-modal__section">
             <h4 className="ticket-modal__section-title">Thanh toán</h4>
             <div className="ticket-modal__info-rows">
@@ -167,8 +190,8 @@ function TicketModal({ booking, onClose }: { booking: UserBooking; onClose: () =
               <div className="ticket-modal__info-row">
                 <Tag size={14} />
                 <span className="ticket-modal__info-label">Trạng thái:</span>
-                <span className={`ticket-modal__info-value ticket-modal__payment--${paymentInfo.cls}`}>
-                  {paymentInfo.label}
+                <span className={`ticket-modal__info-value ticket-modal__payment--${PAYMENT_STATUS_MAP[booking.paymentStatus]?.cls ?? 'default'}`}>
+                  {PAYMENT_STATUS_MAP[booking.paymentStatus]?.label ?? booking.paymentStatus}
                 </span>
               </div>
               {booking.discountAmount > 0 && (
@@ -183,17 +206,27 @@ function TicketModal({ booking, onClose }: { booking: UserBooking; onClose: () =
             </div>
           </div>
 
-          {/* Total */}
           <div className="ticket-modal__total">
             <span>Tổng thanh toán</span>
             <strong>{formatPrice(booking.finalAmount)} VND</strong>
           </div>
 
-          {/* Note */}
           <div className="ticket-modal__note">
             <p>Vui lòng đến điểm hẹn đúng giờ và mang theo mã đặt tour để xác nhận.</p>
             <p>Mọi thắc mắc xin liên hệ hotline: <strong>1900 xxxx</strong></p>
           </div>
+
+          {canFeedback && onFeedback && (
+            <div className="ticket-modal__feedback-cta">
+              <button
+                type="button"
+                className="ticket-modal__feedback-btn"
+                onClick={() => { onClose(); onFeedback(booking.id); }}
+              >
+                <Star size={18} /> Đánh giá tour của bạn
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -201,25 +234,24 @@ function TicketModal({ booking, onClose }: { booking: UserBooking; onClose: () =
 }
 
 // ---------------------------------------------------------------------------
-// ProfileOrders – bảng booking + phân trang + modal ticket
+// ProfileOrders – Tabs + Table
 // ---------------------------------------------------------------------------
+const TABS: { key: TabKey; label: string; icon: React.ReactNode; filter: (b: UserBooking) => boolean }[] = [
+  { key: 'all', label: 'Tất cả', icon: <Package size={18} />, filter: (b) => b.status !== 'CANCELLED' },
+  { key: 'upcoming', label: 'Sắp đi (3 ngày)', icon: <Sparkles size={18} />, filter: isUpcomingWithin3Days },
+  { key: 'completed', label: 'Đã hoàn thành', icon: <CheckCircle2 size={18} />, filter: isCompleted },
+];
+
 export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
-  const [dateFilter, setDateFilter] = useState('');
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedBooking, setSelectedBooking] = useState<UserBooking | null>(null);
 
   const filtered = useMemo(() => {
-    let list = [...bookings];
-
-    if (statusFilter !== 'ALL') {
-      list = list.filter((b) => b.status === statusFilter);
-    }
-
-    if (dateFilter) {
-      list = list.filter((b) => b.tourDate.startsWith(dateFilter));
-    }
+    const tabFilter = TABS.find((t) => t.key === activeTab)?.filter ?? (() => true);
+    let list = bookings.filter(tabFilter);
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -233,13 +265,10 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
     return list.sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
-  }, [bookings, statusFilter, dateFilter, search]);
+  }, [bookings, activeTab, search]);
 
-  // Reset page when filters change
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
-  if (safePage !== currentPage) setCurrentPage(safePage);
-
   const paginatedItems = filtered.slice(
     (safePage - 1) * ITEMS_PER_PAGE,
     safePage * ITEMS_PER_PAGE,
@@ -250,7 +279,6 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Build page numbers to show (max 5 visible)
   const getPageNumbers = (): (number | '...')[] => {
     if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
     const pages: (number | '...')[] = [1];
@@ -263,32 +291,44 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
     return pages;
   };
 
+  const reviewableCount = useMemo(() => bookings.filter(isEligibleForFeedback).length, [bookings]);
+
   return (
     <div className="profile-orders">
       <h3 className="profile-orders__title">Đơn của tôi</h3>
 
-      {/* Filters */}
+      {/* Tabs */}
+      <div className="profile-orders__tabs">
+        {TABS.map((tab) => {
+          const count = tab.key === 'all'
+            ? bookings.filter((b) => b.status !== 'CANCELLED').length
+            : tab.key === 'upcoming'
+              ? bookings.filter(isUpcomingWithin3Days).length
+              : bookings.filter(isCompleted).length;
+          return (
+            <button
+              key={tab.key}
+              className={`profile-orders__tab ${activeTab === tab.key ? 'profile-orders__tab--active' : ''}`}
+              onClick={() => { setActiveTab(tab.key); setCurrentPage(1); }}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+              {count > 0 && <span className="profile-orders__tab-count">{count}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Review prompt banner - on completed tab */}
+      {activeTab === 'completed' && reviewableCount > 0 && (
+        <div className="profile-orders__review-banner">
+          <Star size={20} />
+          <span>Bạn có {reviewableCount} tour có thể đánh giá. Chia sẻ trải nghiệm để giúp cộng đồng!</span>
+        </div>
+      )}
+
+      {/* Search */}
       <div className="profile-orders__filters">
-        <select
-          className="profile-orders__select"
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value as FilterStatus); setCurrentPage(1); }}
-        >
-          <option value="ALL">Tất cả</option>
-          <option value="PENDING">Chờ xác nhận</option>
-          <option value="CONFIRMED">Đã xác nhận</option>
-          <option value="COMPLETED">Hoàn thành</option>
-          <option value="CANCELLED">Đã huỷ</option>
-        </select>
-
-        <input
-          type="date"
-          className="profile-orders__date-input"
-          value={dateFilter}
-          onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
-          placeholder="MM/DD/YYYY"
-        />
-
         <div className="profile-orders__search">
           <Search size={16} />
           <input
@@ -300,15 +340,17 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
         </div>
       </div>
 
-      {/* Result count */}
       <div className="profile-orders__result-info">
         Hiển thị {paginatedItems.length} / {filtered.length} đơn hàng
       </div>
 
-      {/* Table */}
       {filtered.length === 0 ? (
         <div className="profile-orders__empty">
-          <p>Không có đơn hàng nào.</p>
+          <p>
+            {activeTab === 'all' && 'Chưa có đơn hàng nào.'}
+            {activeTab === 'upcoming' && 'Không có tour nào khởi hành trong 3 ngày tới.'}
+            {activeTab === 'completed' && 'Chưa có tour nào đã hoàn thành.'}
+          </p>
         </div>
       ) : (
         <>
@@ -327,14 +369,9 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
               </thead>
               <tbody>
                 {paginatedItems.map((b) => {
-                  const statusInfo = STATUS_MAP[b.status] ?? {
-                    label: b.status,
-                    cls: 'default',
-                  };
-                  const paymentInfo = PAYMENT_STATUS_MAP[b.paymentStatus] ?? {
-                    label: b.paymentStatus,
-                    cls: 'default',
-                  };
+                  const statusInfo = STATUS_MAP[b.status] ?? { label: b.status, cls: 'default' };
+                  const paymentInfo = PAYMENT_STATUS_MAP[b.paymentStatus] ?? { label: b.paymentStatus, cls: 'default' };
+                  const canReview = isEligibleForFeedback(b);
 
                   return (
                     <tr key={b.id}>
@@ -342,9 +379,7 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
                       <td className="profile-orders__tour-name">{b.tourTitle}</td>
                       <td>{formatDate(b.tourDate)}</td>
                       <td>{b.numParticipants}</td>
-                      <td className="profile-orders__price">
-                        {formatPrice(b.finalAmount)} VND
-                      </td>
+                      <td className="profile-orders__price">{formatPrice(b.finalAmount)} VND</td>
                       <td>
                         <span className={`profile-orders__badge profile-orders__badge--${statusInfo.cls}`}>
                           {statusInfo.label}
@@ -361,6 +396,15 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
                         >
                           <Eye size={14} /> Xem ticket
                         </button>
+                        {canReview && (
+                          <button
+                            className="profile-orders__action profile-orders__action--feedback"
+                            title="Đánh giá tour"
+                            onClick={() => navigate(`/bookings/${b.id}/review`)}
+                          >
+                            <Star size={14} /> Đánh giá
+                          </button>
+                        )}
                         {b.status === 'PENDING' && (
                           <button className="profile-orders__action profile-orders__action--cancel" title="Tải hoá đơn">
                             <FileX size={14} /> Tải hoá đơn
@@ -377,7 +421,6 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
             </table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="profile-orders__pagination">
               <button
@@ -388,7 +431,6 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
               >
                 <ChevronLeft size={16} />
               </button>
-
               {getPageNumbers().map((p, i) =>
                 p === '...' ? (
                   <span key={`ellipsis-${i}`} className="profile-orders__page-ellipsis">…</span>
@@ -402,7 +444,6 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
                   </button>
                 ),
               )}
-
               <button
                 className="profile-orders__page-btn profile-orders__page-btn--nav"
                 disabled={safePage >= totalPages}
@@ -416,11 +457,11 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
         </>
       )}
 
-      {/* Ticket Modal */}
       {selectedBooking && (
         <TicketModal
           booking={selectedBooking}
           onClose={() => setSelectedBooking(null)}
+          onFeedback={(id) => { setSelectedBooking(null); navigate(`/bookings/${id}/review`); }}
         />
       )}
     </div>

@@ -32,26 +32,71 @@ export interface QuizResultResponse {
   canClaimVoucher?: boolean;
 }
 
+export interface LessonUserStatusResponse {
+  isLiked: boolean;
+  isSaved: boolean;
+  isCompleted: boolean;
+  progressPercent: number;
+  isFollowingArtisan: boolean;
+}
+
+/** Lấy trạng thái user với bài học - GET /api/learn/lessons/{id}/user-status */
+export async function getLessonUserStatus(lessonId: number): Promise<LessonUserStatusResponse> {
+  const res = await api.get<ApiResponse<LessonUserStatusResponse>>(`/api/learn/lessons/${lessonId}/user-status`);
+  return res.data.data!;
+}
+
+export interface ModuleUserProgressResponse {
+  completedLessonIds: number[];
+  completedCount: number;
+  totalLessons: number;
+  progressPercent: number;
+}
+
+/** Lấy tiến độ user trong module - GET /api/learn/modules/{id}/user-progress */
+export async function getModuleUserProgress(moduleId: number): Promise<ModuleUserProgressResponse> {
+  const res = await api.get<ApiResponse<ModuleUserProgressResponse>>(`/api/learn/modules/${moduleId}/user-progress`);
+  return res.data.data!;
+}
+
 /** Đánh dấu hoàn thành bài học - POST /api/learn/lessons/{id}/complete */
 export async function completeLesson(lessonId: number): Promise<void> {
   await api.post<ApiResponse<null>>(`/api/learn/lessons/${lessonId}/complete`);
 }
 
-/** Toggle like bài - POST/DELETE /api/learn/lessons/{id}/like (toggle qua POST) */
-export async function toggleLessonLike(lessonId: number): Promise<boolean> {
+/** Like bài - POST /api/learn/lessons/{id}/like — returns true nếu đã like */
+export async function likeLesson(lessonId: number): Promise<boolean> {
   const res = await api.post<ApiResponse<boolean>>(`/api/learn/lessons/${lessonId}/like`);
   return res.data.data ?? false;
 }
 
-/** Toggle lưu bài - POST /api/learn/lessons/{id}/save */
-export async function toggleLessonSave(lessonId: number): Promise<boolean> {
+/** Bỏ like bài - DELETE /api/learn/lessons/{id}/like */
+export async function unlikeLesson(lessonId: number): Promise<boolean> {
+  const res = await api.delete<ApiResponse<boolean>>(`/api/learn/lessons/${lessonId}/like`);
+  return res.data.data ?? false;
+}
+
+/** Lưu bài - POST /api/learn/lessons/{id}/save — returns true nếu đã lưu */
+export async function saveLesson(lessonId: number): Promise<boolean> {
   const res = await api.post<ApiResponse<boolean>>(`/api/learn/lessons/${lessonId}/save`);
   return res.data.data ?? false;
 }
 
-/** Toggle theo dõi nghệ nhân - POST /api/learn/artisans/{id}/follow */
-export async function toggleFollowArtisan(artisanId: number): Promise<boolean> {
+/** Bỏ lưu bài - DELETE /api/learn/lessons/{id}/save */
+export async function unsaveLesson(lessonId: number): Promise<boolean> {
+  const res = await api.delete<ApiResponse<boolean>>(`/api/learn/lessons/${lessonId}/save`);
+  return res.data.data ?? false;
+}
+
+/** Theo dõi nghệ nhân - POST /api/learn/artisans/{id}/follow — returns true nếu đang theo dõi */
+export async function followArtisan(artisanId: number): Promise<boolean> {
   const res = await api.post<ApiResponse<boolean>>(`/api/learn/artisans/${artisanId}/follow`);
+  return res.data.data ?? false;
+}
+
+/** Bỏ theo dõi nghệ nhân - DELETE /api/learn/artisans/{id}/follow */
+export async function unfollowArtisan(artisanId: number): Promise<boolean> {
+  const res = await api.delete<ApiResponse<boolean>>(`/api/learn/artisans/${artisanId}/follow`);
   return res.data.data ?? false;
 }
 

@@ -11,6 +11,71 @@
     margin: 0 0 1rem;
   }
 
+  // Tabs
+  &__tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+    padding: 4px;
+    background: $color-gray-100;
+    border-radius: $radius-lg;
+    overflow-x: auto;
+  }
+
+  &__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1rem;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $color-gray-600;
+    background: transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+
+    &:hover {
+      color: $color-primary;
+    }
+
+    &--active {
+      background: $color-white;
+      color: $color-primary;
+      font-weight: $font-weight-semibold;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+  }
+
+  &__tab-count {
+    padding: 0.15rem 0.5rem;
+    border-radius: $radius-full;
+    font-size: $font-size-xs;
+    background: rgba(139, 0, 0, 0.1);
+    color: $color-primary;
+  }
+
+  // Review banner
+  &__review-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%);
+    border: 1px solid #fde68a;
+    border-radius: $radius-lg;
+    color: #92400e;
+    font-size: $font-size-sm;
+
+    svg {
+      flex-shrink: 0;
+      color: #f59e0b;
+    }
+  }
+
   // Filters
   &__filters {
     display: flex;
@@ -208,6 +273,15 @@
 
     &--cancel {
       color: $color-gray-600;
+    }
+
+    &--feedback {
+      color: #b45309;
+      font-weight: $font-weight-medium;
+
+      &:hover {
+        color: #92400e;
+      }
     }
   }
 
@@ -649,6 +723,35 @@
       strong {
         color: $color-gray-700;
       }
+    }
+  }
+
+  // Feedback CTA
+  &__feedback-cta {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid $color-gray-200;
+  }
+
+  &__feedback-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #fbbf24;
+    border-radius: $radius-md;
+    background: #fef9c3;
+    color: #92400e;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #fef3c7;
+      border-color: #f59e0b;
     }
   }
 }

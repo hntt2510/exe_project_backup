@@ -1,0 +1,208 @@
+// ============================================
+// Lead Form Section (Đăng ký nhận tư vấn)
+// ============================================
+
+@use '../variables';
+@use '../mixins';
+
+.lead-form {
+  background: linear-gradient(to bottom, #fff, var(--color-bg, #f9fafb));
+
+  &__container {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 variables.$spacing-md;
+
+    @media (min-width: variables.$breakpoint-md) {
+      max-width: min(57.14vw, 1000px); // ~4/7 màn hình
+      padding: 0 variables.$spacing-lg;
+    }
+  }
+
+  &__form {
+    background: #fff;
+    border-radius: variables.$radius-xl;
+    padding: variables.$spacing-2xl;
+    box-shadow: variables.$shadow-lg;
+    border: 1px solid variables.$color-border;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: variables.$spacing-lg;
+    margin-bottom: variables.$spacing-lg;
+
+    @media (min-width: variables.$breakpoint-md) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    &--2 {
+      grid-template-columns: 1fr;
+
+      @media (min-width: variables.$breakpoint-md) {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__label {
+    font-size: variables.$font-size-sm;
+    font-weight: variables.$font-weight-semibold;
+    color: variables.$color-gray-700;
+    margin-bottom: variables.$spacing-xs;
+  }
+
+  &__required {
+    color: variables.$color-red-600;
+  }
+
+  &__input,
+  &__select {
+    padding: variables.$spacing-md variables.$spacing-lg;
+    border: 1px solid variables.$color-border;
+    border-radius: variables.$radius-lg;
+    font-size: variables.$font-size-base;
+    transition: border-color variables.$transition-base;
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 155, 44, 44), 0.1);
+    }
+
+    &::placeholder {
+      color: variables.$color-gray-400;
+    }
+
+    &:disabled {
+      background: variables.$color-gray-100;
+      cursor: not-allowed;
+    }
+  }
+
+  &__textarea {
+    padding: variables.$spacing-md variables.$spacing-lg;
+    border: 1px solid variables.$color-border;
+    border-radius: variables.$radius-lg;
+    font-size: variables.$font-size-base;
+    resize: vertical;
+    min-height: 88px;
+    font-family: inherit;
+    transition: border-color variables.$transition-base;
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 155, 44, 44), 0.1);
+    }
+
+    &::placeholder {
+      color: variables.$color-gray-400;
+    }
+  }
+
+  &__tour-section {
+    margin-bottom: variables.$spacing-xl;
+    padding: variables.$spacing-lg;
+    background: rgba(var(--color-primary-rgb, 155, 44, 44), 0.04);
+    border-radius: variables.$radius-lg;
+    border: 1px solid rgba(var(--color-primary-rgb, 155, 44, 44), 0.12);
+  }
+
+  &__tour-header {
+    display: flex;
+    align-items: center;
+    gap: variables.$spacing-sm;
+    margin-bottom: variables.$spacing-md;
+    font-size: variables.$font-size-sm;
+    color: variables.$color-gray-700;
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    color: var(--color-primary);
+  }
+
+  &__error {
+    font-size: variables.$font-size-sm;
+    color: variables.$color-red-700;
+    background: variables.$color-red-50;
+    padding: variables.$spacing-md;
+    border-radius: variables.$radius-lg;
+    margin-bottom: variables.$spacing-lg;
+    border: 1px solid variables.$color-red-100;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: variables.$spacing-sm;
+    margin-top: variables.$spacing-xl;
+    padding: variables.$spacing-md variables.$spacing-2xl;
+    font-size: variables.$font-size-base;
+    font-weight: variables.$font-weight-semibold;
+    border-radius: variables.$radius-lg;
+    border: none;
+    cursor: pointer;
+    transition: all variables.$transition-base;
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    &--primary {
+      background: var(--color-primary);
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        background: var(--color-primary-dark, #6B0000);
+      }
+    }
+
+    &--secondary {
+      background: variables.$color-gray-200;
+      color: variables.$color-gray-900;
+
+      &:hover {
+        background: variables.$color-gray-300;
+      }
+    }
+  }
+
+  &__spinner {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: lead-form-spin 0.6s linear infinite;
+  }
+
+  &__success {
+    text-align: center;
+    padding: variables.$spacing-3xl;
+    background: #fff;
+    border-radius: variables.$radius-xl;
+    box-shadow: variables.$shadow-lg;
+    border: 1px solid variables.$color-border;
+
+    p {
+      font-size: variables.$font-size-lg;
+      color: variables.$color-gray-700;
+      margin-bottom: variables.$spacing-xl;
+    }
+  }
+}
+
+@keyframes lead-form-spin {
+  to { transform: rotate(360deg); }
+}

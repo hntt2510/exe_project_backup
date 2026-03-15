@@ -4,9 +4,9 @@
 @use '../../variables' as *;
 
 .profile-page {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 1rem 1rem 4rem;
+  padding: 1rem 1.5rem 4rem;
   padding-top: calc(var(--navbar-h, 88px) + 1rem);
 
   // Two-column body: sticky sidebar + sections
@@ -95,6 +95,19 @@
 
   &__section {
     scroll-margin-top: calc(var(--navbar-h, 88px) + 2rem);
+
+    // Wrapper cho section có nội dung cần nền trắng (orders, learn, voucher)
+    &--card {
+      .profile-orders,
+      .profile-learn,
+      .profile-voucher {
+        background: $color-white;
+        border-radius: $radius-lg;
+        padding: 1.5rem 1.75rem;
+        border: 1px solid $color-gray-200;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+      }
+    }
   }
 }
 

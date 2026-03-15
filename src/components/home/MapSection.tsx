@@ -126,7 +126,11 @@ function debounce<T extends (...args: any[]) => void>(fn: T, wait: number) {
 
 
 
-export default function MapSection() {
+interface MapSectionProps {
+  provinces?: Province[];
+}
+
+export default function MapSection({ provinces: provincesProp }: MapSectionProps = {}) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
@@ -134,7 +138,8 @@ export default function MapSection() {
   const provinceNameToIdRef = useRef<Map<string, number>>(new Map());
   const provinceIdToNameRef = useRef<Map<number, string>>(new Map());
 
-  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [provincesState, setProvincesState] = useState<Province[]>([]);
+  const provinces = provincesProp && provincesProp.length > 0 ? provincesProp : provincesState;
   const [selectedProvinceId, setSelectedProvinceId] = useState<number | null>(null);
   const [hoveredProvinceId, setHoveredProvinceId] = useState<number | null>(null);
   const [cultureItems, setCultureItems] = useState<CultureItem[]>([]);
@@ -154,33 +159,37 @@ export default function MapSection() {
   const provinceNameSet = useMemo(() => buildProvinceNameSet(provinces), [provinces]);
   const provinceByName = useMemo(() => buildProvinceMap(provinces), [provinces]);
 
-  // Load provinces for mapping (name -> id)
+  // Dùng provinces từ props nếu có; chỉ fetch khi không được truyền props (cache session)
   useEffect(() => {
+    if (provincesProp !== undefined) {
+      const list = provincesProp;
+      const nameToId = new Map<string, number>();
+      const idToName = new Map<number, string>();
+      list.forEach((p) => {
+        nameToId.set(normalizeName(p.name), p.id);
+        idToName.set(p.id, p.name);
+      });
+      provinceNameToIdRef.current = nameToId;
+      provinceIdToNameRef.current = idToName;
+      return;
+    }
     let mounted = true;
     getProvinces()
       .then((data) => {
         if (!mounted) return;
-        setProvinces(data);
-
+        setProvincesState(data);
         const nameToId = new Map<string, number>();
         const idToName = new Map<number, string>();
-
         data.forEach((p) => {
           nameToId.set(normalizeName(p.name), p.id);
           idToName.set(p.id, p.name);
         });
-
         provinceNameToIdRef.current = nameToId;
         provinceIdToNameRef.current = idToName;
       })
-      .catch(() => {
-        // Không block map, chỉ khiến panel không map được provinceId
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [provincesProp]);
 
   const fetchCultureItems = useCallback(async (provinceId: number) => {
     setPanelError(null);

@@ -1,36 +1,62 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { BlogPost, Video, LearnModule } from '../../types';
-import { getBlogPosts, getVideos, getLearnModules } from '../../services/api';
+import type { BlogPost, Video, LearnModule, LearnModuleLesson } from '../../types';
+import { getBlogPosts, getVideos, getLearnModules, getPublicLessons } from '../../services/api';
 import { Play, BookOpen, ArrowRight, GraduationCap } from 'lucide-react';
 import '../../styles/components/quickLearnSection.scss';
 
 const DEFAULT_LIMIT = 3;
 
-export default function QuickLearnSection() {
+interface QuickLearnSectionProps {
+  blogPosts?: BlogPost[];
+  videos?: Video[];
+}
+
+export default function QuickLearnSection({ blogPosts: blogProp, videos: videosProp }: QuickLearnSectionProps = {}) {
   const [activeTab, setActiveTab] = useState<'blog' | 'video' | 'learn'>('blog');
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(blogProp ?? []);
+  const [videos, setVideos] = useState<Video[]>(videosProp ?? []);
+  const [lessonVideos, setLessonVideos] = useState<LearnModuleLesson[]>([]);
   const [learnModules, setLearnModules] = useState<LearnModule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
+    if (blogProp) setBlogPosts(blogProp);
+    if (videosProp) setVideos(videosProp);
+  }, [blogProp, videosProp]);
 
-    const fetchQuickLearnData = async () => {
-      setLoading(true);
+  // Fetch blog/lesson-videos/modules; dùng video từ lesson (có video theo từng bài học)
+  useEffect(() => {
+    let mounted = true;
+    const blogFromParent = blogProp !== undefined && (blogProp?.length ?? 0) > 0;
+    const videosFromParent = videosProp !== undefined && (videosProp?.length ?? 0) > 0;
+
+    const fetchData = async () => {
+      if (!blogFromParent) setLoading(true);
       setError(null);
       try {
-        const [blogData, videoData, learnData] = await Promise.all([
-          getBlogPosts(),
-          getVideos(),
-          getLearnModules(),
-        ]);
+        const promises: Promise<unknown>[] = [
+          getLearnModules().then((d) => ({ learn: d })),
+          getPublicLessons().then((d) => ({ lessonVideos: d })),
+        ];
+        if (!blogFromParent) promises.push(getBlogPosts().then((d) => ({ blog: d })));
+        if (!videosFromParent) promises.push(getVideos().then((d) => ({ video: d })));
+
+        const results = await Promise.all(promises);
         if (!mounted) return;
-        setBlogPosts(blogData ?? []);
-        setVideos(videoData ?? []);
-        setLearnModules(learnData ?? []);
+        for (const r of results) {
+          const x = r as {
+            blog?: BlogPost[];
+            video?: Video[];
+            learn?: LearnModule[];
+            lessonVideos?: LearnModuleLesson[];
+          };
+          if (x.blog) setBlogPosts(x.blog ?? []);
+          if (x.video) setVideos(x.video ?? []);
+          if (x.learn) setLearnModules(x.learn ?? []);
+          if (x.lessonVideos) setLessonVideos(x.lessonVideos ?? []);
+        }
       } catch (err) {
         if (!mounted) return;
         setError('Không thể tải dữ liệu học nhanh văn hoá');
@@ -38,20 +64,26 @@ export default function QuickLearnSection() {
         if (mounted) setLoading(false);
       }
     };
-
-    fetchQuickLearnData();
+    fetchData();
     return () => { mounted = false; };
-  }, []);
+  }, [blogProp, videosProp]);
 
   const blogItems = useMemo(() => blogPosts.slice(0, DEFAULT_LIMIT), [blogPosts]);
+  // Ưu tiên video từ lessons (có video theo từng bài); fallback sang getVideos nếu không có
+  const lessonVideoItems = useMemo(
+    () => lessonVideos.filter((l) => l.videoUrl?.trim()).slice(0, DEFAULT_LIMIT),
+    [lessonVideos]
+  );
   const videoItems = useMemo(() => videos.slice(0, DEFAULT_LIMIT), [videos]);
+  const videoItemsToShow = lessonVideoItems.length > 0 ? lessonVideoItems : videoItems;
+  const useLessonVideos = lessonVideoItems.length > 0;
   const learnItems = useMemo(() => learnModules.slice(0, DEFAULT_LIMIT), [learnModules]);
 
   const hasItems =
     activeTab === 'blog'
       ? blogItems.length > 0
       : activeTab === 'video'
-        ? videoItems.length > 0
+        ? videoItemsToShow.length > 0
         : learnItems.length > 0;
   const shouldShowError = Boolean(error) && !loading && !hasItems;
 
@@ -122,7 +154,7 @@ export default function QuickLearnSection() {
                         aria-label={post.title}
                       />
                       <div className="quick-learn__badge">
-                        {post.provinceName || 'Tây Nguyên'}
+                        {post.province?.name || post.provinceName || 'Tây Nguyên'}
                       </div>
                     </div>
 
@@ -132,11 +164,14 @@ export default function QuickLearnSection() {
                         {post.title}
                       </h3>
                       <p className="quick-learn__excerpt">
-                        {post.content.substring(0, 100)}...
+                        {(() => {
+                          const text = (post.content || '').replace(/<[^>]+>/g, '').trim();
+                          return text.length > 100 ? `${text.substring(0, 100)}...` : text;
+                        })()}
                       </p>
                       <div className="quick-learn__meta">
                         <span className="quick-learn__views">
-                          👁️ {post.viewCount} lượt xem
+                          👁️ {post.viewCount ?? 0} lượt xem
                         </span>
                         <span className="quick-learn__link">
                           Xem thêm <ArrowRight size={16} />
@@ -149,45 +184,72 @@ export default function QuickLearnSection() {
             )}
             {activeTab === 'video' && (
               <div className="quick-learn__grid">
-                {videoItems.map((video) => (
-                  <div key={video.id} className="card quick-learn__card">
-                    {/* Video Thumbnail */}
-                    <div className="quick-learn__image">
-                      <div
-                        className="quick-learn__image-bg"
-                        style={{
-                          backgroundImage: `url('${video.thumbnailUrl}')`,
-                        }}
-                        role="img"
-                        aria-label={video.title}
-                      />
-                      {/* Play Button */}
-                      <div className="quick-learn__video-overlay">
-                        <button className="quick-learn__play">
-                          <Play size={24} style={{ fill: 'currentColor' }} />
-                        </button>
+                {useLessonVideos
+                  ? (videoItemsToShow as LearnModuleLesson[]).map((lesson) => (
+                      <Link
+                        key={lesson.id}
+                        to={`/lesson?id=${lesson.id}`}
+                        className="card quick-learn__card"
+                      >
+                        <div className="quick-learn__image">
+                          <div
+                            className="quick-learn__image-bg"
+                            style={{
+                              backgroundImage: `url('${lesson.thumbnailUrl || '/nen.png'}')`,
+                            }}
+                            role="img"
+                            aria-label={lesson.title}
+                          />
+                          <div className="quick-learn__video-overlay">
+                            <span className="quick-learn__play">
+                              <Play size={24} style={{ fill: 'currentColor' }} />
+                            </span>
+                          </div>
+                          <div className="quick-learn__badge">
+                            {lesson.duration} phút
+                          </div>
+                        </div>
+                        <div className="quick-learn__content">
+                          <h3 className="quick-learn__title">{lesson.title}</h3>
+                          <div className="quick-learn__meta">
+                            <span className="quick-learn__link">
+                              Xem bài học <ArrowRight size={16} />
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))
+                  : (videoItemsToShow as Video[]).map((video) => (
+                      <div key={video.id} className="card quick-learn__card">
+                        <div className="quick-learn__image">
+                          <div
+                            className="quick-learn__image-bg"
+                            style={{
+                              backgroundImage: `url('${video.thumbnailUrl}')`,
+                            }}
+                            role="img"
+                            aria-label={video.title}
+                          />
+                          <div className="quick-learn__video-overlay">
+                            <button className="quick-learn__play">
+                              <Play size={24} style={{ fill: 'currentColor' }} />
+                            </button>
+                          </div>
+                          <div className="quick-learn__badge">
+                            {video.provinceName || 'Tây Nguyên'}
+                          </div>
+                        </div>
+                        <div className="quick-learn__content">
+                          <h3 className="quick-learn__title">{video.title}</h3>
+                          <div className="quick-learn__meta">
+                            <span className="quick-learn__views">
+                              👁️ {video.viewCount ?? 0} lượt xem
+                            </span>
+                            <span className="quick-learn__link">Xem video</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="quick-learn__badge">
-                        {video.provinceName || 'Tây Nguyên'}
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="quick-learn__content">
-                      <h3 className="quick-learn__title">
-                        {video.title}
-                      </h3>
-                      <div className="quick-learn__meta">
-                        <span className="quick-learn__views">
-                          👁️ {video.viewCount} lượt xem
-                        </span>
-                        <button className="quick-learn__link">
-                          Xem video <ArrowRight size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    ))}
               </div>
             )}
             {activeTab === 'learn' && (

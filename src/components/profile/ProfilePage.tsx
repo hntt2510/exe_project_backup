@@ -14,12 +14,14 @@ import {
   getUserBookings,
   getUserVouchers,
   getLearnStats,
+  getSavedLessons,
   uploadAvatar,
   updateUserProfile,
   type UserProfile,
   type UserBooking,
   type UserVoucher,
   type LearnStats,
+  type FeaturedCourse,
 } from '../../services/profileApi';
 import { authLogout } from '../../services/authApi';
 import { clearAuthSession } from '../../utils/authSession';
@@ -49,6 +51,7 @@ export default function ProfilePage() {
   const [bookings, setBookings] = useState<UserBooking[]>([]);
   const [vouchers, setVouchers] = useState<UserVoucher[]>([]);
   const [learnStats, setLearnStats] = useState<LearnStats | null>(null);
+  const [savedCourses, setSavedCourses] = useState<FeaturedCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -115,11 +118,12 @@ export default function ProfilePage() {
     const fetchAll = async () => {
       setLoading(true);
       try {
-        const [profileData, bookingsData, vouchersData, statsData] = await Promise.all([
+        const [profileData, bookingsData, vouchersData, statsData, savedData] = await Promise.all([
           getUserProfile(userId).catch(() => null),
           getUserBookings().catch(() => [] as UserBooking[]),
           getUserVouchers().catch(() => [] as UserVoucher[]),
           getLearnStats().catch(() => null),
+          getSavedLessons().catch(() => [] as FeaturedCourse[]),
         ]);
 
         if (profileData) {
@@ -161,6 +165,7 @@ export default function ProfilePage() {
         setBookings(bookingsData);
         setVouchers(vouchersData);
         if (statsData) setLearnStats(statsData);
+        setSavedCourses(savedData ?? []);
       } catch (err) {
         console.error('Failed to load profile:', err);
       } finally {
@@ -300,7 +305,7 @@ export default function ProfilePage() {
           <div
             id="section-orders"
             ref={(el) => { sectionRefs.current.orders = el; }}
-            className="profile-page__section"
+            className="profile-page__section profile-page__section--card"
           >
             <ProfileOrders bookings={bookings} />
           </div>
@@ -308,15 +313,15 @@ export default function ProfilePage() {
           <div
             id="section-learn"
             ref={(el) => { sectionRefs.current.learn = el; }}
-            className="profile-page__section"
+            className="profile-page__section profile-page__section--card"
           >
-            <ProfileLearn stats={learnStats} />
+            <ProfileLearn stats={learnStats} savedCourses={savedCourses} />
           </div>
 
           <div
             id="section-voucher"
             ref={(el) => { sectionRefs.current.voucher = el; }}
-            className="profile-page__section"
+            className="profile-page__section profile-page__section--card"
           >
             <ProfileVoucher vouchers={vouchers} />
           </div>
