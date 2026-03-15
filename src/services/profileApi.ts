@@ -1,5 +1,5 @@
-import type { ApiResponse } from '../types';
-import { api } from './api';
+import type { ApiResponse } from "../types";
+import { api } from "./api";
 
 // ========== Types ==========
 
@@ -11,8 +11,8 @@ export interface UserProfile {
   fullName: string;
   avatarUrl: string;
   dateOfBirth: string;
-  gender: 'MALE' | 'FEMALE' | 'OTHER';
-  role: 'CUSTOMER' | 'ADMIN' | 'STAFF' | 'ARTISAN';
+  gender: "MALE" | "FEMALE" | "OTHER";
+  role: "CUSTOMER" | "ADMIN" | "STAFF" | "ARTISAN";
   status: string;
   createdAt: string;
 }
@@ -47,13 +47,13 @@ export interface UserBooking {
   totalAmount: number;
   discountAmount: number;
   finalAmount: number;
-  paymentStatus: 'UNPAID' | 'PAID' | 'REFUNDED' | string;
+  paymentStatus: "UNPAID" | "PAID" | "REFUNDED" | string;
   paymentMethod: string;
   paidAt: string | null;
   cancelledAt: string | null;
   cancellationFee: number;
   refundAmount: number;
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | string;
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | string;
   createdAt: string;
   updatedAt: string;
 }
@@ -130,29 +130,34 @@ export const updateUserProfile = async (
   userId: number,
   data: UpdateUserRequest,
 ): Promise<UserProfile> => {
-  const res = await api.put<ApiResponse<UserProfile>>(`/api/users/${userId}`, data);
+  const res = await api.put<ApiResponse<UserProfile>>(
+    `/api/users/${userId}`,
+    data,
+  );
   return res.data.data;
 };
 
-export const changePassword = async (data: ChangePasswordRequest): Promise<void> => {
-  await api.post('/api/users/change-password', data);
+export const changePassword = async (
+  data: ChangePasswordRequest,
+): Promise<void> => {
+  await api.post("/api/users/change-password", data);
 };
 
 export const uploadAvatar = async (file: File): Promise<string> => {
   const formData = new FormData();
-  formData.append('file', file);
-  const res = await api.put<ApiResponse<{ url: string; urls: string[]; message: string }>>(
-    '/api/upload/user/avatar',
-    formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } },
-  );
+  formData.append("file", file);
+  const res = await api.put<
+    ApiResponse<{ url: string; urls: string[]; message: string }>
+  >("/api/upload/user/avatar", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return res.data.data.url;
 };
 
 // ========== Bookings ==========
 
 export const getUserBookings = async (): Promise<UserBooking[]> => {
-  const res = await api.get<ApiResponse<UserBooking[]>>('/api/bookings');
+  const res = await api.get<ApiResponse<UserBooking[]>>("/api/bookings");
   return res.data.data;
 };
 
@@ -170,16 +175,18 @@ export interface CreateReviewRequest {
   images?: File[];
 }
 
-export const createReview = async (data: CreateReviewRequest): Promise<unknown> => {
+export const createReview = async (
+  data: CreateReviewRequest,
+): Promise<unknown> => {
   const formData = new FormData();
-  formData.append('bookingId', String(data.bookingId));
-  formData.append('rating', String(data.rating));
-  formData.append('comment', data.comment);
+  formData.append("bookingId", String(data.bookingId));
+  formData.append("rating", String(data.rating));
+  formData.append("comment", data.comment);
   if (data.images?.length) {
-    data.images.forEach((file) => formData.append('images', file));
+    data.images.forEach((file) => formData.append("images", file));
   }
-  const res = await api.post<ApiResponse<unknown>>('/api/reviews', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+  const res = await api.post<ApiResponse<unknown>>("/api/reviews", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
   return res.data.data;
 };
@@ -187,24 +194,30 @@ export const createReview = async (data: CreateReviewRequest): Promise<unknown> 
 // ========== Vouchers ==========
 
 export const getUserVouchers = async (): Promise<UserVoucher[]> => {
-  const res = await api.get<ApiResponse<UserVoucher[]>>('/api/vouchers/me');
+  const res = await api.get<ApiResponse<UserVoucher[]>>("/api/vouchers/me");
   return res.data.data;
 };
 
 // ========== Learn Stats ==========
 
 export const getLearnStats = async (): Promise<LearnStats> => {
-  const res = await api.get<ApiResponse<LearnStats>>('/api/learn/users/me/stats');
+  const res = await api.get<ApiResponse<LearnStats>>(
+    "/api/learn/users/me/stats",
+  );
   return res.data.data;
 };
 
 export const getLearnCourses = async (): Promise<FeaturedCourse[]> => {
-  const res = await api.get<ApiResponse<FeaturedCourse[]>>('/api/learn/users/me/courses');
+  const res = await api.get<ApiResponse<FeaturedCourse[]>>(
+    "/api/learn/users/me/courses",
+  );
   return res.data.data;
 };
 
 /** Bài đã lưu - modules chứa lesson user đã lưu (save button) */
 export const getSavedLessons = async (): Promise<FeaturedCourse[]> => {
-  const res = await api.get<ApiResponse<FeaturedCourse[]>>('/api/learn/users/me/saved-lessons');
+  const res = await api.get<ApiResponse<FeaturedCourse[]>>(
+    "/api/learn/users/me/saved-lessons",
+  );
   return res.data.data;
 };

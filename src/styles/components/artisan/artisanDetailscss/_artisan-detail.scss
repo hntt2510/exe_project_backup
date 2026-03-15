@@ -455,6 +455,19 @@
     margin: 0 0 $spacing-2xl;
   }
 
+  &__subheading {
+    font-family: 'Afacad', sans-serif;
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+    margin: $spacing-xl 0 $spacing-lg;
+    text-align: left;
+
+    &:first-of-type {
+      margin-top: 0;
+    }
+  }
+
   &__grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -462,6 +475,12 @@
 
     @media (min-width: $breakpoint-md) {
       grid-template-columns: repeat(2, 1fr);
+    }
+
+    &--artisans {
+      @media (min-width: $breakpoint-md) {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      }
     }
   }
 
@@ -481,6 +500,12 @@
 
     &--tour {
       cursor: pointer;
+    }
+
+    &--artisan {
+      .ad-connect__card-img-wrap {
+        aspect-ratio: 1;
+      }
     }
   }
 

@@ -83,6 +83,7 @@ interface Tour {
   totalBookings?: number;
   averageRating?: number;
   description?: string;
+  preparationTips?: string;
   images?: string[];
 }
 
@@ -151,13 +152,16 @@ export default function TourManagement() {
       currentParticipants,
       status,
       startDate: createdAt.format("DD/MM/YYYY"),
-      endDate: createdAt.add(apiTour.durationHours, "hour").format("DD/MM/YYYY"),
+      endDate: createdAt
+        .add(apiTour.durationHours, "hour")
+        .format("DD/MM/YYYY"),
       artisan: apiTour.artisanName,
       artisanId: apiTour.artisanId ? String(apiTour.artisanId) : undefined,
       daysUntil: createdAt.diff(dayjs(), "day"),
       totalBookings: apiTour.totalBookings,
       averageRating: apiTour.averageRating,
       description: apiTour.description,
+      preparationTips: (apiTour as { preparationTips?: string }).preparationTips,
       images: apiTour.images,
     };
   };
@@ -324,6 +328,7 @@ export default function TourManagement() {
         thumbnailUrl: values.thumbnailUrl || "",
         images: imagesPayload,
         ...(values.artisan && { artisanId: Number(values.artisan) }),
+        ...(values.preparationTips && { preparationTips: values.preparationTips }),
       };
       if (selectedTour) {
         await updateTour(Number(selectedTour.id), payload);
@@ -338,7 +343,8 @@ export default function TourManagement() {
       await refetchTours();
     } catch (err: any) {
       message.error(
-        err?.response?.data?.message || (selectedTour ? "Cập nhật thất bại" : "Tạo tour thất bại"),
+        err?.response?.data?.message ||
+          (selectedTour ? "Cập nhật thất bại" : "Tạo tour thất bại"),
       );
     }
   };
@@ -849,6 +855,7 @@ export default function TourManagement() {
                   minParticipants: selectedTour.minParticipants,
                   maxParticipants: selectedTour.maxParticipants,
                   description: selectedTour.description,
+                  preparationTips: selectedTour.preparationTips,
                   artisan: selectedTour.artisanId,
                   dateRange: [
                     dayjs(selectedTour.startDate, "DD/MM/YYYY"),
@@ -862,11 +869,14 @@ export default function TourManagement() {
           <Form.Item label="Tên tour" name="title" rules={[{ required: true }]}>
             <Input placeholder="Nhập tên tour" />
           </Form.Item>
-          <Form.Item
-            label="Mô tả"
-            name="description"
-          >
+          <Form.Item label="Mô tả" name="description">
             <Input.TextArea rows={2} placeholder="Mô tả tour (tùy chọn)" />
+          </Form.Item>
+          <Form.Item label="Lưu ý chuẩn bị" name="preparationTips">
+            <Input.TextArea
+              rows={2}
+              placeholder="Trang phục, đồ dùng cần chuẩn bị (tùy chọn)"
+            />
           </Form.Item>
           <Row gutter={16}>
             <Col span={12}>

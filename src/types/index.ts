@@ -466,7 +466,7 @@ export interface ArtisanDetail {
   age: number;
   location: string;
   images: string[];
-  panoramaImageUrl: string;
+  panoramaImageUrl: string | null;
   narrativeContent: ArtisanNarrativeBlock[];
   relatedTours: ArtisanRelatedTour[];
   relatedCultureItems: ArtisanRelatedCulture[];

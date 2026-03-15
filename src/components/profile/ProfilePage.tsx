@@ -1,14 +1,14 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, ShoppingBag, BookOpen, Ticket } from 'lucide-react';
-import Breadcrumbs from '../Breadcrumbs';
-import ProfileHeader from './ProfileHeader';
-import ProfileOverview from './ProfileOverview';
-import ProfileOrders from './ProfileOrders';
-import ProfileLearn from './ProfileLearn';
-import ProfileVoucher from './ProfileVoucher';
-import { ChangePassword } from './changePass';
-import { ChangeProfile } from './changeProfile';
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { User, ShoppingBag, BookOpen, Ticket } from "lucide-react";
+import Breadcrumbs from "../Breadcrumbs";
+import ProfileHeader from "./ProfileHeader";
+import ProfileOverview from "./ProfileOverview";
+import ProfileOrders from "./ProfileOrders";
+import ProfileLearn from "./ProfileLearn";
+import ProfileVoucher from "./ProfileVoucher";
+import { ChangePassword } from "./changePass";
+import { ChangeProfile } from "./changeProfile";
 import {
   getUserProfile,
   getUserBookings,
@@ -22,11 +22,11 @@ import {
   type UserVoucher,
   type LearnStats,
   type FeaturedCourse,
-} from '../../services/profileApi';
-import { authLogout } from '../../services/authApi';
-import { clearAuthSession } from '../../utils/authSession';
-import { message } from 'antd';
-import '../../styles/components/profile/_profile-page.scss';
+} from "../../services/profileApi";
+import { authLogout } from "../../services/authApi";
+import { clearAuthSession } from "../../utils/authSession";
+import { message } from "antd";
+import "../../styles/components/profile/_profile-page.scss";
 
 interface NavItem {
   id: string;
@@ -35,10 +35,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'overview', label: 'Tổng quan', icon: <User size={18} /> },
-  { id: 'orders', label: 'Đơn của tôi', icon: <ShoppingBag size={18} /> },
-  { id: 'learn', label: 'Học & Quiz', icon: <BookOpen size={18} /> },
-  { id: 'voucher', label: 'Ví Voucher', icon: <Ticket size={18} /> },
+  { id: "overview", label: "Tổng quan", icon: <User size={18} /> },
+  { id: "orders", label: "Đơn của tôi", icon: <ShoppingBag size={18} /> },
+  { id: "learn", label: "Học & Quiz", icon: <BookOpen size={18} /> },
+  { id: "voucher", label: "Ví Voucher", icon: <Ticket size={18} /> },
 ];
 
 const SCROLL_OFFSET = 120; // navbar + sticky nav height buffer
@@ -46,7 +46,7 @@ const SCROLL_OFFSET = 120; // navbar + sticky nav height buffer
 export default function ProfilePage() {
   const navigate = useNavigate();
 
-  const [activeSection, setActiveSection] = useState('overview');
+  const [activeSection, setActiveSection] = useState("overview");
   const [user, setUser] = useState<UserProfile | null>(null);
   const [bookings, setBookings] = useState<UserBooking[]>([]);
   const [vouchers, setVouchers] = useState<UserVoucher[]>([]);
@@ -65,7 +65,7 @@ export default function ProfilePage() {
     if (isScrollingRef.current) return;
 
     const scrollY = window.scrollY + SCROLL_OFFSET + 40;
-    let current = 'overview';
+    let current = "overview";
 
     for (const item of NAV_ITEMS) {
       const el = sectionRefs.current[item.id];
@@ -77,8 +77,8 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
   /* ---------- Scroll to section ---------- */
@@ -90,7 +90,7 @@ export default function ProfilePage() {
     setActiveSection(id);
 
     const top = el.offsetTop - SCROLL_OFFSET;
-    window.scrollTo({ top, behavior: 'smooth' });
+    window.scrollTo({ top, behavior: "smooth" });
 
     // Re-enable scroll spy after animation
     setTimeout(() => {
@@ -100,15 +100,15 @@ export default function ProfilePage() {
 
   /* ---------- Data fetch ---------- */
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem("accessToken");
     if (!token) {
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
       return;
     }
 
-    const storedUser = localStorage.getItem('userInfo');
+    const storedUser = localStorage.getItem("userInfo");
     if (!storedUser) {
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
       return;
     }
 
@@ -118,29 +118,36 @@ export default function ProfilePage() {
     const fetchAll = async () => {
       setLoading(true);
       try {
-        const [profileData, bookingsData, vouchersData, statsData, savedData] = await Promise.all([
-          getUserProfile(userId).catch(() => null),
-          getUserBookings().catch(() => [] as UserBooking[]),
-          getUserVouchers().catch(() => [] as UserVoucher[]),
-          getLearnStats().catch(() => null),
-          getSavedLessons().catch(() => [] as FeaturedCourse[]),
-        ]);
+        const [profileData, bookingsData, vouchersData, statsData, savedData] =
+          await Promise.all([
+            getUserProfile(userId).catch(() => null),
+            getUserBookings().catch(() => [] as UserBooking[]),
+            getUserVouchers().catch(() => [] as UserVoucher[]),
+            getLearnStats().catch(() => null),
+            getSavedLessons().catch(() => [] as FeaturedCourse[]),
+          ]);
 
         if (profileData) {
           // If API returns no avatarUrl but localStorage has one, prefer localStorage
-          const localAvatar = parsed.avatarUrl || '';
-          if ((!profileData.avatarUrl || profileData.avatarUrl === 'null') && localAvatar) {
+          const localAvatar = parsed.avatarUrl || "";
+          if (
+            (!profileData.avatarUrl || profileData.avatarUrl === "null") &&
+            localAvatar
+          ) {
             profileData.avatarUrl = localAvatar;
           }
           // Also sync back to localStorage so navbar stays in sync
           if (profileData.avatarUrl) {
-            const freshStore = localStorage.getItem('userInfo');
+            const freshStore = localStorage.getItem("userInfo");
             if (freshStore) {
               const freshParsed = JSON.parse(freshStore);
               if (freshParsed.avatarUrl !== profileData.avatarUrl) {
                 localStorage.setItem(
-                  'userInfo',
-                  JSON.stringify({ ...freshParsed, avatarUrl: profileData.avatarUrl }),
+                  "userInfo",
+                  JSON.stringify({
+                    ...freshParsed,
+                    avatarUrl: profileData.avatarUrl,
+                  }),
                 );
               }
             }
@@ -151,13 +158,13 @@ export default function ProfilePage() {
             id: parsed.id,
             username: parsed.fullName,
             email: parsed.email,
-            phone: parsed.phone || '',
+            phone: parsed.phone || "",
             fullName: parsed.fullName,
-            avatarUrl: parsed.avatarUrl || '',
-            dateOfBirth: '',
-            gender: 'OTHER',
+            avatarUrl: parsed.avatarUrl || "",
+            dateOfBirth: "",
+            gender: "OTHER",
             role: parsed.role,
-            status: 'ACTIVE',
+            status: "ACTIVE",
             createdAt: parsed.createdAt || new Date().toISOString(),
           });
         }
@@ -167,7 +174,7 @@ export default function ProfilePage() {
         if (statsData) setLearnStats(statsData);
         setSavedCourses(savedData ?? []);
       } catch (err) {
-        console.error('Failed to load profile:', err);
+        console.error("Failed to load profile:", err);
       } finally {
         setLoading(false);
       }
@@ -184,7 +191,7 @@ export default function ProfilePage() {
       // ignore
     } finally {
       clearAuthSession();
-      navigate('/');
+      navigate("/");
     }
   };
 
@@ -192,16 +199,19 @@ export default function ProfilePage() {
     try {
       // 1. Upload file → get URL
       const url = await uploadAvatar(file);
-      console.log('[Avatar] Upload response URL:', url);
+      console.log("[Avatar] Upload response URL:", url);
 
       // 2. Update local state immediately so UI reflects the change
       setUser((prev) => (prev ? { ...prev, avatarUrl: url } : prev));
 
       // Update localStorage
-      const storedUser = localStorage.getItem('userInfo');
+      const storedUser = localStorage.getItem("userInfo");
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
-        localStorage.setItem('userInfo', JSON.stringify({ ...parsed, avatarUrl: url }));
+        localStorage.setItem(
+          "userInfo",
+          JSON.stringify({ ...parsed, avatarUrl: url }),
+        );
       }
 
       // 3. Also persist avatarUrl on user profile via PUT /api/users/{id}
@@ -211,18 +221,21 @@ export default function ProfilePage() {
             fullName: user.fullName,
             email: user.email,
             phone: user.phone,
-            dateOfBirth: user.dateOfBirth?.split('T')[0] || '',
+            dateOfBirth: user.dateOfBirth?.split("T")[0] || "",
             avatarUrl: url,
           });
         } catch (profileErr) {
-          console.warn('[Avatar] Profile update with avatarUrl failed (avatar still uploaded):', profileErr);
+          console.warn(
+            "[Avatar] Profile update with avatarUrl failed (avatar still uploaded):",
+            profileErr,
+          );
         }
       }
 
-      message.success('Cập nhật ảnh đại diện thành công!');
+      message.success("Cập nhật ảnh đại diện thành công!");
     } catch (err) {
-      console.error('Avatar upload failed:', err);
-      message.error('Tải ảnh thất bại. Vui lòng thử lại.');
+      console.error("Avatar upload failed:", err);
+      message.error("Tải ảnh thất bại. Vui lòng thử lại.");
     }
   };
 
@@ -249,8 +262,8 @@ export default function ProfilePage() {
   }
 
   const breadcrumbItems = [
-    { label: 'Trang chủ', path: '/' },
-    { label: 'Tài khoản' },
+    { label: "Trang chủ", path: "/" },
+    { label: "Tài khoản" },
   ];
 
   return (
@@ -275,7 +288,9 @@ export default function ProfilePage() {
               <li key={item.id}>
                 <button
                   className={`profile-page__nav-item ${
-                    activeSection === item.id ? 'profile-page__nav-item--active' : ''
+                    activeSection === item.id
+                      ? "profile-page__nav-item--active"
+                      : ""
                   }`}
                   onClick={() => scrollToSection(item.id)}
                 >
@@ -291,7 +306,9 @@ export default function ProfilePage() {
         <div className="profile-page__sections">
           <div
             id="section-overview"
-            ref={(el) => { sectionRefs.current.overview = el; }}
+            ref={(el) => {
+              sectionRefs.current.overview = el;
+            }}
             className="profile-page__section"
           >
             <ProfileOverview
@@ -304,7 +321,9 @@ export default function ProfilePage() {
 
           <div
             id="section-orders"
-            ref={(el) => { sectionRefs.current.orders = el; }}
+            ref={(el) => {
+              sectionRefs.current.orders = el;
+            }}
             className="profile-page__section profile-page__section--card"
           >
             <ProfileOrders bookings={bookings} />
@@ -312,7 +331,9 @@ export default function ProfilePage() {
 
           <div
             id="section-learn"
-            ref={(el) => { sectionRefs.current.learn = el; }}
+            ref={(el) => {
+              sectionRefs.current.learn = el;
+            }}
             className="profile-page__section profile-page__section--card"
           >
             <ProfileLearn stats={learnStats} savedCourses={savedCourses} />
@@ -320,7 +341,9 @@ export default function ProfilePage() {
 
           <div
             id="section-voucher"
-            ref={(el) => { sectionRefs.current.voucher = el; }}
+            ref={(el) => {
+              sectionRefs.current.voucher = el;
+            }}
             className="profile-page__section profile-page__section--card"
           >
             <ProfileVoucher vouchers={vouchers} />

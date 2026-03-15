@@ -2,10 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { getArtisanDetail } from "../../../services/artisanApi";
-import type {
-  ArtisanDetail,
-  ArtisanNarrativeBlock,
-} from "../../../types";
+import type { ArtisanDetail, ArtisanNarrativeBlock } from "../../../types";
 import Breadcrumbs from "../../Breadcrumbs";
 import "../../../styles/components/artisan/artisanDetailscss/_artisan-detail.scss";
 
@@ -68,20 +65,32 @@ export default function ArtisanDetailPage() {
       }
     };
     fetchData();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   /* ── Scroll to section ── */
   const scrollTo = useCallback((key: TabKey) => {
     setActiveTab(key);
-    sectionRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    sectionRefs.current[key]?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   }, []);
 
   /* ── Panorama slider ── */
   const images = artisan?.images ?? [];
-  const panoramaImages = images.length > 0 ? images : (artisan?.panoramaImageUrl ? [artisan.panoramaImageUrl] : []);
-  const prevSlide = () => setPanoramaIdx((i) => (i === 0 ? panoramaImages.length - 1 : i - 1));
-  const nextSlide = () => setPanoramaIdx((i) => (i === panoramaImages.length - 1 ? 0 : i + 1));
+  const panoramaImages =
+    images.length > 0
+      ? images
+      : artisan?.panoramaImageUrl
+        ? [artisan.panoramaImageUrl]
+        : [];
+  const prevSlide = () =>
+    setPanoramaIdx((i) => (i === 0 ? panoramaImages.length - 1 : i - 1));
+  const nextSlide = () =>
+    setPanoramaIdx((i) => (i === panoramaImages.length - 1 ? 0 : i + 1));
 
   /* ---------- Loading ---------- */
   if (loading) {
@@ -98,7 +107,9 @@ export default function ArtisanDetailPage() {
     return (
       <div className="ad-loading">
         <p>Không tìm thấy nghệ nhân này.</p>
-        <Link to="/artisans" className="ad-back-btn">Quay lại danh sách</Link>
+        <Link to="/artisans" className="ad-back-btn">
+          Quay lại danh sách
+        </Link>
       </div>
     );
   }
@@ -126,7 +137,10 @@ export default function ArtisanDetailPage() {
         />
         <div className="ad-hero-banner__overlay" />
 
-        <button className="ad-hero-banner__back" onClick={() => navigate("/artisans")}>
+        <button
+          className="ad-hero-banner__back"
+          onClick={() => navigate("/artisans")}
+        >
           <ArrowLeft size={20} />
         </button>
 
@@ -135,16 +149,16 @@ export default function ArtisanDetailPage() {
           <p className="ad-hero-banner__subtitle">
             {artisan.heroSubtitle || artisan.bio}
           </p>
-          <Link to="/tours" className="ad-hero-banner__btn">Khám phá ngay</Link>
+          <Link to="/tours" className="ad-hero-banner__btn">
+            Khám phá ngay
+          </Link>
         </div>
       </section>
 
       {/* ═══════════ INFO CARD — name, tabs, stats ═══════════ */}
       <section className="ad-info">
         <div className="ad-info__container">
-          <h2 className="ad-info__name">
-            Nghệ nhân {artisan.fullName}
-          </h2>
+          <h2 className="ad-info__name">Nghệ nhân {artisan.fullName}</h2>
 
           {/* Sticky-ish tabs */}
           <nav className="ad-info__tabs">
@@ -163,7 +177,9 @@ export default function ArtisanDetailPage() {
           <div className="ad-info__stats">
             <div className="ad-info__stat">
               <span className="ad-info__stat-label">Dân tộc</span>
-              <span className="ad-info__stat-value">{artisan.ethnicity || "—"}</span>
+              <span className="ad-info__stat-value">
+                {artisan.ethnicity || "—"}
+              </span>
             </div>
             <div className="ad-info__stat">
               <span className="ad-info__stat-label">Tuổi</span>
@@ -171,7 +187,9 @@ export default function ArtisanDetailPage() {
             </div>
             <div className="ad-info__stat">
               <span className="ad-info__stat-label">Nơi sinh sống</span>
-              <span className="ad-info__stat-value">{artisan.location || "—"}</span>
+              <span className="ad-info__stat-value">
+                {artisan.location || "—"}
+              </span>
             </div>
           </div>
 
@@ -184,7 +202,9 @@ export default function ArtisanDetailPage() {
       {narrativeBlocks.length > 0 && (
         <section
           className="ad-narrative"
-          ref={(el) => { sectionRefs.current.narrative = el; }}
+          ref={(el) => {
+            sectionRefs.current.narrative = el;
+          }}
         >
           <div className="ad-narrative__container">
             <h2 className="ad-narrative__heading">
@@ -220,7 +240,9 @@ export default function ArtisanDetailPage() {
       {panoramaImages.length > 0 && (
         <section
           className="ad-panorama"
-          ref={(el) => { sectionRefs.current.gong = el; }}
+          ref={(el) => {
+            sectionRefs.current.gong = el;
+          }}
         >
           <div className="ad-panorama__slider">
             <img
@@ -230,10 +252,16 @@ export default function ArtisanDetailPage() {
             />
             {panoramaImages.length > 1 && (
               <>
-                <button className="ad-panorama__arrow ad-panorama__arrow--left" onClick={prevSlide}>
+                <button
+                  className="ad-panorama__arrow ad-panorama__arrow--left"
+                  onClick={prevSlide}
+                >
                   <ChevronLeft size={28} />
                 </button>
-                <button className="ad-panorama__arrow ad-panorama__arrow--right" onClick={nextSlide}>
+                <button
+                  className="ad-panorama__arrow ad-panorama__arrow--right"
+                  onClick={nextSlide}
+                >
                   <ChevronRight size={28} />
                 </button>
                 <div className="ad-panorama__dots">
@@ -251,67 +279,81 @@ export default function ArtisanDetailPage() {
         </section>
       )}
 
-      {/* ═══════════ KẾT NỐI VĂN HOÁ — related culture + tours ═══════════ */}
+      {/* ═══════════ KẾT NỐI VĂN HOÁ — related culture + tours + otherArtisans ═══════════ */}
       <section
         className="ad-connect"
-        ref={(el) => { sectionRefs.current.culture = el; }}
+        ref={(el) => {
+          sectionRefs.current.culture = el;
+        }}
       >
         <div className="ad-connect__container">
           <h2 className="ad-connect__heading">Kết nối văn hoá</h2>
 
-          <div className="ad-connect__grid">
-            {/* Related culture items */}
-            {artisan.relatedCultureItems?.slice(0, 2).map((item) => (
-              <div key={item.id} className="ad-connect__card">
-                <div className="ad-connect__card-img-wrap">
-                  <img
-                    src={item.thumbnailUrl || FALLBACK_IMG}
-                    alt={item.title}
-                    className="ad-connect__card-img"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="ad-connect__card-body">
-                  <h4>{item.title}</h4>
-                  <p>{item.description}</p>
-                </div>
+          {/* Related culture items — hiển thị đầy đủ theo JSON */}
+          {artisan.relatedCultureItems && artisan.relatedCultureItems.length > 0 && (
+            <>
+              <h3 className="ad-connect__subheading">Văn hoá liên quan</h3>
+              <div className="ad-connect__grid">
+                {artisan.relatedCultureItems.map((item) => (
+                  <div key={item.id} className="ad-connect__card">
+                    <div className="ad-connect__card-img-wrap">
+                      <img
+                        src={item.thumbnailUrl || FALLBACK_IMG}
+                        alt={item.title}
+                        className="ad-connect__card-img"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="ad-connect__card-body">
+                      <h4>{item.title}</h4>
+                      <p>{item.description}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </>
+          )}
 
-            {/* Related tours */}
-            {artisan.relatedTours?.slice(0, 2).map((tour) => (
-              <Link to={`/tours/${tour.id}`} key={tour.id} className="ad-connect__card ad-connect__card--tour">
-                <div className="ad-connect__card-img-wrap">
-                  <img
-                    src={tour.thumbnailUrl || FALLBACK_IMG}
-                    alt={tour.title}
-                    className="ad-connect__card-img"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="ad-connect__card-body">
-                  <h4>{tour.title}</h4>
-                  <p className="ad-connect__card-price">
-                    {formatPrice(tour.price)} VNĐ
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
+          {/* Related tours — hiển thị đầy đủ theo JSON */}
+          {artisan.relatedTours && artisan.relatedTours.length > 0 && (
+            <>
+              <h3 className="ad-connect__subheading">Tour liên quan</h3>
+              <div className="ad-connect__grid">
+                {artisan.relatedTours.map((tour) => (
+                  <Link
+                    to={`/tours/${tour.id}`}
+                    key={tour.id}
+                    className="ad-connect__card ad-connect__card--tour"
+                  >
+                    <div className="ad-connect__card-img-wrap">
+                      <img
+                        src={tour.thumbnailUrl || FALLBACK_IMG}
+                        alt={tour.title}
+                        className="ad-connect__card-img"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="ad-connect__card-body">
+                      <h4>{tour.title}</h4>
+                      <p>{tour.location}</p>
+                      <p className="ad-connect__card-price">
+                        {formatPrice(tour.price)} VNĐ
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
 
           {/* CTA row */}
           <div className="ad-connect__cta-row">
-            <Link to="/artisans" className="ad-connect__cta ad-connect__cta--outline">
+            <Link
+              to="/artisans"
+              className="ad-connect__cta ad-connect__cta--outline"
+            >
               Danh sách các nghệ nhân
             </Link>
-            {artisan.otherArtisans && artisan.otherArtisans.length > 0 && (
-              <Link
-                to={`/artisans/${artisan.otherArtisans[0].id}`}
-                className="ad-connect__cta ad-connect__cta--outline"
-              >
-                Xem thêm nghệ nhân khác
-              </Link>
-            )}
           </div>
         </div>
       </section>

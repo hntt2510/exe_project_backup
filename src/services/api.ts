@@ -37,11 +37,13 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     console.log(`[API] 🚀 ${config.method?.toUpperCase()} ${config.url}`);
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      // axios types: headers can be undefined
-      config.headers = config.headers ?? {};
-      config.headers.Authorization = `Bearer ${token}`;
+    const skipAuth = (config as { skipAuth?: boolean }).skipAuth;
+    if (!skipAuth) {
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        config.headers = config.headers ?? {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -80,7 +82,10 @@ export function getApiErrorMessage(error: unknown): string {
 const cache = new Map<string, unknown>();
 const inFlight = new Map<string, Promise<unknown>>();
 
-export async function cachedFetch<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+export async function cachedFetch<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+): Promise<T> {
   const cached = cache.get(key) as T | undefined;
   if (cached !== undefined) return cached;
 
@@ -130,6 +135,7 @@ export const getProvinces = async (): Promise<Province[]> => {
   return cachedFetch("provinces", async () => {
     const response = await api.get<ApiResponse<Province[]>>(
       "/api/provinces/public",
+      { skipAuth: true } as object,
     );
     return response.data.data;
   });
@@ -139,6 +145,7 @@ export const getProvinceById = async (id: number): Promise<Province> => {
   return cachedFetch(`province:id:${id}`, async () => {
     const response = await api.get<ApiResponse<Province>>(
       `/api/provinces/public/${id}`,
+      { skipAuth: true } as object,
     );
     return response.data.data;
   });
@@ -148,6 +155,7 @@ export const getProvinceBySlug = async (slug: string): Promise<Province> => {
   return cachedFetch(`province:slug:${slug}`, async () => {
     const response = await api.get<ApiResponse<Province>>(
       `/api/provinces/public/slug/${slug}`,
+      { skipAuth: true } as object,
     );
     return response.data.data;
   });
@@ -282,9 +290,9 @@ export const getToursByProvince = async (
   provinceId: number,
 ): Promise<Tour[]> => {
   return cachedFetch(`tours:province:${provinceId}`, async () => {
-    const response = await api.get<
-      ApiResponse<Array<Record<string, unknown>>>
-    >(`/api/tours/public/province/${provinceId}`);
+    const response = await api.get<ApiResponse<Array<Record<string, unknown>>>>(
+      `/api/tours/public/province/${provinceId}`,
+    );
     const rawList = response.data.data ?? [];
     return rawList.map((r) => normalizeTour(r));
   });
@@ -428,7 +436,7 @@ export const getLearnCategories = async (): Promise<LearnCategory[]> => {
 };
 
 export const getLearnModules = async (
-  categoryId?: number
+  categoryId?: number,
 ): Promise<LearnModule[]> => {
   const key = categoryId
     ? `learn:modules:category:${categoryId}`

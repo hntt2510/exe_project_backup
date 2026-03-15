@@ -62,7 +62,8 @@ export default function MailManagement() {
         page: pagination.page,
         size: pagination.size,
         recipient: filterRecipient || undefined,
-        templateType: filterTemplateType !== "all" ? filterTemplateType : undefined,
+        templateType:
+          filterTemplateType !== "all" ? filterTemplateType : undefined,
         opened: openedParam,
         from: filterFrom || undefined,
         to: filterTo || undefined,
@@ -149,7 +150,8 @@ export default function MailManagement() {
       key: "opened",
       width: 90,
       render: (opened: boolean | undefined, record) => {
-        const isOpened = opened ?? (record.openedAt != null && record.openedAt !== "");
+        const isOpened =
+          opened ?? (record.openedAt != null && record.openedAt !== "");
         return (
           <Tag color={isOpened ? "green" : "default"}>
             {isOpened ? "Có" : "Chưa"}
@@ -195,7 +197,13 @@ export default function MailManagement() {
 
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-      <Card title={<><MailOutlined /> Quản lý Email đã gửi</>}>
+      <Card
+        title={
+          <>
+            <MailOutlined /> Quản lý Email đã gửi
+          </>
+        }
+      >
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col xs={24} sm={12} md={6}>
             <Input
@@ -232,7 +240,9 @@ export default function MailManagement() {
               style={{ width: "100%" }}
               placeholder="Từ ngày"
               format="DD/MM/YYYY"
-              onChange={(date) => setFilterFrom(date ? date.format("YYYY-MM-DD") : "")}
+              onChange={(date) =>
+                setFilterFrom(date ? date.format("YYYY-MM-DD") : "")
+              }
             />
           </Col>
           <Col xs={24} sm={12} md={4}>
@@ -240,7 +250,9 @@ export default function MailManagement() {
               style={{ width: "100%" }}
               placeholder="Đến ngày"
               format="DD/MM/YYYY"
-              onChange={(date) => setFilterTo(date ? date.format("YYYY-MM-DD") : "")}
+              onChange={(date) =>
+                setFilterTo(date ? date.format("YYYY-MM-DD") : "")
+              }
             />
           </Col>
           <Col xs={24} sm={12} md={4}>
@@ -269,7 +281,10 @@ export default function MailManagement() {
             <Spin size="large" />
           </div>
         ) : mails.length === 0 ? (
-          <Empty description="Chưa có email nào đã gửi" style={{ padding: "48px 0" }} />
+          <Empty
+            description="Chưa có email nào đã gửi"
+            style={{ padding: "48px 0" }}
+          />
         ) : (
           <Table
             columns={columns}
@@ -310,13 +325,22 @@ export default function MailManagement() {
         ) : detailData ? (
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="ID">{detailData.id}</Descriptions.Item>
-            <Descriptions.Item label="Người nhận">{detailData.recipientEmail}</Descriptions.Item>
-            <Descriptions.Item label="Tiêu đề">{detailData.subject ?? "—"}</Descriptions.Item>
-            <Descriptions.Item label="Loại template">{detailData.templateType ?? "—"}</Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">{detailData.status}</Descriptions.Item>
+            <Descriptions.Item label="Người nhận">
+              {detailData.recipientEmail}
+            </Descriptions.Item>
+            <Descriptions.Item label="Tiêu đề">
+              {detailData.subject ?? "—"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Loại template">
+              {detailData.templateType ?? "—"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">
+              {detailData.status}
+            </Descriptions.Item>
             <Descriptions.Item label="Đã mở">
               {detailData.opened ? "Có" : "Chưa"}
-              {detailData.openedCount != null && ` (${detailData.openedCount} lần)`}
+              {detailData.openedCount != null &&
+                ` (${detailData.openedCount} lần)`}
             </Descriptions.Item>
             {detailData.relatedType && (
               <Descriptions.Item label="Liên quan">
@@ -324,11 +348,17 @@ export default function MailManagement() {
                 {detailData.relatedId != null && ` #${detailData.relatedId}`}
               </Descriptions.Item>
             )}
-            <Descriptions.Item label="Gửi lúc">{formatDateTimeVN(detailData.sentAt)}</Descriptions.Item>
+            <Descriptions.Item label="Gửi lúc">
+              {formatDateTimeVN(detailData.sentAt)}
+            </Descriptions.Item>
             {detailData.openedAt && (
-              <Descriptions.Item label="Mở lúc">{formatDateTimeVN(detailData.openedAt)}</Descriptions.Item>
+              <Descriptions.Item label="Mở lúc">
+                {formatDateTimeVN(detailData.openedAt)}
+              </Descriptions.Item>
             )}
-            <Descriptions.Item label="Tạo lúc">{formatDateTimeVN(detailData.createdAt)}</Descriptions.Item>
+            <Descriptions.Item label="Tạo lúc">
+              {formatDateTimeVN(detailData.createdAt)}
+            </Descriptions.Item>
           </Descriptions>
         ) : (
           <Empty description="Không tìm thấy thông tin" />

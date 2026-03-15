@@ -16,7 +16,9 @@ import {
   Table,
   Popconfirm,
   Empty,
+  DatePicker,
 } from "antd";
+import dayjs from "dayjs";
 import {
   PlusOutlined,
   EditOutlined,
@@ -37,10 +39,17 @@ import {
   deleteArtisan,
   getAdminUsers,
   getAdminArtisanById,
+  getAdminArtisanDetail,
   updateUserStatus,
   type UpdateArtisanRequest,
+  type CreateArtisanRequest,
+  type AdminArtisanDetail,
 } from "../../services/adminApi";
-import { getArtisans, getProvinces, getApiErrorMessage } from "../../services/api";
+import {
+  getArtisans,
+  getProvinces,
+  getApiErrorMessage,
+} from "../../services/api";
 
 /** Chỉ chứa các field có trong API response /api/artisans/public */
 interface Artisan {
@@ -80,6 +89,8 @@ export default function ArtisanManagement() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailData, setDetailData] = useState<AdminArtisanDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedArtisan, setSelectedArtisan] = useState<Artisan | null>(null);
   const [provinces, setProvinces] = useState<{ id: number; name: string }[]>(
@@ -89,7 +100,9 @@ export default function ArtisanManagement() {
   const [editForm] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
-  const [userOptions, setUserOptions] = useState<{ id: number; fullName: string; email: string }[]>([]);
+  const [userOptions, setUserOptions] = useState<
+    { id: number; fullName: string; email: string }[]
+  >([]);
 
   const isFallbackMode = !!fallbackNotice;
 
@@ -102,12 +115,15 @@ export default function ArtisanManagement() {
   const mapApiToArtisan = (item: unknown): Artisan => {
     const a = item as Record<string, unknown>;
     const province = a.province as { id?: number; name?: string } | undefined;
-    const user = a.user as { id?: number; avatarUrl?: string; status?: string } | undefined;
+    const user = a.user as
+      | { id?: number; avatarUrl?: string; status?: string }
+      | undefined;
     const provinceName = province?.name ?? "";
     const provinceId = province?.id;
     const isActive = a.isActive as boolean | undefined;
     const status = isActive === false ? "INACTIVE" : "ACTIVE";
-    const profileImageUrl = (a.profileImageUrl as string) ?? (user?.avatarUrl as string) ?? "";
+    const profileImageUrl =
+      (a.profileImageUrl as string) ?? (user?.avatarUrl as string) ?? "";
     return {
       id: String(a.id),
       name: (a.fullName as string) ?? "",
@@ -136,7 +152,7 @@ export default function ArtisanManagement() {
         const { data } = await getAdminArtisans();
         const rawList = (data || []) as unknown[];
         setArtisans(rawList.map(mapApiToArtisan));
-        } catch (adminErr: unknown) {
+      } catch (adminErr: unknown) {
         try {
           const raw = await getArtisans();
           const apiArtisans = Array.isArray(raw) ? raw : [];
@@ -188,38 +204,88 @@ export default function ArtisanManagement() {
     setSearchInput("");
   };
 
-  const handleViewDetail = (record: Artisan) => {
+  const handleViewDetail = async (record: Artisan) => {
     setSelectedArtisan(record);
     setDetailModalOpen(true);
+    setDetailData(null);
+    setDetailLoading(true);
+    try {
+      const data = await getAdminArtisanDetail(Number(record.id));
+      setDetailData(data);
+    } catch (err) {
+      console.error("Error fetching artisan detail:", err);
+      message.error("Không thể tải chi tiết nghệ nhân");
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
-  const handleOpenEdit = async (record: Artisan) => {
+  const handleOpenEdit = async (
+    record: Artisan,
+    fromDetail?: AdminArtisanDetail | null,
+  ) => {
     setSelectedArtisan(record);
-    
-    // Lấy thông tin đầy đủ của artisan để có userId và userStatus
-    let userId = record.userId;
-    let userStatus = record.userStatus;
-    
-    if (!userId || !userStatus) {
-      try {
-        const artisanDetail = await getAdminArtisanById(parseInt(record.id));
-        userId = artisanDetail.user?.id;
-        userStatus = artisanDetail.user?.status as "ACTIVE" | "INACTIVE" | undefined;
-      } catch (err) {
-        console.error("Error fetching artisan detail:", err);
-      }
-    }
-    
-    editForm.setFieldsValue({
+    setDetailModalOpen(false);
+    setDetailData(null);
+
+    let editData: Record<string, unknown> = {
       fullName: record.name,
       specialization: record.specialty,
       bio: record.bio || "",
       profileImageUrl: record.profileImageUrl || "",
       workshopAddress: record.workshopAddress || "",
       provinceId: record.provinceId,
-      userId: userId,
-      userStatus: userStatus || "ACTIVE",
-    });
+      userStatus: record.userStatus || "ACTIVE",
+    };
+
+    if (fromDetail) {
+      editData.ethnicity = fromDetail.ethnicity || "";
+      editData.heroSubtitle = fromDetail.heroSubtitle || "";
+      editData.panoramaImageUrl = fromDetail.panoramaImageUrl || "";
+      editData.images = Array.isArray(fromDetail.images)
+        ? fromDetail.images.join("\n")
+        : "";
+      editData.narrativeContent = fromDetail.narrativeContent?.length
+        ? JSON.stringify(fromDetail.narrativeContent, null, 2)
+        : "";
+    }
+
+    try {
+      const artisanDetail = await getAdminArtisanById(parseInt(record.id));
+      editData.userStatus =
+        (artisanDetail.user?.status as "ACTIVE" | "INACTIVE") ||
+        editData.userStatus;
+      editData.userId = artisanDetail.user?.id;
+      editData.provinceId = artisanDetail.province?.id ?? record.provinceId;
+
+      // dateOfBirth: ưu tiên artisan, fallback user, fallback từ age (nếu có fromDetail)
+      let dateOfBirth =
+        artisanDetail.dateOfBirth ||
+        (artisanDetail.user as { dateOfBirth?: string })?.dateOfBirth ||
+        "";
+      if (!dateOfBirth && fromDetail?.age != null) {
+        const birthYear = new Date().getFullYear() - fromDetail.age;
+        dateOfBirth = `${birthYear}-01-01`;
+      }
+      editData.dateOfBirth = dateOfBirth ? dayjs(dateOfBirth) : undefined;
+
+      if (!fromDetail) {
+        editData.ethnicity = artisanDetail.ethnicity || "";
+        editData.heroSubtitle = artisanDetail.heroSubtitle || "";
+        editData.panoramaImageUrl = artisanDetail.panoramaImageUrl || "";
+        editData.images =
+          typeof artisanDetail.images === "string"
+            ? artisanDetail.images
+            : Array.isArray(artisanDetail.images)
+              ? artisanDetail.images.join("\n")
+              : "";
+        editData.narrativeContent = artisanDetail.narrativeContent || "";
+      }
+    } catch (err) {
+      console.error("Error fetching artisan detail:", err);
+    }
+
+    editForm.setFieldsValue(editData);
     setEditModalOpen(true);
   };
 
@@ -248,16 +314,51 @@ export default function ArtisanManagement() {
       const values = await form.validateFields();
       const selectedUser = userOptions.find((u) => u.id === values.userId);
       setCreateLoading(true);
-      const payload: Record<string, unknown> = {
+
+      const payload: CreateArtisanRequest = {
         userId: values.userId,
-        fullName: values.fullName || selectedUser?.fullName || "Nghệ nhân",
-        specialization: values.specialization,
+        fullName:
+          values.fullName?.trim() || selectedUser?.fullName || "Nghệ nhân",
+        specialization: values.specialization?.trim() || "",
       };
+
       if (values.bio?.trim()) payload.bio = values.bio.trim();
-      if (values.workshopAddress?.trim()) payload.workshopAddress = values.workshopAddress.trim();
-      if (values.profileImageUrl?.trim()) payload.profileImageUrl = values.profileImageUrl.trim();
-      if (values.provinceId) payload.provinceId = values.provinceId;
-      await createArtisan(payload as any);
+      if (values.workshopAddress?.trim())
+        payload.workshopAddress = values.workshopAddress.trim();
+      if (values.profileImageUrl?.trim())
+        payload.profileImageUrl = values.profileImageUrl.trim();
+      if (values.heroSubtitle?.trim())
+        payload.heroSubtitle = values.heroSubtitle.trim();
+      if (values.panoramaImageUrl?.trim())
+        payload.panoramaImageUrl = values.panoramaImageUrl.trim();
+      if (values.ethnicity?.trim()) payload.ethnicity = values.ethnicity.trim();
+      if (values.dateOfBirth)
+        payload.dateOfBirth = dayjs(values.dateOfBirth).format("YYYY-MM-DD");
+
+      if (values.images?.trim()) {
+        const imgVal = values.images.trim();
+        payload.images = imgVal.startsWith("[")
+          ? imgVal
+          : imgVal
+              .split(/[\n,]+/)
+              .map((s: string) => s.trim())
+              .filter(Boolean);
+      }
+
+      if (values.narrativeContent?.trim()) {
+        try {
+          JSON.parse(values.narrativeContent.trim());
+          payload.narrativeContent = values.narrativeContent.trim();
+        } catch {
+          message.warning("Narrative content phải là JSON hợp lệ. Đã bỏ qua.");
+        }
+      }
+
+      if (values.provinceId) {
+        payload.provinceId = Number(values.provinceId);
+      }
+
+      await createArtisan(payload);
       message.success("Đã thêm nghệ nhân thành công");
       setIsModalOpen(false);
       form.resetFields();
@@ -294,32 +395,63 @@ export default function ArtisanManagement() {
     try {
       const values = await editForm.validateFields();
       setSaving(true);
-      
-      // Cập nhật thông tin nghệ nhân
+
+      // dateOfBirth: DatePicker trả Dayjs, chuyển sang YYYY-MM-DD
+      const dateOfBirthStr = values.dateOfBirth
+        ? dayjs(values.dateOfBirth).format("YYYY-MM-DD")
+        : undefined;
+
+      // Cập nhật thông tin nghệ nhân - khớp PUT /api/artisans/{id}
       const payload: UpdateArtisanRequest = {
-        fullName: values.fullName,
-        specialization: values.specialization,
-        bio: values.bio ?? "",
-        workshopAddress: values.workshopAddress ?? "",
+        fullName: values.fullName?.trim(),
+        specialization: values.specialization?.trim(),
+        bio: values.bio?.trim() || undefined,
+        workshopAddress: values.workshopAddress?.trim() || undefined,
+        ethnicity: values.ethnicity?.trim() || undefined,
+        dateOfBirth: dateOfBirthStr,
+        heroSubtitle: values.heroSubtitle?.trim() || undefined,
+        panoramaImageUrl: values.panoramaImageUrl?.trim() || undefined,
       };
-      
+
       if (values.profileImageUrl?.trim()) {
         payload.profileImageUrl = values.profileImageUrl.trim();
       }
-      
-      // Backend yêu cầu province dạng object { id } thay vì provinceId
-      // Đảm bảo province chỉ có id, không có field nào khác
+
+      // images: backend nhận string (JSON array) hoặc array
+      if (values.images?.trim()) {
+        const imgVal = values.images.trim();
+        if (imgVal.startsWith("[")) {
+          payload.images = imgVal;
+        } else {
+          const arr = imgVal
+            .split(/[\n,]+/)
+            .map((s: string) => s.trim())
+            .filter(Boolean);
+          payload.images = arr.length > 0 ? arr : undefined;
+        }
+      }
+
+      // narrativeContent: string (JSON)
+      if (values.narrativeContent?.trim()) {
+        try {
+          JSON.parse(values.narrativeContent.trim());
+          payload.narrativeContent = values.narrativeContent.trim();
+        } catch {
+          message.warning("Narrative content phải là JSON hợp lệ. Đã bỏ qua.");
+        }
+      }
+
+      // province: backend có thể nhận provinceId hoặc province: { id }
       if (values.provinceId) {
         payload.province = { id: Number(values.provinceId) };
-        // Không gửi provinceId để tránh conflict
-        delete (payload as any).provinceId;
       }
-      
+
       // Đảm bảo id là number
-      const artisanId = typeof selectedArtisan.id === 'string' 
-        ? parseInt(selectedArtisan.id, 10) 
-        : selectedArtisan.id;
-      
+      const artisanId =
+        typeof selectedArtisan.id === "string"
+          ? parseInt(selectedArtisan.id, 10)
+          : selectedArtisan.id;
+
       console.log("[ArtisanManagement] Updating artisan:", {
         artisanId,
         artisanIdType: typeof artisanId,
@@ -327,26 +459,34 @@ export default function ArtisanManagement() {
         originalIdType: typeof selectedArtisan.id,
         payload: JSON.parse(JSON.stringify(payload)), // Deep clone để log chính xác
       });
-      
+
       await updateArtisan(artisanId, payload);
-      
+
       // Cập nhật status của user account nếu có userId và status thay đổi
       // Lấy userId từ form hoặc từ selectedArtisan, nếu không có thì fetch lại
       let userId = values.userId || selectedArtisan.userId;
-      
+
       // Nếu không có userId, thử fetch lại từ API
       if (!userId) {
         try {
-          const artisanDetail = await getAdminArtisanById(parseInt(selectedArtisan.id));
+          const artisanDetail = await getAdminArtisanById(
+            parseInt(selectedArtisan.id),
+          );
           userId = artisanDetail.user?.id;
         } catch (err) {
-          console.error("[ArtisanManagement] Error fetching artisan detail for userId:", err);
+          console.error(
+            "[ArtisanManagement] Error fetching artisan detail for userId:",
+            err,
+          );
         }
       }
-      
-      const newUserStatus = values.userStatus as "ACTIVE" | "INACTIVE" | undefined;
+
+      const newUserStatus = values.userStatus as
+        | "ACTIVE"
+        | "INACTIVE"
+        | undefined;
       const oldUserStatus = selectedArtisan.userStatus;
-      
+
       console.log("[ArtisanManagement] Updating user status:", {
         userId,
         newUserStatus,
@@ -356,16 +496,23 @@ export default function ArtisanManagement() {
         statusChanged: newUserStatus !== oldUserStatus,
         selectedArtisanId: selectedArtisan.id,
       });
-      
+
       if (userId && newUserStatus) {
         // Luôn cập nhật nếu có userId và newUserStatus
         try {
           await updateUserStatus(userId, newUserStatus);
-          console.log("[ArtisanManagement] ✅ User status updated successfully");
+          console.log(
+            "[ArtisanManagement] ✅ User status updated successfully",
+          );
         } catch (err) {
-          console.error("[ArtisanManagement] ❌ Error updating user status:", err);
+          console.error(
+            "[ArtisanManagement] ❌ Error updating user status:",
+            err,
+          );
           // Không throw error để không block việc cập nhật artisan
-          message.warning("Đã cập nhật nghệ nhân nhưng không thể cập nhật trạng thái tài khoản.");
+          message.warning(
+            "Đã cập nhật nghệ nhân nhưng không thể cập nhật trạng thái tài khoản.",
+          );
         }
       } else {
         console.warn("[ArtisanManagement] ⚠️ Cannot update user status:", {
@@ -374,10 +521,12 @@ export default function ArtisanManagement() {
           reason: !userId ? "No userId" : "No newUserStatus",
         });
         if (!userId) {
-          message.warning("Nghệ nhân này chưa có tài khoản user, không thể cập nhật trạng thái.");
+          message.warning(
+            "Nghệ nhân này chưa có tài khoản user, không thể cập nhật trạng thái.",
+          );
         }
       }
-      
+
       message.success("Cập nhật nghệ nhân thành công");
       setEditModalOpen(false);
       setSelectedArtisan(null);
@@ -385,7 +534,9 @@ export default function ArtisanManagement() {
     } catch (err) {
       if (err && typeof err === "object" && "errorFields" in err) return;
       console.error("[ArtisanManagement] handleSaveEdit error:", err);
-      message.error(getApiErrorMessage(err) || "Cập nhật thất bại. Vui lòng thử lại.");
+      message.error(
+        getApiErrorMessage(err) || "Cập nhật thất bại. Vui lòng thử lại.",
+      );
     } finally {
       setSaving(false);
     }
@@ -692,9 +843,13 @@ export default function ArtisanManagement() {
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
-        width={600}
+        width={680}
       >
-        <Form form={form} layout="vertical">
+        <Form
+          form={form}
+          layout="vertical"
+          style={{ maxHeight: "70vh", overflowY: "auto" }}
+        >
           <Form.Item
             label="Tài khoản (User)"
             name="userId"
@@ -728,6 +883,9 @@ export default function ArtisanManagement() {
           >
             <Input placeholder="VD: Gốm, Đan lát, Dệt thổ cẩm..." />
           </Form.Item>
+          <Form.Item label="Phụ đề hero" name="heroSubtitle">
+            <Input placeholder="VD: Nghệ Nhân Chỉnh Chiêng Bậc Thầy" />
+          </Form.Item>
           <Form.Item label="Giới thiệu" name="bio">
             <Input.TextArea rows={4} placeholder="Mô tả ngắn về nghệ nhân" />
           </Form.Item>
@@ -740,6 +898,30 @@ export default function ArtisanManagement() {
             extra="Mỗi URL cách nhau bởi dấu phẩy hoặc xuống dòng"
           >
             <Input.TextArea rows={2} placeholder="https://... , https://..." />
+          </Form.Item>
+          <Form.Item label="Ảnh panorama (URL)" name="panoramaImageUrl">
+            <Input placeholder="https://..." />
+          </Form.Item>
+          <Form.Item label="Dân tộc" name="ethnicity">
+            <Input placeholder="VD: Ba Na, Jrai" />
+          </Form.Item>
+          <Form.Item label="Ngày sinh" name="dateOfBirth">
+            <DatePicker
+              format="DD/MM/YYYY"
+              placeholder="Chọn ngày sinh"
+              style={{ width: "100%" }}
+              allowClear
+            />
+          </Form.Item>
+          <Form.Item
+            label="Narrative content (JSON)"
+            name="narrativeContent"
+            extra='Mảng JSON: [{"title":"...","content":"...","imageUrl":"..."}]'
+          >
+            <Input.TextArea
+              rows={4}
+              placeholder='[{"title":"...","content":"...","imageUrl":"..."}]'
+            />
           </Form.Item>
           <Form.Item label="Tỉnh thành" name="provinceId">
             <Select placeholder="Chọn tỉnh thành" allowClear>
@@ -774,6 +956,7 @@ export default function ArtisanManagement() {
         onCancel={() => {
           setDetailModalOpen(false);
           setSelectedArtisan(null);
+          setDetailData(null);
         }}
         footer={[
           <Button
@@ -781,8 +964,7 @@ export default function ArtisanManagement() {
             type="primary"
             icon={<EditOutlined />}
             onClick={() => {
-              setDetailModalOpen(false);
-              if (selectedArtisan) handleOpenEdit(selectedArtisan);
+              if (selectedArtisan) handleOpenEdit(selectedArtisan, detailData);
             }}
             disabled={isFallbackMode}
           >
@@ -793,6 +975,7 @@ export default function ArtisanManagement() {
             onClick={() => {
               setDetailModalOpen(false);
               setSelectedArtisan(null);
+              setDetailData(null);
             }}
           >
             Đóng
@@ -800,33 +983,60 @@ export default function ArtisanManagement() {
         ]}
         width={800}
       >
-        {selectedArtisan && (
+        {detailLoading ? (
+          <div style={{ textAlign: "center", padding: 48 }}>Đang tải...</div>
+        ) : detailData || selectedArtisan ? (
           <PersonDetailCard
-            avatarUrl={selectedArtisan.profileImageUrl}
-            name={selectedArtisan.name}
-            subtitle={selectedArtisan.specialty ? `Nghệ nhân ${selectedArtisan.specialty}` : "Nghệ nhân"}
-            status={selectedArtisan.status}
+            avatarUrl={
+              detailData?.profileImageUrl ?? selectedArtisan?.profileImageUrl
+            }
+            name={detailData?.fullName ?? selectedArtisan?.name ?? ""}
+            subtitle={
+              detailData?.heroSubtitle
+                ? detailData.heroSubtitle
+                : detailData?.specialization
+                  ? `Nghệ nhân ${detailData.specialization}`
+                  : selectedArtisan?.specialty
+                    ? `Nghệ nhân ${selectedArtisan.specialty}`
+                    : "Nghệ nhân"
+            }
+            status={selectedArtisan?.status}
             infoSections={[
               {
                 rows: [
                   {
                     label: "Chuyên môn",
-                    value: selectedArtisan.specialty,
+                    value:
+                      detailData?.specialization ??
+                      selectedArtisan?.specialty ??
+                      "",
                     icon: <TrophyOutlined />,
                   },
                   {
                     label: "Địa điểm",
-                    value: selectedArtisan.location,
+                    value:
+                      detailData?.location ?? selectedArtisan?.location ?? "",
                     icon: <EnvironmentOutlined />,
                   },
                   {
+                    label: "Dân tộc",
+                    value: detailData?.ethnicity || "—",
+                    icon: <UserOutlined />,
+                  },
+                  {
+                    label: "Tuổi",
+                    value:
+                      detailData?.age != null ? String(detailData.age) : "—",
+                    icon: <UserOutlined />,
+                  },
+                  {
                     label: "Địa chỉ xưởng",
-                    value: selectedArtisan.workshopAddress || "Chưa có",
+                    value: selectedArtisan?.workshopAddress || "Chưa có",
                     icon: <HomeOutlined />,
                   },
                   {
                     label: "Đánh giá",
-                    value: `${(selectedArtisan.averageRating ?? 0).toFixed(1)}/5 · ${selectedArtisan.totalTours ?? 0} tour`,
+                    value: `${(selectedArtisan?.averageRating ?? 0).toFixed(1)}/5 · ${detailData?.relatedTours?.length ?? selectedArtisan?.totalTours ?? 0} tour`,
                     icon: <TrophyOutlined />,
                   },
                 ],
@@ -836,13 +1046,149 @@ export default function ArtisanManagement() {
                 rows: [
                   {
                     label: "",
-                    value: selectedArtisan.bio || "Chưa có",
+                    value: detailData?.bio ?? selectedArtisan?.bio ?? "Chưa có",
                   },
                 ],
               },
+              ...(detailData?.relatedTours && detailData.relatedTours.length > 0
+                ? [
+                    {
+                      title: "Tour liên quan",
+                      rows: detailData.relatedTours.slice(0, 5).map((t) => ({
+                        label: t.title,
+                        value: `${t.location} · ${t.price.toLocaleString("vi-VN")}đ`,
+                        icon: <TrophyOutlined />,
+                      })),
+                    },
+                  ]
+                : []),
+              ...(detailData?.relatedCultureItems &&
+              detailData.relatedCultureItems.length > 0
+                ? [
+                    {
+                      title: "Văn hoá liên quan",
+                      rows: detailData.relatedCultureItems
+                        .slice(0, 3)
+                        .map((c) => ({
+                          label: c.title,
+                          value: c.description || "—",
+                        })),
+                    },
+                  ]
+                : []),
             ]}
+            extraContent={
+              detailData ? (
+                <div style={{ marginTop: 24 }}>
+                  {detailData.panoramaImageUrl && (
+                    <Card
+                      size="small"
+                      style={{
+                        marginBottom: 20,
+                        borderRadius: 12,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <img
+                        src={detailData.panoramaImageUrl}
+                        alt="Panorama"
+                        style={{
+                          width: "100%",
+                          maxHeight: 240,
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                    </Card>
+                  )}
+                  {detailData.images && detailData.images.length > 0 && (
+                    <Card
+                      size="small"
+                      style={{ marginBottom: 20, borderRadius: 12 }}
+                      styles={{ body: { padding: 16 } }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: "#8c8c8c",
+                          marginBottom: 12,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Hình ảnh
+                      </div>
+                      <Row gutter={[8, 8]}>
+                        {detailData.images.slice(0, 6).map((url, i) => (
+                          <Col xs={12} sm={8} key={i}>
+                            <img
+                              src={url}
+                              alt={`Ảnh ${i + 1}`}
+                              style={{
+                                width: "100%",
+                                aspectRatio: 1,
+                                objectFit: "cover",
+                                borderRadius: 8,
+                              }}
+                            />
+                          </Col>
+                        ))}
+                      </Row>
+                    </Card>
+                  )}
+                  {detailData.narrativeContent &&
+                    detailData.narrativeContent.length > 0 && (
+                      <div style={{ marginBottom: 20 }}>
+                        {detailData.narrativeContent.map((item, idx) => (
+                          <Card
+                            key={idx}
+                            size="small"
+                            style={{ marginBottom: 12, borderRadius: 12 }}
+                            styles={{ body: { padding: 20 } }}
+                          >
+                            {item.title && (
+                              <div
+                                style={{
+                                  fontSize: 16,
+                                  fontWeight: 600,
+                                  color: "#1a1a1a",
+                                  marginBottom: 8,
+                                }}
+                              >
+                                {item.title}
+                              </div>
+                            )}
+                            {item.imageUrl && (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.title}
+                                style={{
+                                  width: "100%",
+                                  maxHeight: 200,
+                                  objectFit: "cover",
+                                  borderRadius: 8,
+                                  marginBottom: 12,
+                                }}
+                              />
+                            )}
+                            <div
+                              style={{
+                                fontSize: 15,
+                                color: "#262626",
+                                lineHeight: 1.7,
+                              }}
+                            >
+                              {item.content}
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              ) : null
+            }
           />
-        )}
+        ) : null}
       </Modal>
 
       <Modal
@@ -891,9 +1237,16 @@ export default function ArtisanManagement() {
             </Space>
           </div>
         }
-        width={560}
+        width={680}
       >
-        <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
+        <Form
+          form={editForm}
+          layout="vertical"
+          style={{ marginTop: 16, maxHeight: "70vh", overflowY: "auto" }}
+        >
+          <Form.Item name="userId" hidden>
+            <Input type="hidden" />
+          </Form.Item>
           <Form.Item
             label="Họ tên"
             name="fullName"
@@ -908,11 +1261,49 @@ export default function ArtisanManagement() {
           >
             <Input placeholder="VD: Gốm, Đan lát..." />
           </Form.Item>
+          <Form.Item label="Phụ đề hero" name="heroSubtitle">
+            <Input placeholder="VD: Nghệ Nhân Chỉnh Chiêng Bậc Thầy" />
+          </Form.Item>
           <Form.Item label="Giới thiệu" name="bio">
             <Input.TextArea rows={4} placeholder="Mô tả ngắn về nghệ nhân" />
           </Form.Item>
           <Form.Item label="Ảnh đại diện (URL)" name="profileImageUrl">
             <Input placeholder="https://..." />
+          </Form.Item>
+          <Form.Item
+            label="Hình ảnh (URL)"
+            name="images"
+            extra="Mỗi URL cách nhau bởi dấu phẩy hoặc xuống dòng"
+          >
+            <Input.TextArea rows={2} placeholder="https://... , https://..." />
+          </Form.Item>
+          <Form.Item label="Ảnh panorama (URL)" name="panoramaImageUrl">
+            <Input placeholder="https://..." />
+          </Form.Item>
+          <Form.Item label="Dân tộc" name="ethnicity">
+            <Input placeholder="VD: Ba Na, Jrai" />
+          </Form.Item>
+          <Form.Item
+            label="Ngày sinh"
+            name="dateOfBirth"
+            extra="Chọn ngày tháng năm sinh của nghệ nhân"
+          >
+            <DatePicker
+              format="DD/MM/YYYY"
+              placeholder="Chọn ngày sinh"
+              style={{ width: "100%" }}
+              allowClear
+            />
+          </Form.Item>
+          <Form.Item
+            label="Narrative content (JSON)"
+            name="narrativeContent"
+            extra='Mảng JSON: [{"title":"...","content":"...","imageUrl":"..."}]'
+          >
+            <Input.TextArea
+              rows={6}
+              placeholder='[{"title":"...","content":"...","imageUrl":"..."}]'
+            />
           </Form.Item>
           <Form.Item label="Tỉnh thành" name="provinceId">
             <Select placeholder="Chọn tỉnh thành" allowClear>
@@ -926,8 +1317,8 @@ export default function ArtisanManagement() {
           <Form.Item label="Địa chỉ xưởng" name="workshopAddress">
             <Input placeholder="Địa chỉ cụ thể" />
           </Form.Item>
-          <Form.Item 
-            label="Trạng thái tài khoản" 
+          <Form.Item
+            label="Trạng thái tài khoản"
             name="userStatus"
             tooltip="Chỉ áp dụng nếu nghệ nhân có tài khoản user"
           >

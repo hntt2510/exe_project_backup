@@ -68,6 +68,8 @@ export interface CreateTourRequest {
   thumbnailUrl?: string;
   images?: string | string[]; // Backend trả images: string
   artisanId?: number | null;
+  /** Lưu ý chuẩn bị trang phục, đồ dùng */
+  preparationTips?: string;
 }
 
 export interface UpdateTourRequest extends Partial<CreateTourRequest> {
@@ -688,24 +690,32 @@ export const getAdminFeedback = async (params?: {
   status?: string;
   search?: string;
 }): Promise<{ data: AdminFeedback[]; total: number }> => {
-  const response = await api.get<ApiResponse<AdminFeedback[] | { content?: AdminFeedback[]; totalElements?: number; total?: number }>>(
-    "/api/admin/feedback",
-    { params }
-  );
+  const response = await api.get<
+    ApiResponse<
+      | AdminFeedback[]
+      | { content?: AdminFeedback[]; totalElements?: number; total?: number }
+    >
+  >("/api/admin/feedback", { params });
   const d = response.data?.data;
   if (!d) return { data: [], total: 0 };
-  const data = Array.isArray(d) ? d : (d as { content?: AdminFeedback[] }).content ?? [];
+  const data = Array.isArray(d)
+    ? d
+    : ((d as { content?: AdminFeedback[] }).content ?? []);
   const total = Array.isArray(d)
     ? d.length
-    : (d as { totalElements?: number; total?: number }).totalElements ??
+    : ((d as { totalElements?: number; total?: number }).totalElements ??
       (d as { total?: number }).total ??
-      data.length;
+      data.length);
   return { data, total };
 };
 
 /** GET /api/admin/feedback/:id - Chi tiết feedback */
-export const getAdminFeedbackById = async (id: number): Promise<AdminFeedback | null> => {
-  const response = await api.get<ApiResponse<AdminFeedback>>(`/api/admin/feedback/${id}`);
+export const getAdminFeedbackById = async (
+  id: number,
+): Promise<AdminFeedback | null> => {
+  const response = await api.get<ApiResponse<AdminFeedback>>(
+    `/api/admin/feedback/${id}`,
+  );
   return response.data?.data ?? null;
 };
 
@@ -764,15 +774,19 @@ export const getAdminMails = async (params?: {
   if (params?.opened === false) q.opened = false;
   if (params?.from) q.from = params.from;
   if (params?.to) q.to = params.to;
-  const response = await api.get<ApiResponse<AdminMailPageResponse>>("/api/admin/mails", {
-    params: q,
-  });
+  const response = await api.get<ApiResponse<AdminMailPageResponse>>(
+    "/api/admin/mails",
+    {
+      params: q,
+    },
+  );
   // response.data = { success, code, message, data, errors, timestamp }
   // response.data.data = { totalPages, totalElements, size, content, number, ... }
   const d = response.data?.data as AdminMailPageResponse | undefined;
   if (!d || typeof d !== "object") return { data: [], total: 0 };
   const content = Array.isArray(d.content) ? d.content : [];
-  const total = typeof d.totalElements === "number" ? d.totalElements : content.length;
+  const total =
+    typeof d.totalElements === "number" ? d.totalElements : content.length;
   return { data: content, total };
 };
 
@@ -780,8 +794,12 @@ export const getAdminMails = async (params?: {
  * GET /api/admin/mails/:id - Chi tiết email log
  * Response: { success, code, message, data: { id, recipientEmail, subject, templateType, relatedId, relatedType, status, sentAt, openedAt, openedCount, createdAt, opened } }
  */
-export const getAdminMailById = async (id: number): Promise<AdminMail | null> => {
-  const response = await api.get<ApiResponse<AdminMail>>(`/api/admin/mails/${id}`);
+export const getAdminMailById = async (
+  id: number,
+): Promise<AdminMail | null> => {
+  const response = await api.get<ApiResponse<AdminMail>>(
+    `/api/admin/mails/${id}`,
+  );
   return response.data?.data ?? null;
 };
 
@@ -827,9 +845,12 @@ export const getAdminLeads = async (params?: {
   };
   if (params?.status) q.status = params.status;
   if (params?.tourId != null) q.tourId = params.tourId;
-  const response = await api.get<ApiResponse<AdminLeadPageResponse>>("/api/admin/leads", {
-    params: q,
-  });
+  const response = await api.get<ApiResponse<AdminLeadPageResponse>>(
+    "/api/admin/leads",
+    {
+      params: q,
+    },
+  );
   const d = response.data?.data as AdminLeadPageResponse | undefined;
   if (!d || typeof d !== "object") return { data: [], total: 0 };
   const content = Array.isArray(d.content) ? d.content : [];
@@ -839,8 +860,12 @@ export const getAdminLeads = async (params?: {
 };
 
 /** GET /api/admin/leads/:id - Chi tiết lead */
-export const getAdminLeadById = async (id: number): Promise<AdminLead | null> => {
-  const response = await api.get<ApiResponse<AdminLead>>(`/api/admin/leads/${id}`);
+export const getAdminLeadById = async (
+  id: number,
+): Promise<AdminLead | null> => {
+  const response = await api.get<ApiResponse<AdminLead>>(
+    `/api/admin/leads/${id}`,
+  );
   return response.data?.data ?? null;
 };
 
@@ -849,7 +874,10 @@ export const updateAdminLead = async (
   id: number,
   data: { status?: string; adminNote?: string },
 ): Promise<AdminLead | null> => {
-  const response = await api.put<ApiResponse<AdminLead>>(`/api/admin/leads/${id}`, data);
+  const response = await api.put<ApiResponse<AdminLead>>(
+    `/api/admin/leads/${id}`,
+    data,
+  );
   return response.data?.data ?? null;
 };
 
@@ -882,6 +910,12 @@ export interface AdminArtisan {
   };
   workshopAddress?: string;
   profileImageUrl?: string;
+  ethnicity?: string;
+  dateOfBirth?: string;
+  images?: string | string[];
+  heroSubtitle?: string;
+  narrativeContent?: string;
+  panoramaImageUrl?: string;
   totalTours?: number;
   averageRating?: number;
   isActive?: boolean;
@@ -889,7 +923,7 @@ export interface AdminArtisan {
   updatedAt?: string;
 }
 
-/** POST /api/artisans - Tạo nghệ nhân mới - khớp backend response */
+/** POST /api/artisans - Tạo nghệ nhân mới - khớp backend request/response */
 export interface CreateArtisanRequest {
   userId: number;
   fullName: string;
@@ -899,6 +933,12 @@ export interface CreateArtisanRequest {
   provinceId?: number;
   province?: { id: number };
   workshopAddress?: string;
+  ethnicity?: string;
+  dateOfBirth?: string;
+  images?: string | string[];
+  heroSubtitle?: string;
+  narrativeContent?: string;
+  panoramaImageUrl?: string;
 }
 
 /** PUT /api/artisans/{id} - Cập nhật nghệ nhân - khớp backend response */
@@ -910,6 +950,12 @@ export interface UpdateArtisanRequest {
   provinceId?: number;
   province?: { id: number };
   workshopAddress?: string;
+  ethnicity?: string;
+  dateOfBirth?: string;
+  images?: string | string[];
+  heroSubtitle?: string;
+  narrativeContent?: string;
+  panoramaImageUrl?: string;
   isActive?: boolean;
 }
 
@@ -939,6 +985,34 @@ export const getAdminArtisanById = async (
 ): Promise<AdminArtisan> => {
   const response = await api.get<ApiResponse<AdminArtisan>>(
     `/api/artisans/${id}`,
+  );
+  return response.data.data;
+};
+
+/** Chi tiết đầy đủ nghệ nhân (narrative, relatedTours, relatedCultureItems). GET /api/artisans/public/{id}/detail */
+export interface AdminArtisanDetail {
+  id: number;
+  fullName: string;
+  specialization: string;
+  bio: string;
+  profileImageUrl: string;
+  heroSubtitle: string;
+  ethnicity: string;
+  age: number;
+  location: string;
+  images: string[];
+  panoramaImageUrl: string | null;
+  narrativeContent: { title: string; content: string; imageUrl?: string }[];
+  relatedTours: { id: number; title: string; slug: string; thumbnailUrl: string; location: string; description: string; price: number }[];
+  relatedCultureItems: { id: number; title: string; thumbnailUrl: string; description: string }[];
+  otherArtisans: { id: number; fullName: string; profileImageUrl: string }[];
+}
+
+export const getAdminArtisanDetail = async (
+  id: number,
+): Promise<AdminArtisanDetail> => {
+  const response = await api.get<ApiResponse<AdminArtisanDetail>>(
+    `/api/artisans/public/${id}/detail`,
   );
   return response.data.data;
 };
@@ -994,9 +1068,16 @@ export const updateArtisan = async (
   }
 };
 
-/** Xóa nghệ nhân. Backend: DELETE /api/artisans/{id} */
+/**
+ * Xóa nghệ nhân. Backend: DELETE /api/artisans/{id}
+ * Response: { success: true, code, message, data: {}, errors: {}, timestamp }
+ */
 export const deleteArtisan = async (id: number): Promise<void> => {
-  await api.delete(`/api/artisans/${id}`);
+  const artisanId = Number(id);
+  if (isNaN(artisanId) || artisanId <= 0) {
+    throw new Error(`Invalid artisan ID: ${id}`);
+  }
+  await api.delete(`/api/artisans/${artisanId}`);
 };
 
 // ========== Admin Learn API ==========
