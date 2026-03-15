@@ -34,6 +34,8 @@ import {
   IdcardOutlined,
   BookOutlined,
   GiftOutlined,
+  MessageOutlined,
+  MailOutlined,
 } from "@ant-design/icons";
 import { antdTheme } from "../../config/antd-theme";
 import { adminLogout } from "../../services/adminApi";
@@ -97,6 +99,21 @@ const menuItems: MenuProps["items"] = [
     icon: <GiftOutlined />,
     label: <Link to="/admin/vouchers" style={{ textDecoration: "none" }}>Quản lý Voucher</Link>,
   },
+  {
+    key: "/admin/feedback",
+    icon: <MessageOutlined />,
+    label: <Link to="/admin/feedback" style={{ textDecoration: "none" }}>Quản lý Feedback</Link>,
+  },
+  {
+    key: "/admin/mails",
+    icon: <MailOutlined />,
+    label: <Link to="/admin/mails" style={{ textDecoration: "none" }}>Quản lý Email</Link>,
+  },
+  {
+    key: "/admin/leads",
+    icon: <UserOutlined />,
+    label: <Link to="/admin/leads" style={{ textDecoration: "none" }}>Quản lý Lead</Link>,
+  },
 ];
 
 const pageTitles: Record<string, string> = {
@@ -110,6 +127,9 @@ const pageTitles: Record<string, string> = {
   "/admin/staff": "Quản lý Staff",
   "/admin/learn": "Quản lý Học nhanh",
   "/admin/vouchers": "Quản lý Voucher",
+  "/admin/feedback": "Quản lý Feedback",
+  "/admin/mails": "Quản lý Email",
+  "/admin/leads": "Quản lý Lead",
 };
 
 const breadcrumbMap: Record<string, { title: string; path?: string }[]> = {
@@ -149,6 +169,18 @@ const breadcrumbMap: Record<string, { title: string; path?: string }[]> = {
   "/admin/vouchers": [
     { title: "Dashboard", path: "/admin" },
     { title: "Quản lý Voucher" },
+  ],
+  "/admin/feedback": [
+    { title: "Dashboard", path: "/admin" },
+    { title: "Quản lý Feedback" },
+  ],
+  "/admin/mails": [
+    { title: "Dashboard", path: "/admin" },
+    { title: "Quản lý Email" },
+  ],
+  "/admin/leads": [
+    { title: "Dashboard", path: "/admin" },
+    { title: "Quản lý Lead" },
   ],
 };
 

@@ -29,8 +29,9 @@ export const adminLogin = async (
   return response.data.data;
 };
 
+/** Gọi POST /api/auth/logout để invalidate token trên server */
 export const adminLogout = async (): Promise<void> => {
-  await api.post("/api/admin/auth/logout");
+  await api.post("/api/auth/logout");
 };
 
 // ========== Admin Tours API ==========
@@ -226,7 +227,8 @@ export const getAdminBookings = async (params?: {
   let total = data.length;
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
     const obj = raw as Record<string, unknown>;
-    total = (obj.totalElements as number) ?? (obj.total as number) ?? data.length;
+    total =
+      (obj.totalElements as number) ?? (obj.total as number) ?? data.length;
   }
   return { data, total };
 };
@@ -321,8 +323,8 @@ export interface AdminUser {
   avatarUrl?: string;
   dateOfBirth?: string;
   gender?: "MALE" | "FEMALE" | "OTHER";
-  role: "CUSTOMER" | "USER" | "ADMIN" | "STAFF" | "ARTISAN";
-  status: "ACTIVE" | "LOCKED" | "INACTIVE";
+  role: "CUSTOMER" | "ADMIN" | "STAFF" | "ARTISAN";
+  status: "ACTIVE" | "INACTIVE";
   createdAt: string;
   lastLogin?: string;
 }
@@ -343,8 +345,8 @@ export interface UpdateUserRequest {
   fullName?: string;
   phone?: string;
   dateOfBirth?: string; // YYYY-MM-DD
-  role?: "CUSTOMER" | "USER" | "ADMIN" | "STAFF" | "ARTISAN";
-  status?: "ACTIVE" | "LOCKED" | "INACTIVE";
+  role?: "CUSTOMER" | "ADMIN" | "STAFF" | "ARTISAN";
+  status?: "ACTIVE" | "INACTIVE";
 }
 
 export const getAdminUsers = async (params?: {
@@ -358,8 +360,19 @@ export const getAdminUsers = async (params?: {
     console.log("[getAdminUsers] 🚀 Request params:", params);
     console.log("[getAdminUsers] 🚀 Full URL:", `/api/users`);
 
+    // Thêm timestamp để bypass cache và đảm bảo luôn lấy data mới nhất
+    const cacheBustParams = {
+      ...params,
+      _t: Date.now(), // Cache busting parameter
+    };
+
     const response = await api.get<ApiResponse<AdminUser[]>>("/api/users", {
-      params,
+      params: cacheBustParams,
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
     });
 
     console.log("[getAdminUsers] ✅ Full response:", response);
@@ -433,25 +446,138 @@ export const updateUser = async (
   id: number,
   data: UpdateUserRequest,
 ): Promise<AdminUser> => {
+  console.log(`[updateUser] 🚀 Updating user ${id} with data:`, data);
+  try {
+    const response = await api.put<ApiResponse<AdminUser>>(
+      `/api/users/${id}`,
+      data,
+    );
+    console.log(`[updateUser] ✅ Success:`, response.data);
+    return response.data.data;
+  } catch (error: any) {
+    console.error(`[updateUser] ❌ Error updating user ${id}:`, error);
+    console.error(`[updateUser] ❌ Request data:`, data);
+    console.error(`[updateUser] ❌ Error response:`, error?.response?.data);
+    throw error;
+  }
+};
+
+/** Cập nhật role của user. Backend: PUT /api/admin/users/{id}/role */
+export const updateUserRole = async (
+  id: number,
+  role: "CUSTOMER" | "ADMIN" | "STAFF" | "ARTISAN",
+): Promise<AdminUser> => {
   const response = await api.put<ApiResponse<AdminUser>>(
-    `/api/users/${id}`,
-    data,
+    `/api/admin/users/${id}/role`,
+    { role },
   );
+  if (!response.data.data) {
+    throw new Error("API không trả về data");
+  }
   return response.data.data;
+};
+
+/** Cập nhật status của user. Backend: PUT /api/admin/users/{id}/status */
+export const updateUserStatus = async (
+  id: number,
+  status: "ACTIVE" | "INACTIVE",
+): Promise<AdminUser> => {
+  // Đảm bảo payload là object với field "status" là string
+  const payload = { status: String(status) };
+  console.log(
+    `[updateUserStatus] 🚀 Updating user ${id} status to ${status}`,
+    payload,
+  );
+  console.log(`[updateUserStatus] 🚀 Payload JSON:`, JSON.stringify(payload));
+  try {
+    const response = await api.put<ApiResponse<AdminUser>>(
+      `/api/admin/users/${id}/status`,
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    console.log(`[updateUserStatus] ✅ Success:`, response.data);
+    if (!response.data.data) {
+      throw new Error("API không trả về data");
+    }
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      `[updateUserStatus] ❌ Error updating user ${id} status:`,
+      error,
+    );
+    console.error(`[updateUserStatus] ❌ Request payload:`, payload);
+    console.error(
+      `[updateUserStatus] ❌ Request payload JSON:`,
+      JSON.stringify(payload),
+    );
+    console.error(
+      `[updateUserStatus] ❌ Error response:`,
+      error?.response?.data,
+    );
+    console.error(
+      `[updateUserStatus] ❌ Error response status:`,
+      error?.response?.status,
+    );
+    console.error(
+      `[updateUserStatus] ❌ Error response headers:`,
+      error?.response?.headers,
+    );
+    throw error;
+  }
+};
+
+/** Cập nhật cả role và status của user. Gọi cả 2 API endpoint */
+export const updateUserRoleAndStatus = async (
+  id: number,
+  role: "CUSTOMER" | "ADMIN" | "STAFF" | "ARTISAN",
+  status: "ACTIVE" | "INACTIVE",
+): Promise<AdminUser> => {
+  // Gọi cả 2 API song song để tối ưu performance
+  const [, statusResponse] = await Promise.all([
+    api.put<ApiResponse<AdminUser>>(`/api/admin/users/${id}/role`, { role }),
+    api.put<ApiResponse<AdminUser>>(`/api/admin/users/${id}/status`, {
+      status,
+    }),
+  ]);
+
+  // Trả về response từ status (response cuối cùng, có đầy đủ thông tin)
+  if (!statusResponse.data.data) {
+    throw new Error("API không trả về data");
+  }
+  return statusResponse.data.data;
 };
 
 export const deleteUser = async (id: number): Promise<void> => {
   await api.delete(`/api/users/${id}`);
 };
 
-/** Reset mật khẩu member/staff (admin). Gọi POST /api/users/change-password. */
+/**
+ * Đổi mật khẩu user (chỉ dùng cho user tự đổi mật khẩu của chính mình)
+ *
+ * LƯU Ý: Endpoint POST /api/users/change-password yêu cầu:
+ * - oldPassword: string (required) - Mật khẩu hiện tại
+ * - newPassword: string (required) - Mật khẩu mới
+ *
+ * Endpoint này KHÔNG phù hợp để admin reset password cho user khác vì:
+ * - Admin không biết oldPassword của user
+ * - API không hỗ trợ reset password mà không cần oldPassword
+ *
+ * Để admin reset password cho user khác, backend cần endpoint riêng:
+ * POST /api/admin/users/{id}/reset-password với body { newPassword }
+ *
+ * @deprecated Hàm này không thể dùng để admin reset password cho user khác
+ * Sử dụng changePassword trong profileApi.ts cho user tự đổi mật khẩu
+ */
 export const resetUserPassword = async (
-  id: number,
+  oldPassword: string,
   newPassword: string,
 ): Promise<void> => {
   await api.post("/api/users/change-password", {
-    userId: id,
-    oldPassword: "",
+    oldPassword,
     newPassword,
   });
 };
@@ -538,6 +664,193 @@ export const updateContent = async (
 
 export const deleteContent = async (id: number): Promise<void> => {
   await api.delete(`/api/admin/content/${id}`);
+};
+
+// ========== Admin Feedback API ==========
+export interface AdminFeedback {
+  id: number;
+  name?: string;
+  fullName?: string;
+  email: string;
+  phone?: string;
+  subject?: string;
+  message: string;
+  content?: string;
+  status?: "PENDING" | "READ" | "RESOLVED";
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/** GET /api/admin/feedback - Danh sách feedback */
+export const getAdminFeedback = async (params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  search?: string;
+}): Promise<{ data: AdminFeedback[]; total: number }> => {
+  const response = await api.get<ApiResponse<AdminFeedback[] | { content?: AdminFeedback[]; totalElements?: number; total?: number }>>(
+    "/api/admin/feedback",
+    { params }
+  );
+  const d = response.data?.data;
+  if (!d) return { data: [], total: 0 };
+  const data = Array.isArray(d) ? d : (d as { content?: AdminFeedback[] }).content ?? [];
+  const total = Array.isArray(d)
+    ? d.length
+    : (d as { totalElements?: number; total?: number }).totalElements ??
+      (d as { total?: number }).total ??
+      data.length;
+  return { data, total };
+};
+
+/** GET /api/admin/feedback/:id - Chi tiết feedback */
+export const getAdminFeedbackById = async (id: number): Promise<AdminFeedback | null> => {
+  const response = await api.get<ApiResponse<AdminFeedback>>(`/api/admin/feedback/${id}`);
+  return response.data?.data ?? null;
+};
+
+// ========== Admin Mail API ==========
+/** Khớp GET /api/admin/mails - content item */
+export interface AdminMail {
+  id: number;
+  recipientEmail: string;
+  subject?: string;
+  templateType?: string;
+  relatedId?: number | null;
+  relatedType?: string | null;
+  status: string;
+  sentAt: string;
+  openedAt?: string | null;
+  openedCount?: number | null;
+  createdAt: string;
+  opened?: boolean;
+}
+
+/** Khớp GET /api/admin/mails - data: { totalPages, totalElements, size, content, number, ... } */
+interface AdminMailPageResponse {
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  content: AdminMail[];
+  number: number;
+  first?: boolean;
+  last?: boolean;
+  numberOfElements?: number;
+  empty?: boolean;
+  sort?: { empty?: boolean; sorted?: boolean; unsorted?: boolean };
+  pageable?: Record<string, unknown>;
+}
+
+/**
+ * GET /api/admin/mails - Danh sách email đã gửi
+ * Query: recipient, templateType, opened, from, to (yyyy-MM-dd), page, size
+ */
+export const getAdminMails = async (params?: {
+  page?: number;
+  size?: number;
+  recipient?: string;
+  templateType?: string;
+  opened?: boolean;
+  from?: string;
+  to?: string;
+}): Promise<{ data: AdminMail[]; total: number }> => {
+  const q: Record<string, unknown> = {
+    page: params?.page ?? 0,
+    size: params?.size ?? 10,
+  };
+  if (params?.recipient?.trim()) q.recipient = params.recipient.trim();
+  if (params?.templateType) q.templateType = params.templateType;
+  if (params?.opened === true) q.opened = true;
+  if (params?.opened === false) q.opened = false;
+  if (params?.from) q.from = params.from;
+  if (params?.to) q.to = params.to;
+  const response = await api.get<ApiResponse<AdminMailPageResponse>>("/api/admin/mails", {
+    params: q,
+  });
+  // response.data = { success, code, message, data, errors, timestamp }
+  // response.data.data = { totalPages, totalElements, size, content, number, ... }
+  const d = response.data?.data as AdminMailPageResponse | undefined;
+  if (!d || typeof d !== "object") return { data: [], total: 0 };
+  const content = Array.isArray(d.content) ? d.content : [];
+  const total = typeof d.totalElements === "number" ? d.totalElements : content.length;
+  return { data: content, total };
+};
+
+/**
+ * GET /api/admin/mails/:id - Chi tiết email log
+ * Response: { success, code, message, data: { id, recipientEmail, subject, templateType, relatedId, relatedType, status, sentAt, openedAt, openedCount, createdAt, opened } }
+ */
+export const getAdminMailById = async (id: number): Promise<AdminMail | null> => {
+  const response = await api.get<ApiResponse<AdminMail>>(`/api/admin/mails/${id}`);
+  return response.data?.data ?? null;
+};
+
+// ========== Admin Lead API ==========
+/** Khớp GET /api/admin/leads/{id} - Khách hàng tiềm năng */
+export interface AdminLead {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  tourId?: number;
+  tourTitle?: string;
+  message?: string;
+  source?: string;
+  status?: string;
+  adminNote?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface AdminLeadPageResponse {
+  totalPages?: number;
+  totalElements?: number;
+  size?: number;
+  content: AdminLead[];
+  number?: number;
+  first?: boolean;
+  last?: boolean;
+  numberOfElements?: number;
+  empty?: boolean;
+}
+
+/** GET /api/admin/leads - Danh sách lead (phân trang) */
+export const getAdminLeads = async (params?: {
+  page?: number;
+  size?: number;
+  status?: string;
+  tourId?: number;
+}): Promise<{ data: AdminLead[]; total: number }> => {
+  const q: Record<string, unknown> = {
+    page: params?.page ?? 0,
+    size: params?.size ?? 10,
+  };
+  if (params?.status) q.status = params.status;
+  if (params?.tourId != null) q.tourId = params.tourId;
+  const response = await api.get<ApiResponse<AdminLeadPageResponse>>("/api/admin/leads", {
+    params: q,
+  });
+  const d = response.data?.data as AdminLeadPageResponse | undefined;
+  if (!d || typeof d !== "object") return { data: [], total: 0 };
+  const content = Array.isArray(d.content) ? d.content : [];
+  const total =
+    typeof d.totalElements === "number" ? d.totalElements : content.length;
+  return { data: content, total };
+};
+
+/** GET /api/admin/leads/:id - Chi tiết lead */
+export const getAdminLeadById = async (id: number): Promise<AdminLead | null> => {
+  const response = await api.get<ApiResponse<AdminLead>>(`/api/admin/leads/${id}`);
+  return response.data?.data ?? null;
+};
+
+/** PUT /api/admin/leads/:id - Cập nhật status, adminNote */
+export const updateAdminLead = async (
+  id: number,
+  data: { status?: string; adminNote?: string },
+): Promise<AdminLead | null> => {
+  const response = await api.put<ApiResponse<AdminLead>>(`/api/admin/leads/${id}`, data);
+  return response.data?.data ?? null;
 };
 
 // ========== Admin Artisans API ==========
@@ -646,11 +959,39 @@ export const updateArtisan = async (
   id: number,
   data: UpdateArtisanRequest,
 ): Promise<AdminArtisan> => {
-  const response = await api.put<ApiResponse<AdminArtisan>>(
-    `/api/artisans/${id}`,
+  // Đảm bảo id là number và hợp lệ
+  const artisanId = Number(id);
+  if (isNaN(artisanId) || artisanId <= 0) {
+    throw new Error(`Invalid artisan ID: ${id}`);
+  }
+
+  console.log(
+    `[updateArtisan] 🚀 Updating artisan ${artisanId} (type: ${typeof artisanId}) with data:`,
     data,
   );
-  return response.data.data;
+  console.log(`[updateArtisan] 🚀 Request URL: /api/artisans/${artisanId}`);
+
+  try {
+    const response = await api.put<ApiResponse<AdminArtisan>>(
+      `/api/artisans/${artisanId}`,
+      data,
+    );
+    console.log(`[updateArtisan] ✅ Success:`, response.data);
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      `[updateArtisan] ❌ Error updating artisan ${artisanId}:`,
+      error,
+    );
+    console.error(`[updateArtisan] ❌ Request URL: /api/artisans/${artisanId}`);
+    console.error(`[updateArtisan] ❌ Request data:`, data);
+    console.error(`[updateArtisan] ❌ Error response:`, error?.response?.data);
+    console.error(
+      `[updateArtisan] ❌ Error response status:`,
+      error?.response?.status,
+    );
+    throw error;
+  }
 };
 
 /** Xóa nghệ nhân. Backend: DELETE /api/artisans/{id} */
@@ -811,7 +1152,11 @@ export const getAdminLearnQuizzes = async (params?: {
   const response = await api.get<
     ApiResponse<
       | AdminLearnQuiz[]
-      | { content?: AdminLearnQuiz[]; quizzes?: AdminLearnQuiz[]; total?: number }
+      | {
+          content?: AdminLearnQuiz[];
+          quizzes?: AdminLearnQuiz[];
+          total?: number;
+        }
     >
   >("/api/learn/quizzes", { params });
   const raw = response.data.data;
@@ -841,7 +1186,7 @@ export const getAdminLearnQuizById = async (
     `/api/learn/public/quizzes/${id}`,
   );
   const rawData = response.data.data;
-  
+
   // Transform snake_case to camelCase cho options và đảm bảo isCorrect được set đúng
   if (rawData && rawData.questions && Array.isArray(rawData.questions)) {
     rawData.questions = rawData.questions.map((q: any) => {
@@ -850,31 +1195,34 @@ export const getAdminLearnQuizById = async (
           // Xử lý isCorrect: kiểm tra cả camelCase và snake_case
           // Ưu tiên snake_case vì có thể backend trả về is_correct nhưng không map vào isCorrect
           let isCorrect = false;
-          
+
           // Kiểm tra snake_case trước (vì có thể backend trả về đúng field này)
           if (opt.is_correct !== undefined && opt.is_correct !== null) {
             isCorrect = Boolean(opt.is_correct);
-          } 
+          }
           // Sau đó kiểm tra camelCase
           else if (opt.isCorrect !== undefined && opt.isCorrect !== null) {
             isCorrect = Boolean(opt.isCorrect);
           }
           // Kiểm tra các format khác
-          else if (opt["is-correct"] !== undefined && opt["is-correct"] !== null) {
+          else if (
+            opt["is-correct"] !== undefined &&
+            opt["is-correct"] !== null
+          ) {
             isCorrect = Boolean(opt["is-correct"]);
           }
           // Nếu cả hai đều null hoặc undefined, mặc định là false
           else {
             isCorrect = false;
           }
-          
+
           const transformed = {
             id: opt.id,
             label: opt.label || opt.label_text || String(opt.id),
             optionText: opt.optionText || opt.option_text || opt.text || "",
             isCorrect,
           };
-          
+
           // Debug log để kiểm tra (chỉ trong development)
           if (import.meta.env.DEV) {
             console.log(`[Quiz Transform] Option ${opt.id}:`, {
@@ -889,19 +1237,19 @@ export const getAdminLearnQuizById = async (
               transformed,
             });
           }
-          
+
           return transformed;
         });
       }
       return q;
     });
   }
-  
+
   // Debug log toàn bộ response sau khi transform
   if (import.meta.env.DEV) {
     console.log("[Quiz Transform] Final transformed data:", rawData);
   }
-  
+
   return rawData as AdminLearnQuiz;
 };
 
@@ -948,7 +1296,7 @@ export const createAdminLearnModule = async (data: {
   );
   // Đảm bảo response được parse đúng theo structure từ API
   const moduleData = response.data.data;
-  
+
   // Transform nếu cần (đảm bảo các field optional được set đúng)
   return {
     ...moduleData,
@@ -1194,7 +1542,11 @@ export const deleteVoucher = async (id: number): Promise<void> => {
 // Theo spec: { success, code, message, data, errors, timestamp }
 // GET /api/tour-schedules/{id} -> data: AdminTourSchedule
 // GET /api/tour-schedules/tour/{tourId} -> data: AdminTourSchedule[] | { content: AdminTourSchedule[] }
-export type TourScheduleStatus = "SCHEDULED" | "CANCELLED" | "COMPLETED" | string;
+export type TourScheduleStatus =
+  | "SCHEDULED"
+  | "CANCELLED"
+  | "COMPLETED"
+  | string;
 
 export interface AdminTourSchedule {
   id: number;
@@ -1209,7 +1561,9 @@ export interface AdminTourSchedule {
     [key: string]: unknown;
   };
   tourDate: string; // "YYYY-MM-DD"
-  startTime?: { hour: number; minute: number; second?: number; nano?: number } | string; // API có thể trả về "HH:mm:ss" hoặc object
+  startTime?:
+    | { hour: number; minute: number; second?: number; nano?: number }
+    | string; // API có thể trả về "HH:mm:ss" hoặc object
   maxSlots: number;
   bookedSlots: number;
   currentPrice?: number; // Backend có thể trả price thay vì currentPrice
@@ -1267,7 +1621,8 @@ export const getTourSchedules = async (params?: {
   let total = data.length;
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
     const obj = raw as Record<string, unknown>;
-    total = (obj.totalElements as number) ?? (obj.total as number) ?? data.length;
+    total =
+      (obj.totalElements as number) ?? (obj.total as number) ?? data.length;
   }
   return { data, total };
 };
@@ -1291,9 +1646,11 @@ function parseScheduleResponse(raw: unknown): AdminTourSchedule[] {
 export const getTourSchedulesByTourId = async (
   tourId: number,
 ): Promise<AdminTourSchedule[]> => {
-  const response = await api.get<TourScheduleApiResponse<
-    AdminTourSchedule[] | { content?: AdminTourSchedule[] }
-  >>(`/api/tour-schedules/tour/${tourId}`);
+  const response = await api.get<
+    TourScheduleApiResponse<
+      AdminTourSchedule[] | { content?: AdminTourSchedule[] }
+    >
+  >(`/api/tour-schedules/tour/${tourId}`);
   const body = response.data;
   const raw = body.data;
   if (Array.isArray(raw)) return raw;

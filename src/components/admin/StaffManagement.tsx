@@ -20,8 +20,6 @@ import {
 } from "antd";
 import {
   PlusOutlined,
-  LockOutlined,
-  UnlockOutlined,
   KeyOutlined,
   MailOutlined,
   EyeOutlined,
@@ -44,13 +42,11 @@ import dayjs from "dayjs";
 
 const staffRoleConfig: Record<string, { label: string; color: string }> = {
   STAFF: { label: "Nhân viên", color: "orange" },
-  USER: { label: "Người dùng", color: "cyan" },
   ADMIN: { label: "Quản trị viên", color: "red" },
 };
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   ACTIVE: { label: "Hoạt động", color: "green" },
-  LOCKED: { label: "Đã khóa", color: "red" },
   INACTIVE: { label: "Không hoạt động", color: "default" },
 };
 
@@ -70,8 +66,8 @@ interface StaffUser {
   avatarUrl?: string;
   dateOfBirth?: string;
   gender?: "MALE" | "FEMALE" | "OTHER";
-  role: "STAFF" | "USER" | "ADMIN";
-  status: "ACTIVE" | "LOCKED" | "INACTIVE";
+  role: "STAFF" | "ADMIN";
+  status: "ACTIVE" | "INACTIVE";
   createdAt: string;
   lastLogin?: string;
 }
@@ -130,12 +126,7 @@ export default function StaffManagement() {
           role: (u.role === "STAFF" || u.role === "ADMIN"
             ? u.role
             : "STAFF") as StaffUser["role"],
-          status:
-            u.status === "LOCKED"
-              ? "LOCKED"
-              : u.status === "INACTIVE"
-                ? "INACTIVE"
-                : "ACTIVE",
+          status: u.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
           createdAt: u.createdAt
             ? new Date(u.createdAt).toLocaleDateString("vi-VN")
             : "-",
@@ -193,18 +184,6 @@ export default function StaffManagement() {
     setEditModalOpen(true);
   };
 
-  const handleToggleLock = async (record: StaffUser) => {
-    const newStatus = record.status === "ACTIVE" ? "LOCKED" : "ACTIVE";
-    try {
-      await updateUser(parseInt(record.id), { status: newStatus });
-      message.success(
-        newStatus === "LOCKED" ? "Đã khóa nhân viên" : "Đã mở khóa nhân viên",
-      );
-      fetchStaff();
-    } catch (err) {
-      message.error(getApiErrorMessage(err) || "Cập nhật trạng thái thất bại");
-    }
-  };
 
   const handleDelete = async (id: string) => {
     try {
@@ -437,7 +416,6 @@ export default function StaffManagement() {
             >
               <Select.Option value="all">Tất cả trạng thái</Select.Option>
               <Select.Option value="ACTIVE">Hoạt động</Select.Option>
-              <Select.Option value="LOCKED">Đã khóa</Select.Option>
               <Select.Option value="INACTIVE">Không hoạt động</Select.Option>
             </Select>
           </Col>
@@ -562,9 +540,7 @@ export default function StaffManagement() {
             statusLabel={
               selectedStaff.status === "ACTIVE"
                 ? "Hoạt động"
-                : selectedStaff.status === "LOCKED"
-                  ? "Đã khóa"
-                  : "Không hoạt động"
+                : "Không hoạt động"
             }
             infoSections={[
               {
@@ -701,46 +677,6 @@ export default function StaffManagement() {
               >
                 <Button icon={<KeyOutlined />}>Reset mật khẩu</Button>
               </Popconfirm>
-              {selectedStaff?.status === "ACTIVE" ? (
-                <Popconfirm
-                  title="Khóa nhân viên"
-                  description="Nhân viên sẽ không thể đăng nhập cho đến khi được mở khóa."
-                  onConfirm={() =>
-                    selectedStaff && handleToggleLock(selectedStaff)
-                  }
-                  okText="Đồng ý"
-                  cancelText="Hủy"
-                  okButtonProps={{ danger: true }}
-                >
-                  <Button danger icon={<LockOutlined />}>
-                    Khóa
-                  </Button>
-                </Popconfirm>
-              ) : selectedStaff?.status === "LOCKED" ? (
-                <Popconfirm
-                  title="Mở khóa nhân viên"
-                  description="Nhân viên sẽ có thể đăng nhập lại."
-                  onConfirm={() =>
-                    selectedStaff && handleToggleLock(selectedStaff)
-                  }
-                  okText="Đồng ý"
-                  cancelText="Hủy"
-                >
-                  <Button icon={<UnlockOutlined />}>Mở khóa</Button>
-                </Popconfirm>
-              ) : selectedStaff?.status === "INACTIVE" ? (
-                <Popconfirm
-                  title="Kích hoạt nhân viên"
-                  description="Nhân viên sẽ có thể đăng nhập lại."
-                  onConfirm={() =>
-                    selectedStaff && handleToggleLock(selectedStaff)
-                  }
-                  okText="Đồng ý"
-                  cancelText="Hủy"
-                >
-                  <Button icon={<UnlockOutlined />}>Kích hoạt</Button>
-                </Popconfirm>
-              ) : null}
               <Popconfirm
                 title="Xóa nhân viên"
                 description="Bạn có chắc muốn xóa nhân viên này? Hành động này không thể hoàn tác."

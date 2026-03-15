@@ -32,6 +32,8 @@ import {
   GlobalOutlined,
 } from "@ant-design/icons";
 import { antdTheme } from "../../config/antd-theme";
+import { authLogout } from "../../services/authApi";
+import { clearAuthSession } from "../../utils/authSession";
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -91,14 +93,17 @@ function StaffLayoutContent({ children }: StaffLayoutProps) {
   const location = useLocation();
   const { message } = App.useApp();
 
-  const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("userAccount");
-    localStorage.removeItem("rememberAccount");
-    message.info("Đăng xuất thành công");
-    setTimeout(() => {
+  const handleLogout = async () => {
+    try {
+      await authLogout(); // POST /api/auth/logout - invalidate token trên server
+    } catch (err) {
+      console.error("[StaffLayout] Logout API error:", err);
+    } finally {
+      clearAuthSession(); // Xóa accessToken, refreshToken, userInfo...
+      localStorage.removeItem("rememberAccount");
+      message.success("Đăng xuất thành công");
       window.location.href = "/login";
-    }, 500);
+    }
   };
 
   const userMenuItems: MenuProps["items"] = [
@@ -409,11 +414,7 @@ function StaffLayoutContent({ children }: StaffLayoutProps) {
                   items: userMenuItems,
                   onClick: ({ key }) => {
                     if (key === "logout") {
-                      localStorage.removeItem("isAuthenticated");
-                      localStorage.removeItem("userAccount");
-                      localStorage.removeItem("rememberAccount");
-                      message.info("Đăng xuất thành công");
-                      window.location.href = "/login";
+                      handleLogout();
                     }
                   }
                 }} 

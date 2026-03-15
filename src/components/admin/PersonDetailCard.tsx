@@ -11,7 +11,7 @@ interface PersonDetailCardProps {
   avatarUrl?: string;
   name: string;
   subtitle?: string;
-  status?: "ACTIVE" | "LOCKED" | "INACTIVE";
+  status?: "ACTIVE" | "INACTIVE";
   statusLabel?: string;
   infoSections: {
     title?: string;
@@ -22,7 +22,6 @@ interface PersonDetailCardProps {
 
 const statusConfig: Record<string, { color: string; label: string }> = {
   ACTIVE: { color: "success", label: "Hoạt động" },
-  LOCKED: { color: "error", label: "Đã khóa" },
   INACTIVE: { color: "default", label: "Không hoạt động" },
 };
 

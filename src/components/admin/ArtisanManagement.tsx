@@ -26,7 +26,6 @@ import {
   UserOutlined,
   HomeOutlined,
   SearchOutlined,
-  EyeInvisibleOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
 import PersonDetailCard from "./PersonDetailCard";
@@ -37,6 +36,9 @@ import {
   updateArtisan,
   deleteArtisan,
   getAdminUsers,
+  getAdminArtisanById,
+  updateUserStatus,
+  type UpdateArtisanRequest,
 } from "../../services/adminApi";
 import { getArtisans, getProvinces, getApiErrorMessage } from "../../services/api";
 
@@ -54,6 +56,8 @@ interface Artisan {
   totalTours?: number;
   averageRating?: number;
   createdAt?: string;
+  userId?: number; // ID của user account để khóa tài khoản
+  userStatus?: "ACTIVE" | "INACTIVE"; // Status của user account
 }
 
 export default function ArtisanManagement() {
@@ -98,7 +102,7 @@ export default function ArtisanManagement() {
   const mapApiToArtisan = (item: unknown): Artisan => {
     const a = item as Record<string, unknown>;
     const province = a.province as { id?: number; name?: string } | undefined;
-    const user = a.user as { avatarUrl?: string } | undefined;
+    const user = a.user as { id?: number; avatarUrl?: string; status?: string } | undefined;
     const provinceName = province?.name ?? "";
     const provinceId = province?.id;
     const isActive = a.isActive as boolean | undefined;
@@ -117,6 +121,8 @@ export default function ArtisanManagement() {
       totalTours: (a.totalTours as number) ?? 0,
       averageRating: (a.averageRating as number) ?? 0,
       createdAt: (a.createdAt as string) ?? "",
+      userId: user?.id,
+      userStatus: user?.status as "ACTIVE" | "INACTIVE" | undefined,
     };
   };
 
@@ -187,8 +193,23 @@ export default function ArtisanManagement() {
     setDetailModalOpen(true);
   };
 
-  const handleOpenEdit = (record: Artisan) => {
+  const handleOpenEdit = async (record: Artisan) => {
     setSelectedArtisan(record);
+    
+    // Lấy thông tin đầy đủ của artisan để có userId và userStatus
+    let userId = record.userId;
+    let userStatus = record.userStatus;
+    
+    if (!userId || !userStatus) {
+      try {
+        const artisanDetail = await getAdminArtisanById(parseInt(record.id));
+        userId = artisanDetail.user?.id;
+        userStatus = artisanDetail.user?.status as "ACTIVE" | "INACTIVE" | undefined;
+      } catch (err) {
+        console.error("Error fetching artisan detail:", err);
+      }
+    }
+    
     editForm.setFieldsValue({
       fullName: record.name,
       specialization: record.specialty,
@@ -196,6 +217,8 @@ export default function ArtisanManagement() {
       profileImageUrl: record.profileImageUrl || "",
       workshopAddress: record.workshopAddress || "",
       provinceId: record.provinceId,
+      userId: userId,
+      userStatus: userStatus || "ACTIVE",
     });
     setEditModalOpen(true);
   };
@@ -249,28 +272,6 @@ export default function ArtisanManagement() {
     }
   };
 
-  const handleStatusChange = async (
-    record: Artisan,
-    newStatus: "ACTIVE" | "INACTIVE",
-  ) => {
-    if (isFallbackMode) {
-      message.warning("Đang dùng dữ liệu fallback, không thể cập nhật.");
-      return;
-    }
-    try {
-      await updateArtisan(parseInt(record.id), {
-        isActive: newStatus === "ACTIVE",
-      });
-      message.success("Cập nhật trạng thái thành công");
-      if (selectedArtisan?.id === record.id) {
-        setSelectedArtisan({ ...record, status: newStatus });
-      }
-      fetchArtisans();
-    } catch (err) {
-      message.error("Cập nhật trạng thái thất bại. Vui lòng thử lại.");
-    }
-  };
-
   const handleDeleteArtisan = async (record: Artisan) => {
     if (isFallbackMode) {
       message.warning("Đang dùng dữ liệu fallback, không thể xóa.");
@@ -293,19 +294,90 @@ export default function ArtisanManagement() {
     try {
       const values = await editForm.validateFields();
       setSaving(true);
-      const payload: Record<string, unknown> = {
+      
+      // Cập nhật thông tin nghệ nhân
+      const payload: UpdateArtisanRequest = {
         fullName: values.fullName,
         specialization: values.specialization,
         bio: values.bio ?? "",
         workshopAddress: values.workshopAddress ?? "",
       };
+      
       if (values.profileImageUrl?.trim()) {
         payload.profileImageUrl = values.profileImageUrl.trim();
       }
+      
+      // Backend yêu cầu province dạng object { id } thay vì provinceId
+      // Đảm bảo province chỉ có id, không có field nào khác
       if (values.provinceId) {
-        payload.provinceId = values.provinceId;
+        payload.province = { id: Number(values.provinceId) };
+        // Không gửi provinceId để tránh conflict
+        delete (payload as any).provinceId;
       }
-      await updateArtisan(parseInt(selectedArtisan.id), payload);
+      
+      // Đảm bảo id là number
+      const artisanId = typeof selectedArtisan.id === 'string' 
+        ? parseInt(selectedArtisan.id, 10) 
+        : selectedArtisan.id;
+      
+      console.log("[ArtisanManagement] Updating artisan:", {
+        artisanId,
+        artisanIdType: typeof artisanId,
+        originalId: selectedArtisan.id,
+        originalIdType: typeof selectedArtisan.id,
+        payload: JSON.parse(JSON.stringify(payload)), // Deep clone để log chính xác
+      });
+      
+      await updateArtisan(artisanId, payload);
+      
+      // Cập nhật status của user account nếu có userId và status thay đổi
+      // Lấy userId từ form hoặc từ selectedArtisan, nếu không có thì fetch lại
+      let userId = values.userId || selectedArtisan.userId;
+      
+      // Nếu không có userId, thử fetch lại từ API
+      if (!userId) {
+        try {
+          const artisanDetail = await getAdminArtisanById(parseInt(selectedArtisan.id));
+          userId = artisanDetail.user?.id;
+        } catch (err) {
+          console.error("[ArtisanManagement] Error fetching artisan detail for userId:", err);
+        }
+      }
+      
+      const newUserStatus = values.userStatus as "ACTIVE" | "INACTIVE" | undefined;
+      const oldUserStatus = selectedArtisan.userStatus;
+      
+      console.log("[ArtisanManagement] Updating user status:", {
+        userId,
+        newUserStatus,
+        oldUserStatus,
+        hasUserId: !!userId,
+        hasNewStatus: !!newUserStatus,
+        statusChanged: newUserStatus !== oldUserStatus,
+        selectedArtisanId: selectedArtisan.id,
+      });
+      
+      if (userId && newUserStatus) {
+        // Luôn cập nhật nếu có userId và newUserStatus
+        try {
+          await updateUserStatus(userId, newUserStatus);
+          console.log("[ArtisanManagement] ✅ User status updated successfully");
+        } catch (err) {
+          console.error("[ArtisanManagement] ❌ Error updating user status:", err);
+          // Không throw error để không block việc cập nhật artisan
+          message.warning("Đã cập nhật nghệ nhân nhưng không thể cập nhật trạng thái tài khoản.");
+        }
+      } else {
+        console.warn("[ArtisanManagement] ⚠️ Cannot update user status:", {
+          userId,
+          newUserStatus,
+          reason: !userId ? "No userId" : "No newUserStatus",
+        });
+        if (!userId) {
+          message.warning("Nghệ nhân này chưa có tài khoản user, không thể cập nhật trạng thái.");
+        }
+      }
+      
       message.success("Cập nhật nghệ nhân thành công");
       setEditModalOpen(false);
       setSelectedArtisan(null);
@@ -783,38 +855,6 @@ export default function ArtisanManagement() {
         footer={
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <Space>
-              {selectedArtisan?.status === "ACTIVE" ? (
-                <Popconfirm
-                  title="Ẩn nghệ nhân"
-                  description="Nghệ nhân sẽ không hiển thị trên trang công khai cho đến khi được hiện lại."
-                  onConfirm={() =>
-                    selectedArtisan &&
-                    handleStatusChange(selectedArtisan, "INACTIVE")
-                  }
-                  okText="Đồng ý"
-                  cancelText="Hủy"
-                  okButtonProps={{ danger: true }}
-                  disabled={isFallbackMode}
-                >
-                  <Button danger icon={<EyeInvisibleOutlined />}>
-                    Ẩn
-                  </Button>
-                </Popconfirm>
-              ) : (
-                <Popconfirm
-                  title="Hiện nghệ nhân"
-                  description="Nghệ nhân sẽ hiển thị lại trên trang công khai."
-                  onConfirm={() =>
-                    selectedArtisan &&
-                    handleStatusChange(selectedArtisan, "ACTIVE")
-                  }
-                  okText="Đồng ý"
-                  cancelText="Hủy"
-                  disabled={isFallbackMode}
-                >
-                  <Button icon={<EyeOutlined />}>Hiện</Button>
-                </Popconfirm>
-              )}
               <Popconfirm
                 title="Xóa nghệ nhân"
                 description="Bạn có chắc muốn xóa nghệ nhân này? Hành động này không thể hoàn tác."
@@ -885,6 +925,16 @@ export default function ArtisanManagement() {
           </Form.Item>
           <Form.Item label="Địa chỉ xưởng" name="workshopAddress">
             <Input placeholder="Địa chỉ cụ thể" />
+          </Form.Item>
+          <Form.Item 
+            label="Trạng thái tài khoản" 
+            name="userStatus"
+            tooltip="Chỉ áp dụng nếu nghệ nhân có tài khoản user"
+          >
+            <Select placeholder="Chọn trạng thái">
+              <Select.Option value="ACTIVE">Hoạt động</Select.Option>
+              <Select.Option value="INACTIVE">Không hoạt động</Select.Option>
+            </Select>
           </Form.Item>
         </Form>
       </Modal>

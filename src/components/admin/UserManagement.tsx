@@ -20,8 +20,6 @@ import {
 } from "antd";
 import {
   PlusOutlined,
-  LockOutlined,
-  UnlockOutlined,
   KeyOutlined,
   MailOutlined,
   EyeOutlined,
@@ -37,6 +35,9 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  updateUserStatus,
+  updateUserRole,
+  updateUserRoleAndStatus,
   type AdminUser,
 } from "../../services/adminApi";
 import { getApiErrorMessage } from "../../services/api";
@@ -52,15 +53,14 @@ interface User {
   avatarUrl?: string;
   dateOfBirth?: string;
   gender?: "MALE" | "FEMALE" | "OTHER";
-  role: "CUSTOMER" | "USER" | "STAFF" | "ADMIN" | "ARTISAN";
-  status: "ACTIVE" | "LOCKED" | "INACTIVE";
+  role: "CUSTOMER" | "STAFF" | "ADMIN" | "ARTISAN";
+  status: "ACTIVE" | "INACTIVE";
   createdAt: string;
   lastLogin?: string;
 }
 
 const roleConfig: Record<string, { label: string; color: string }> = {
   CUSTOMER: { label: "Khách hàng", color: "blue" },
-  USER: { label: "Người dùng", color: "cyan" },
   STAFF: { label: "Nhân viên", color: "orange" },
   ADMIN: { label: "Quản trị viên", color: "red" },
   ARTISAN: { label: "Nghệ nhân", color: "purple" },
@@ -68,7 +68,6 @@ const roleConfig: Record<string, { label: string; color: string }> = {
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   ACTIVE: { label: "Hoạt động", color: "green" },
-  LOCKED: { label: "Đã khóa", color: "red" },
   INACTIVE: { label: "Không hoạt động", color: "default" },
 };
 
@@ -103,7 +102,7 @@ export default function UserManagement() {
   const [editForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -112,14 +111,15 @@ export default function UserManagement() {
       if (filter.status !== "all") params.status = filter.status;
       if (filter.search?.trim()) params.search = filter.search.trim();
 
-      const response = await getAdminUsers(params);
+      // Force refresh bằng cách thêm timestamp vào params
+      const response = await getAdminUsers(forceRefresh ? { ...params, _force: Date.now() } : params);
       if (!response?.data || !Array.isArray(response.data)) {
         throw new Error("Invalid API response format");
       }
 
       const mappedUsers: User[] = response.data
         .filter(
-          (user: AdminUser) => user.role === "CUSTOMER" || user.role === "USER",
+          (user: AdminUser) => user.role === "CUSTOMER",
         )
         .map((user: AdminUser) => ({
           key: user.id.toString(),
@@ -132,12 +132,7 @@ export default function UserManagement() {
           dateOfBirth: user.dateOfBirth,
           gender: user.gender,
           role: (user.role || "CUSTOMER") as User["role"],
-          status:
-            user.status === "LOCKED"
-              ? "LOCKED"
-              : user.status === "INACTIVE"
-                ? "INACTIVE"
-                : "ACTIVE",
+          status: user.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
           createdAt: user.createdAt
             ? new Date(user.createdAt).toLocaleDateString("vi-VN")
             : "-",
@@ -186,22 +181,11 @@ export default function UserManagement() {
       phone: record.phone,
       dateOfBirth: record.dateOfBirth ? dayjs(record.dateOfBirth) : null,
       role: record.role,
+      status: record.status,
     });
     setEditModalOpen(true);
   };
 
-  const handleToggleLock = async (record: User) => {
-    const newStatus = record.status === "ACTIVE" ? "LOCKED" : "ACTIVE";
-    try {
-      await updateUser(parseInt(record.id), { status: newStatus });
-      message.success(
-        newStatus === "LOCKED" ? "Đã khóa member" : "Đã mở khóa member",
-      );
-      fetchUsers();
-    } catch (err) {
-      message.error(getApiErrorMessage(err) || "Cập nhật trạng thái thất bại");
-    }
-  };
 
   const handleDeleteUser = async (id: string) => {
     try {
@@ -209,7 +193,7 @@ export default function UserManagement() {
       message.success("Đã xóa member");
       setEditModalOpen(false);
       setSelectedUser(null);
-      fetchUsers();
+      fetchUsers(true); // Force refresh sau khi xóa
     } catch (err) {
       message.error(getApiErrorMessage(err) || "Xóa member thất bại");
       throw err;
@@ -258,7 +242,7 @@ export default function UserManagement() {
       message.success("Đã tạo member thành công");
       setIsModalOpen(false);
       form.resetFields();
-      fetchUsers();
+      fetchUsers(true); // Force refresh sau khi tạo
     } catch (err: unknown) {
       if (err && typeof err === "object" && "errorFields" in err) return;
       message.error(getApiErrorMessage(err) || "Tạo member thất bại");
@@ -272,7 +256,10 @@ export default function UserManagement() {
     try {
       const values = await editForm.validateFields();
       setSubmitting(true);
-      await updateUser(parseInt(selectedUser.id), {
+      const userId = parseInt(selectedUser.id);
+      
+      // Cập nhật thông tin cơ bản (username, email, fullName, phone, dateOfBirth)
+      await updateUser(userId, {
         username: values.username,
         email: values.email,
         fullName: values.fullName,
@@ -280,12 +267,27 @@ export default function UserManagement() {
         dateOfBirth: values.dateOfBirth
           ? dayjs(values.dateOfBirth).format("YYYY-MM-DD")
           : undefined,
-        role: values.role,
       });
+      
+      // Cập nhật role và status nếu có thay đổi
+      const roleChanged = values.role !== selectedUser.role;
+      const statusChanged = values.status !== selectedUser.status;
+      
+      if (roleChanged && statusChanged) {
+        // Cả 2 đều thay đổi → gọi hàm cập nhật cả 2
+        await updateUserRoleAndStatus(userId, values.role, values.status);
+      } else if (roleChanged) {
+        // Chỉ role thay đổi
+        await updateUserRole(userId, values.role);
+      } else if (statusChanged) {
+        // Chỉ status thay đổi
+        await updateUserStatus(userId, values.status);
+      }
+      
       message.success("Cập nhật member thành công");
       setEditModalOpen(false);
       setSelectedUser(null);
-      fetchUsers();
+      fetchUsers(true); // Force refresh sau khi cập nhật
     } catch (err: unknown) {
       if (err && typeof err === "object" && "errorFields" in err) return;
       message.error(getApiErrorMessage(err) || "Cập nhật thất bại");
@@ -432,7 +434,9 @@ export default function UserManagement() {
             >
               <Select.Option value="all">Tất cả vai trò</Select.Option>
               <Select.Option value="CUSTOMER">Khách hàng</Select.Option>
-              <Select.Option value="USER">Người dùng</Select.Option>
+              <Select.Option value="STAFF">Nhân viên</Select.Option>
+              <Select.Option value="ADMIN">Quản trị viên</Select.Option>
+              <Select.Option value="ARTISAN">Nghệ nhân</Select.Option>
             </Select>
           </Col>
           <Col xs={24} sm={12} md={6}>
@@ -447,7 +451,6 @@ export default function UserManagement() {
             >
               <Select.Option value="all">Tất cả trạng thái</Select.Option>
               <Select.Option value="ACTIVE">Hoạt động</Select.Option>
-              <Select.Option value="LOCKED">Đã khóa</Select.Option>
               <Select.Option value="INACTIVE">Không hoạt động</Select.Option>
             </Select>
           </Col>
@@ -572,9 +575,7 @@ export default function UserManagement() {
             statusLabel={
               selectedUser.status === "ACTIVE"
                 ? "Hoạt động"
-                : selectedUser.status === "LOCKED"
-                  ? "Đã khóa"
-                  : "Không hoạt động"
+                : "Không hoạt động"
             }
             infoSections={[
               {
@@ -668,10 +669,12 @@ export default function UserManagement() {
           <Form.Item label="Ngày sinh" name="dateOfBirth">
             <DatePicker style={{ width: "100%" }} format="DD/MM/YYYY" />
           </Form.Item>
-          <Form.Item label="Vai trò" name="role" initialValue="USER">
+          <Form.Item label="Vai trò" name="role" initialValue="CUSTOMER">
             <Select>
               <Select.Option value="CUSTOMER">Khách hàng</Select.Option>
-              <Select.Option value="USER">Người dùng</Select.Option>
+              <Select.Option value="STAFF">Nhân viên</Select.Option>
+              <Select.Option value="ADMIN">Quản trị viên</Select.Option>
+              <Select.Option value="ARTISAN">Nghệ nhân</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item>
@@ -710,46 +713,6 @@ export default function UserManagement() {
               >
                 <Button icon={<KeyOutlined />}>Reset mật khẩu</Button>
               </Popconfirm>
-              {selectedUser?.status === "ACTIVE" ? (
-                <Popconfirm
-                  title="Khóa member"
-                  description="Member sẽ không thể đăng nhập cho đến khi được mở khóa."
-                  onConfirm={() =>
-                    selectedUser && handleToggleLock(selectedUser)
-                  }
-                  okText="Đồng ý"
-                  cancelText="Hủy"
-                  okButtonProps={{ danger: true }}
-                >
-                  <Button danger icon={<LockOutlined />}>
-                    Khóa
-                  </Button>
-                </Popconfirm>
-              ) : selectedUser?.status === "LOCKED" ? (
-                <Popconfirm
-                  title="Mở khóa member"
-                  description="Member sẽ có thể đăng nhập lại."
-                  onConfirm={() =>
-                    selectedUser && handleToggleLock(selectedUser)
-                  }
-                  okText="Đồng ý"
-                  cancelText="Hủy"
-                >
-                  <Button icon={<UnlockOutlined />}>Mở khóa</Button>
-                </Popconfirm>
-              ) : selectedUser?.status === "INACTIVE" ? (
-                <Popconfirm
-                  title="Kích hoạt member"
-                  description="Member sẽ có thể đăng nhập lại."
-                  onConfirm={() =>
-                    selectedUser && handleToggleLock(selectedUser)
-                  }
-                  okText="Đồng ý"
-                  cancelText="Hủy"
-                >
-                  <Button icon={<UnlockOutlined />}>Kích hoạt</Button>
-                </Popconfirm>
-              ) : null}
               <Popconfirm
                 title="Xóa member"
                 description="Bạn có chắc muốn xóa member này? Hành động này không thể hoàn tác."
@@ -820,7 +783,15 @@ export default function UserManagement() {
           <Form.Item label="Vai trò" name="role" rules={[{ required: true }]}>
             <Select>
               <Select.Option value="CUSTOMER">Khách hàng</Select.Option>
-              <Select.Option value="USER">Người dùng</Select.Option>
+              <Select.Option value="STAFF">Nhân viên</Select.Option>
+              <Select.Option value="ADMIN">Quản trị viên</Select.Option>
+              <Select.Option value="ARTISAN">Nghệ nhân</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item label="Trạng thái" name="status" rules={[{ required: true }]}>
+            <Select>
+              <Select.Option value="ACTIVE">Hoạt động</Select.Option>
+              <Select.Option value="INACTIVE">Không hoạt động</Select.Option>
             </Select>
           </Form.Item>
         </Form>

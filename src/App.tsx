@@ -43,6 +43,9 @@ import UserManagementPage from "./pages/admin/UserManagement";
 import StaffManagementPage from "./pages/admin/StaffManagement";
 import LearnManagementPage from "./pages/admin/LearnManagement";
 import VoucherManagementPage from "./pages/admin/VoucherManagement";
+import FeedbackManagementPage from "./pages/admin/FeedbackManagement";
+import MailManagementPage from "./pages/admin/MailManagement";
+import LeadManagementPage from "./pages/admin/LeadManagement";
 import TourScheduleManagementPage from "./pages/admin/TourScheduleManagement";
 
 // Staff Pages
@@ -110,6 +113,9 @@ function App() {
           <Route path="/admin/staff" element={<StaffManagementPage />} />
           <Route path="/admin/learn" element={<LearnManagementPage />} />
           <Route path="/admin/vouchers" element={<VoucherManagementPage />} />
+          <Route path="/admin/feedback" element={<FeedbackManagementPage />} />
+          <Route path="/admin/mails" element={<MailManagementPage />} />
+          <Route path="/admin/leads" element={<LeadManagementPage />} />
         </Route>
 
         {/* Staff Routes */}
