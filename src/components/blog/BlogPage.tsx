@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import { getBlogPosts, getProvinces } from "../../services/api";
 import BlogHero from "./BlogHero";
 import BlogFilterBar from "./BlogFilterBar";
@@ -72,7 +73,12 @@ export default function BlogPage() {
     <div className="blog-page">
       <BlogHero />
       <section className="blog-page__content">
-        <div className="blog-page__filter-wrap">
+        <motion.div
+          className="blog-page__filter-wrap"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
           <BlogFilterBar
             provinces={provinces}
             selectedProvinceId={selectedProvinceId}
@@ -82,7 +88,7 @@ export default function BlogPage() {
             onReset={handleReset}
             total={filteredPosts.length}
           />
-        </div>
+        </motion.div>
         <BlogGrid
           key={`${selectedProvinceId}-${sortBy}`}
           posts={filteredPosts}

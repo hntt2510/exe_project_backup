@@ -173,11 +173,11 @@ export default function LessonPage() {
     if (!hasAuth || actionLoading) return;
     setActionLoading("like");
     try {
+      // BE trả về ApiResponse<boolean>: data = trạng thái mới (true = đã like, false = đã bỏ like)
       const newVal = isLiked ? await unlikeLesson(lesson.id) : await likeLesson(lesson.id);
-      // POST like → true nếu đã like; DELETE unlike → false (BE có thể trả về !liked)
-      setIsLiked(isLiked ? false : newVal);
+      setIsLiked(newVal);
     } catch {
-      // Guest hoặc lỗi — bỏ qua
+      // Lỗi — bỏ qua
     } finally {
       setActionLoading(null);
     }
@@ -187,10 +187,11 @@ export default function LessonPage() {
     if (!hasAuth || actionLoading) return;
     setActionLoading("save");
     try {
+      // BE trả về ApiResponse<boolean>: data = trạng thái mới (true = đã lưu, false = đã bỏ lưu)
       const newVal = isSaved ? await unsaveLesson(lesson.id) : await saveLesson(lesson.id);
-      setIsSaved(isSaved ? false : newVal);
+      setIsSaved(newVal);
     } catch {
-      // Guest hoặc lỗi — bỏ qua
+      // Lỗi — bỏ qua
     } finally {
       setActionLoading(null);
     }

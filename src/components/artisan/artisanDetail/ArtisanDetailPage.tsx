@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { useParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getArtisanDetail } from "../../../services/artisanApi";
 import type {
   ArtisanDetail,
   ArtisanNarrativeBlock,
 } from "../../../types";
-import Breadcrumbs from "../../Breadcrumbs";
 import "../../../styles/components/artisan/artisanDetailscss/_artisan-detail.scss";
 
 const FALLBACK_IMG = "/dauvao.png";
@@ -40,7 +40,6 @@ function formatPrice(n: number) {
 
 export default function ArtisanDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [artisan, setArtisan] = useState<ArtisanDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>("narrative");
@@ -107,40 +106,53 @@ export default function ArtisanDetailPage() {
   const narrativeBlocks = parseNarrative(artisan.narrativeContent);
   const profileImg = artisan.profileImageUrl || FALLBACK_IMG;
 
-  const breadcrumbItems = [
-    { label: "Trang chủ", path: "/" },
-    { label: "Nghệ nhân", path: "/artisans" },
-    { label: artisan.fullName },
-  ];
+  const sectionMotion = {
+    initial: { opacity: 0, y: 24 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, margin: "-60px" },
+    transition: { duration: 0.5 },
+  };
 
   return (
     <div className="artisan-detail">
-      <Breadcrumbs items={breadcrumbItems} />
-
       {/* ═══════════ HERO — dark photo overlay ═══════════ */}
-      <section className="ad-hero-banner">
-        <img
+      <motion.section
+        className="ad-hero-banner"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <motion.img
           className="ad-hero-banner__bg"
           src={artisan.profileImageUrl || FALLBACK_IMG}
           alt={artisan.fullName}
+          initial={{ scale: 1.05 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
         />
         <div className="ad-hero-banner__overlay" />
 
-        <button className="ad-hero-banner__back" onClick={() => navigate("/artisans")}>
-          <ArrowLeft size={20} />
-        </button>
-
-        <div className="ad-hero-banner__content">
+        <motion.div
+          className="ad-hero-banner__content"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
           <h1 className="ad-hero-banner__title">{artisan.specialization}</h1>
           <p className="ad-hero-banner__subtitle">
             {artisan.heroSubtitle || artisan.bio}
           </p>
           <Link to="/tours" className="ad-hero-banner__btn">Khám phá ngay</Link>
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* ═══════════ INFO CARD — name, tabs, stats ═══════════ */}
-      <section className="ad-info">
+      <motion.section
+        className="ad-info"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+      >
         <div className="ad-info__container">
           <h2 className="ad-info__name">
             Nghệ nhân {artisan.fullName}
@@ -178,13 +190,14 @@ export default function ArtisanDetailPage() {
           {/* Bio paragraph */}
           {artisan.bio && <p className="ad-info__bio">{artisan.bio}</p>}
         </div>
-      </section>
+      </motion.section>
 
       {/* ═══════════ NARRATIVE SECTIONS ═══════════ */}
       {narrativeBlocks.length > 0 && (
-        <section
+        <motion.section
           className="ad-narrative"
           ref={(el) => { sectionRefs.current.narrative = el; }}
+          {...sectionMotion}
         >
           <div className="ad-narrative__container">
             <h2 className="ad-narrative__heading">
@@ -192,9 +205,13 @@ export default function ArtisanDetailPage() {
             </h2>
 
             {narrativeBlocks.map((block, idx) => (
-              <div
+              <motion.div
                 key={idx}
                 className={`ad-narrative__block ${idx % 2 !== 0 ? "ad-narrative__block--reverse" : ""}`}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
               >
                 <div className="ad-narrative__text">
                   <h3 className="ad-narrative__block-title">{block.title}</h3>
@@ -218,9 +235,10 @@ export default function ArtisanDetailPage() {
 
       {/* ═══════════ PANORAMA SLIDER ═══════════ */}
       {panoramaImages.length > 0 && (
-        <section
+        <motion.section
           className="ad-panorama"
           ref={(el) => { sectionRefs.current.gong = el; }}
+          {...sectionMotion}
         >
           <div className="ad-panorama__slider">
             <img
@@ -248,21 +266,29 @@ export default function ArtisanDetailPage() {
               </>
             )}
           </div>
-        </section>
+        </motion.section>
       )}
 
       {/* ═══════════ KẾT NỐI VĂN HOÁ — related culture + tours ═══════════ */}
-      <section
+      <motion.section
         className="ad-connect"
         ref={(el) => { sectionRefs.current.culture = el; }}
+        {...sectionMotion}
       >
         <div className="ad-connect__container">
           <h2 className="ad-connect__heading">Kết nối văn hoá</h2>
 
           <div className="ad-connect__grid">
             {/* Related culture items */}
-            {artisan.relatedCultureItems?.slice(0, 2).map((item) => (
-              <div key={item.id} className="ad-connect__card">
+            {artisan.relatedCultureItems?.slice(0, 2).map((item, i) => (
+              <motion.div
+                key={item.id}
+                className="ad-connect__card"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45, delay: i * 0.1 }}
+              >
                 <div className="ad-connect__card-img-wrap">
                   <img
                     src={item.thumbnailUrl || FALLBACK_IMG}
@@ -275,12 +301,19 @@ export default function ArtisanDetailPage() {
                   <h4>{item.title}</h4>
                   <p>{item.description}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
 
             {/* Related tours */}
-            {artisan.relatedTours?.slice(0, 2).map((tour) => (
-              <Link to={`/tours/${tour.id}`} key={tour.id} className="ad-connect__card ad-connect__card--tour">
+            {artisan.relatedTours?.slice(0, 2).map((tour, i) => (
+              <motion.div
+                key={tour.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45, delay: (i + 2) * 0.1 }}
+              >
+              <Link to={`/tours/${tour.id}`} className="ad-connect__card ad-connect__card--tour">
                 <div className="ad-connect__card-img-wrap">
                   <img
                     src={tour.thumbnailUrl || FALLBACK_IMG}
@@ -296,6 +329,7 @@ export default function ArtisanDetailPage() {
                   </p>
                 </div>
               </Link>
+              </motion.div>
             ))}
           </div>
 
@@ -314,7 +348,7 @@ export default function ArtisanDetailPage() {
             )}
           </div>
         </div>
-      </section>
+      </motion.section>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
     HeroSection,
-    MapSection,
+    LazyMapSection,
+    LazySection,
     WhereToNextSection,
     TourExperienceSection,
     QuickLearnSection,
@@ -29,18 +30,10 @@ export default function HomePage() {
 
     useEffect(() => {
         const fetchData = async () => {
-            console.log('[HomePage] 🚀 Starting API fetch...');
             try {
                 setLoading(true);
                 setError(null);
-                
                 const response = await getHomePageData(10);
-                console.log('[HomePage] ✅ API Success:', {
-                    provinces: response?.provinces?.length || 0,
-                    tours: response?.featuredTours?.length || 0,
-                    blogs: response?.blogPosts?.length || 0,
-                });
-                
                 setData({
                     provinces: response?.provinces ?? [],
                     featuredTours: response?.featuredTours ?? [],
@@ -50,13 +43,10 @@ export default function HomePage() {
                     videos: response?.videos ?? [],
                     userMemories: response?.userMemories ?? [],
                 });
-            } catch (err: any) {
-                console.error('[HomePage] ❌ API Error:', err?.message || err);
+            } catch (err: unknown) {
                 setError('API không khả dụng. Đang hiển thị dữ liệu mẫu.');
-                // Giữ dữ liệu rỗng khi API lỗi
             } finally {
                 setLoading(false);
-                console.log('[HomePage] 🏁 Fetch completed, loading = false');
             }
         };
 
@@ -85,14 +75,24 @@ export default function HomePage() {
             )}
 
             <HeroSection />
-            <MapSection provinces={data.provinces} />
+            <LazyMapSection provinces={data.provinces} />
             <WhereToNextSection provinces={data.provinces} />
             <TourExperienceSection tours={data.featuredTours} />
-            <QuickLearnSection blogPosts={data.blogPosts} videos={data.videos} />
-            <InspirationSection />
-            <TestimonialsSection testimonials={data.userMemories} />
-            <WhyChooseSection />
-            <LeadFormSection />
+            <LazySection minHeight={400}>
+              <QuickLearnSection blogPosts={data.blogPosts} videos={data.videos} />
+            </LazySection>
+            <LazySection minHeight={300}>
+              <InspirationSection />
+            </LazySection>
+            <LazySection minHeight={350}>
+              <TestimonialsSection />
+            </LazySection>
+            <LazySection minHeight={350}>
+              <WhyChooseSection />
+            </LazySection>
+            <LazySection minHeight={450}>
+              <LeadFormSection />
+            </LazySection>
         </main>
     );
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authLogin, startGoogleOAuth2Login, type LoginRequest } from "../services/authApi";
 import { message } from "antd";
-import { persistAuthSession } from "../utils/authSession";
+import { persistAuthSession, syncUserInfoFromProfile } from "../utils/authSession";
 import { consumeLoginRedirect } from "../utils/loginRedirectCookie";
 
 const Login = () => {
@@ -92,6 +92,11 @@ const Login = () => {
 
       // Lưu token vào localStorage
       persistAuthSession(response);
+
+      // Fallback: nếu response không có avatarUrl, fetch profile để đồng bộ
+      if (!response.avatarUrl && response.userId) {
+        syncUserInfoFromProfile(response.userId).catch(() => {});
+      }
 
       // Lưu thông tin nhớ tài khoản
       if (formData.remember) {

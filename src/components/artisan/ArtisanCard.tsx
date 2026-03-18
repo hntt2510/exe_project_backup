@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { ArrowRight, Star } from "lucide-react";
 import type { PublicArtisan } from "../../types";
 import "../../styles/components/artisan/_artisan-card.scss";
@@ -18,7 +19,13 @@ export default function ArtisanCard({ artisan }: Props) {
   };
 
   return (
-    <article className="artisan-card" onClick={handleClick} style={{ cursor: "pointer" }}>
+    <motion.article
+      className="artisan-card"
+      onClick={handleClick}
+      style={{ cursor: "pointer" }}
+      whileHover={{ y: -6, transition: { duration: 0.2 } }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+    >
       {/* stamp border wrapper */}
       <div className="artisan-card__stamp">
         <div className="artisan-card__img-wrap">
@@ -52,6 +59,6 @@ export default function ArtisanCard({ artisan }: Props) {
           Xem thêm <ArrowRight size={14} />
         </button>
       </div>
-    </article>
+    </motion.article>
   );
 }

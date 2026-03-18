@@ -70,13 +70,17 @@ $card-height: 380px;
   display: flex;
   gap: 1.25rem;
   overflow-x: auto;
+  overflow-y: hidden;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   padding: 0.5rem 0;
   scrollbar-width: none;
+  -ms-overflow-style: none;
+  max-width: 100%;
 
   &::-webkit-scrollbar {
     display: none;
+    height: 0;
   }
 }
 

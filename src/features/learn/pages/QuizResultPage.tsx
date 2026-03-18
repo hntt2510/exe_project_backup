@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { message, Modal } from "antd";
 import Breadcrumbs from "../../../components/Breadcrumbs";
-import { getTours } from "../../../services/api";
-import { claimVoucher } from "../../../services/learnApi";
+import { getApiErrorMessage, getTours } from "../../../services/api";
+import { isLearnVoucher } from "../../../services/profileApi";
+import {
+  claimVoucher,
+  checkQuizVoucherClaimed,
+  getMyClaimedVouchers,
+  type ClaimedVoucherInfo,
+} from "../../../services/learnApi";
 import type { LearnQuizQuestion, Tour } from "../../../types";
 import "../../../styles/features/learn/_learn-public.scss";
 
@@ -55,10 +62,22 @@ export default function QuizResultPage() {
   const [relatedTours, setRelatedTours] = useState<Tour[]>([]);
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState(false);
+  const [claimedVoucher, setClaimedVoucher] = useState<ClaimedVoucherInfo | null>(null);
+  const [alreadyClaimedFromApi, setAlreadyClaimedFromApi] = useState<boolean | null>(null);
+  const [alreadyClaimedModalOpen, setAlreadyClaimedModalOpen] = useState(false);
 
   useEffect(() => {
     if (!questions.length) navigate(`/learn/${moduleId ?? ""}`, { replace: true });
   }, [questions.length, moduleId, navigate]);
+
+  // Kiểm tra user đã nhận voucher cho quiz này chưa (dựa vào userId)
+  useEffect(() => {
+    const quizId = state?.quizId;
+    if (!quizId || !localStorage.getItem("accessToken")) return;
+    checkQuizVoucherClaimed(quizId)
+      .then((claimed) => setAlreadyClaimedFromApi(claimed))
+      .catch(() => setAlreadyClaimedFromApi(null));
+  }, [state?.quizId]);
 
   useEffect(() => {
     const loadTours = async () => {
@@ -100,6 +119,11 @@ export default function QuizResultPage() {
   const scorePercent = apiResult?.scorePercent ?? Math.round((correctCount / Math.max(1, totalQuestions)) * 100);
   const isPerfectScore = scorePercent >= 100;
   const canClaim = apiResult?.canClaimVoucher && apiResult?.attemptId != null;
+  /** Đã nhận voucher cho quiz này rồi — không cho làm lại (từ API hoặc từ submit result) */
+  const hasAlreadyClaimedForQuiz =
+    claimed ||
+    alreadyClaimedFromApi === true ||
+    (isPerfectScore && apiResult && !canClaim);
 
   if (!questions.length) return null;
 
@@ -142,7 +166,7 @@ export default function QuizResultPage() {
           <section className="qr-voucher-banner">
             <div className="qr-voucher-banner__icon">🎫</div>
             <h2 className="qr-voucher-banner__title">
-              {claimed
+              {hasAlreadyClaimedForQuiz
                 ? "✅ Đã nhận voucher!"
                 : canClaim
                   ? "Bạn đạt 100% — Nhận voucher ngay!"
@@ -150,14 +174,32 @@ export default function QuizResultPage() {
             </h2>
             <p className="qr-voucher-banner__desc">
               {claimed
-                ? "Voucher đã được lưu vào Ví Voucher của bạn. Vào Hồ sơ → Ví voucher để xem. Khi đặt tour, chọn voucher trong bước thanh toán."
+                ? claimedVoucher
+                  ? `Mã voucher của bạn: ${claimedVoucher.code} — ${claimedVoucher.discountType === 'PERCENTAGE' ? `${claimedVoucher.discountValue}% giảm giá` : `Giảm ${claimedVoucher.discountValue.toLocaleString('vi-VN')}đ`}. Vào Hồ sơ → Ví voucher để xem. Khi đặt tour, chọn voucher trong bước thanh toán.`
+                  : "Voucher từ Learn đã được ghi nhận. (Không áp dụng giảm giá khi đặt tour.)"
                 : canClaim
-                  ? "Nhấn nút bên dưới để nhận voucher vào tài khoản."
+                  ? "Nhấn nút bên dưới để nhận voucher vào tài khoản. Voucher từ Learn không áp dụng giảm giá khi đặt tour."
                   : apiResult
-                    ? "Bạn đã nhận voucher cho quiz này trước đó. Xem tại Hồ sơ → Ví voucher."
-                    : "Đăng nhập và nộp bài qua hệ thống để nhận voucher. Voucher sẽ lưu vào Ví voucher trong Hồ sơ."}
+                    ? "Bạn đã nhận voucher cho quiz này trước đó."
+                    : "Đăng nhập và nộp bài qua hệ thống để nhận voucher."}
             </p>
-            {canClaim && !claimed && (
+            {claimed && claimedVoucher && !isLearnVoucher(claimedVoucher.code) && (
+              <div className="qr-voucher-banner__code-block">
+                <span className="qr-voucher-banner__code-label">Mã voucher:</span>
+                <code className="qr-voucher-banner__code">{claimedVoucher.code}</code>
+                <button
+                  type="button"
+                  className="qr-voucher-banner__copy-btn"
+                  onClick={() => {
+                    navigator.clipboard.writeText(claimedVoucher.code);
+                    message.success('Đã sao chép mã voucher!');
+                  }}
+                >
+                  Sao chép
+                </button>
+              </div>
+            )}
+            {canClaim && !hasAlreadyClaimedForQuiz && (
               <button
                 type="button"
                 className="learn-btn qr-voucher-banner__btn"
@@ -168,6 +210,19 @@ export default function QuizResultPage() {
                   try {
                     await claimVoucher(apiResult.attemptId);
                     setClaimed(true);
+                    setAlreadyClaimedFromApi(true);
+                    const list = await getMyClaimedVouchers();
+                    const sorted = [...list].sort((a, b) =>
+                      (b.claimedAt ?? '').localeCompare(a.claimedAt ?? '')
+                    );
+                    const latest = sorted[0] ?? list[0];
+                    if (latest && !isLearnVoucher(latest.code)) setClaimedVoucher(latest);
+                  } catch (err) {
+                    const msg = getApiErrorMessage(err);
+                    setAlreadyClaimedModalOpen(true);
+                    setClaimed(true);
+                    setAlreadyClaimedFromApi(true);
+                    message.error(msg);
                   } finally {
                     setClaiming(false);
                   }
@@ -254,7 +309,7 @@ export default function QuizResultPage() {
                 </div>
               </div>
 
-              {apiResult?.canClaimVoucher && !claimed && (
+              {apiResult?.canClaimVoucher && !hasAlreadyClaimedForQuiz && (
                 <button
                   type="button"
                   className="learn-btn qr-summary__btn"
@@ -265,6 +320,19 @@ export default function QuizResultPage() {
                     try {
                       await claimVoucher(apiResult.attemptId);
                       setClaimed(true);
+                      setAlreadyClaimedFromApi(true);
+                      const list = await getMyClaimedVouchers();
+                      const sorted = [...list].sort((a, b) =>
+                        (b.claimedAt ?? '').localeCompare(a.claimedAt ?? '')
+                      );
+                      const latest = sorted[0] ?? list[0];
+                      if (latest && !isLearnVoucher(latest.code)) setClaimedVoucher(latest);
+                    } catch (err) {
+                      const msg = getApiErrorMessage(err);
+                      setAlreadyClaimedModalOpen(true);
+                      setClaimed(true);
+                      setAlreadyClaimedFromApi(true);
+                      message.error(msg);
                     } finally {
                       setClaiming(false);
                     }
@@ -275,19 +343,45 @@ export default function QuizResultPage() {
               )}
               {claimed && <p className="qr-summary__claimed">✅ Đã nhận voucher!</p>}
 
-              <button
-                type="button"
-                className="learn-btn qr-summary__btn"
-                onClick={() => navigate(`/learn/${moduleId}/quiz?quizId=${state?.quizId ?? ""}`)}
-              >
-                Làm lại Quiz
-              </button>
+              {hasAlreadyClaimedForQuiz ? (
+                <p className="qr-summary__no-retake">
+                  Bạn đã nhận voucher cho bài quiz này rồi. Không thể làm lại.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  className="learn-btn qr-summary__btn"
+                  onClick={() => navigate(`/learn/${moduleId}/quiz?quizId=${state?.quizId ?? ""}`)}
+                >
+                  Làm lại Quiz
+                </button>
+              )}
               <Link className="learn-btn learn-btn--ghost qr-summary__btn" to={`/learn/${moduleId}`}>
                 Quay về bài học
               </Link>
             </div>
           </aside>
         </div>
+
+        {/* Popup khi đã nhận voucher rồi */}
+        <Modal
+          title="Đã nhận voucher"
+          open={alreadyClaimedModalOpen}
+          onCancel={() => setAlreadyClaimedModalOpen(false)}
+          footer={[
+            <button
+              key="ok"
+              type="button"
+              className="learn-btn"
+              onClick={() => setAlreadyClaimedModalOpen(false)}
+            >
+              Đã hiểu
+            </button>,
+          ]}
+          centered
+        >
+          <p>Bạn đã nhận voucher cho bài quiz này rồi. Không thể nhận thêm.</p>
+        </Modal>
 
         {/* Gợi ý tour */}
         {relatedTours.length > 0 && (

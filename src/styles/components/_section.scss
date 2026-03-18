@@ -13,15 +13,18 @@
   font-display: swap;
 }
 
-// Section Container
+// Section Container - content-visibility giúp scroll mượt hơn
 .section-container {
   width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   padding: 4rem 0;
-  
+  content-visibility: auto;
+
   @media (min-width: 768px) {
     padding: 6rem 0;
   }
-  
+
   @media (min-width: 1024px) {
     padding: 8rem 0;
   }

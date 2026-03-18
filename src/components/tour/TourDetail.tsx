@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   Star, MapPin, Play, Calendar,
   Car, BookOpen, Utensils, Landmark, HandHeart
@@ -169,19 +170,39 @@ export default function TourDetail() {
   const culturalTips = itemProvince?.culturalTips || province?.culturalTips;
   const provinceName = province?.name || itemProvince?.name;
 
+  const sectionMotion = {
+    initial: { opacity: 0, y: 24 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, margin: '-60px' },
+    transition: { duration: 0.5 },
+  };
+
   return (
     <div className="tour-detail">
       {/* Hero */}
-      <section className="td-hero">
-        <img
+      <motion.section
+        className="td-hero"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <motion.img
           className="td-hero__image"
           src={tour.thumbnailUrl || '/nen.png'}
           alt={tour.title}
+          initial={{ scale: 1.05 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
         />
-      </section>
+      </motion.section>
 
       {/* Tabs */}
-      <nav className="td-tabs">
+      <motion.nav
+        className="td-tabs"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
         <div className="td-tabs__container">
           {TABS.map((tab) => (
             <button
@@ -195,12 +216,13 @@ export default function TourDetail() {
             </button>
           ))}
         </div>
-      </nav>
+      </motion.nav>
 
       {/* GIỚI THIỆU CHUNG */}
-      <section
+      <motion.section
         className="td-section td-intro"
         ref={(el) => { sectionRefs.current.intro = el; }}
+        {...sectionMotion}
       >
         <div className="td-section__container">
           <h2 className="td-section__title td-section__title--decorated">GIỚI THIỆU CHUNG</h2>
@@ -240,12 +262,13 @@ export default function TourDetail() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Video Section */}
-      <section
+      <motion.section
         className="td-section td-video"
         ref={(el) => { sectionRefs.current.videos = el; }}
+        {...sectionMotion}
       >
         <div className="td-video__wrapper">
           {videoItem?.videoUrl ? (
@@ -276,18 +299,26 @@ export default function TourDetail() {
               : tour.description
             : `Khám phá vẻ đẹp thiên nhiên và văn hoá đặc sắc tại ${provinceName || 'vùng đất này'}`}</p>
         </div>
-      </section>
+      </motion.section>
 
       {/* ĐỊA ĐIỂM NỔI BẬT */}
-      <section
+      <motion.section
         className="td-section td-highlights"
         ref={(el) => { sectionRefs.current.highlights = el; }}
+        {...sectionMotion}
       >
         <div className="td-section__container">
           <h2 className="td-section__title td-section__title--stamp">ĐỊA ĐIỂM NỔI BẬT</h2>
           <div className="td-highlights__grid">
-            {(highlightFiltered.length > 0 ? highlightFiltered : allItems).slice(0, 3).map((item) => (
-              <article key={item.id} className="td-stamp-card">
+            {(highlightFiltered.length > 0 ? highlightFiltered : allItems).slice(0, 3).map((item, i) => (
+              <motion.article
+                key={item.id}
+                className="td-stamp-card"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45, delay: i * 0.1 }}
+              >
                 <div className="td-stamp-card__image-wrapper">
                   <div className="td-stamp-card__image-frame">
                     <img
@@ -304,12 +335,19 @@ export default function TourDetail() {
                   </div>
                   <p className="td-stamp-card__desc">{item.description}</p>
                 </div>
-              </article>
+              </motion.article>
             ))}
             {highlightFiltered.length === 0 && allItems.length === 0 && (
               <>
                 {parseImages(tour.images).slice(0, 3).map((img, i) => (
-                  <article key={i} className="td-stamp-card">
+                  <motion.article
+                    key={i}
+                    className="td-stamp-card"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.45, delay: i * 0.1 }}
+                  >
                     <div className="td-stamp-card__image-wrapper">
                       <div className="td-stamp-card__image-frame">
                         <img className="td-stamp-card__image" src={img} alt={`Điểm nổi bật ${i + 1}`} />
@@ -318,18 +356,19 @@ export default function TourDetail() {
                     <div className="td-stamp-card__content">
                       <h3 className="td-stamp-card__title">Điểm tham quan {i + 1}</h3>
                     </div>
-                  </article>
+                  </motion.article>
                 ))}
               </>
             )}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* LỄ HỘI - PHONG TỤC */}
-      <section
+      <motion.section
         className="td-section td-festivals"
         ref={(el) => { sectionRefs.current.festivals = el; }}
+        {...sectionMotion}
       >
         <div className="td-section__container">
           <h2 className="td-section__title td-section__title--decorated">LỄ HỘI &amp; PHONG TỤC</h2>
@@ -367,18 +406,26 @@ export default function TourDetail() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* ẨM THỰC ĐỊA PHƯƠNG */}
-      <section
+      <motion.section
         className="td-section td-food"
         ref={(el) => { sectionRefs.current.food = el; }}
+        {...sectionMotion}
       >
         <div className="td-section__container">
           <h2 className="td-section__title td-section__title--stamp">ẨM THỰC ĐỊA PHƯƠNG</h2>
           <div className="td-food__grid">
-            {foodItems.length > 0 ? foodItems.slice(0, 3).map((item) => (
-              <article key={item.id} className="td-stamp-card">
+            {foodItems.length > 0 ? foodItems.slice(0, 3).map((item, i) => (
+              <motion.article
+                key={item.id}
+                className="td-stamp-card"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45, delay: i * 0.1 }}
+              >
                 <div className="td-stamp-card__image-wrapper">
                   <div className="td-stamp-card__image-frame">
                     <img className="td-stamp-card__image" src={item.thumbnailUrl || '/nen.png'} alt={item.title} />
@@ -388,7 +435,7 @@ export default function TourDetail() {
                   <h3 className="td-stamp-card__title">{item.title}</h3>
                   <p className="td-stamp-card__desc">{item.description}</p>
                 </div>
-              </article>
+              </motion.article>
             )) : (
               <div className="td-food__empty">
                 <p>Thông tin ẩm thực đang được cập nhật...</p>
@@ -396,10 +443,16 @@ export default function TourDetail() {
             )}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* CTA BANNER */}
-      <section className="td-cta-banner">
+      <motion.section
+        className="td-cta-banner"
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+      >
         <div className="td-cta-banner__container">
           <h3>Sẵn sàng khám phá địa điểm này chưa?</h3>
           <p>Đặt tour văn hoá để trải nghiệm những nét đẹp truyền thống và thiên nhiên tươi đẹp nơi đây</p>
@@ -408,7 +461,7 @@ export default function TourDetail() {
             <Link to={`/tours?province=${tour.provinceId || (tour as any).province?.id || ''}`} className="btn-outline">Xem tour liên quan</Link>
           </div>
         </div>
-      </section>
+      </motion.section>
     </div>
   );
 }

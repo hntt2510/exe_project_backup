@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { BlogPost, Video, LearnModule, LearnModuleLesson } from '../../types';
 import { getBlogPosts, getVideos, getLearnModules, getPublicLessons } from '../../services/api';
 import { Play, BookOpen, ArrowRight, GraduationCap } from 'lucide-react';
+import LoginRequiredModal from '../LoginRequiredModal';
 import '../../styles/components/quickLearnSection.scss';
+
+function hasAuthToken(): boolean {
+  return !!localStorage.getItem('accessToken');
+}
 
 const DEFAULT_LIMIT = 3;
 
@@ -13,6 +18,7 @@ interface QuickLearnSectionProps {
 }
 
 export default function QuickLearnSection({ blogPosts: blogProp, videos: videosProp }: QuickLearnSectionProps = {}) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'blog' | 'video' | 'learn'>('blog');
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>(blogProp ?? []);
   const [videos, setVideos] = useState<Video[]>(videosProp ?? []);
@@ -20,6 +26,8 @@ export default function QuickLearnSection({ blogPosts: blogProp, videos: videosP
   const [learnModules, setLearnModules] = useState<LearnModule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [loginModalRedirect, setLoginModalRedirect] = useState('');
 
   useEffect(() => {
     if (blogProp) setBlogPosts(blogProp);
@@ -185,40 +193,52 @@ export default function QuickLearnSection({ blogPosts: blogProp, videos: videosP
             {activeTab === 'video' && (
               <div className="quick-learn__grid">
                 {useLessonVideos
-                  ? (videoItemsToShow as LearnModuleLesson[]).map((lesson) => (
-                      <Link
-                        key={lesson.id}
-                        to={`/lesson?id=${lesson.id}`}
-                        className="card quick-learn__card"
-                      >
-                        <div className="quick-learn__image">
-                          <div
-                            className="quick-learn__image-bg"
-                            style={{
-                              backgroundImage: `url('${lesson.thumbnailUrl || '/nen.png'}')`,
-                            }}
-                            role="img"
-                            aria-label={lesson.title}
-                          />
-                          <div className="quick-learn__video-overlay">
-                            <span className="quick-learn__play">
-                              <Play size={24} style={{ fill: 'currentColor' }} />
-                            </span>
+                  ? (videoItemsToShow as LearnModuleLesson[]).map((lesson) => {
+                      const lessonPath = `/lesson?id=${lesson.id}`;
+                      const handleClick = () => {
+                        if (hasAuthToken()) {
+                          navigate(lessonPath);
+                        } else {
+                          setLoginModalRedirect(lessonPath);
+                          setLoginModalOpen(true);
+                        }
+                      };
+                      return (
+                        <button
+                          key={lesson.id}
+                          type="button"
+                          className="card quick-learn__card"
+                          onClick={handleClick}
+                        >
+                          <div className="quick-learn__image">
+                            <div
+                              className="quick-learn__image-bg"
+                              style={{
+                                backgroundImage: `url('${lesson.thumbnailUrl || '/nen.png'}')`,
+                              }}
+                              role="img"
+                              aria-label={lesson.title}
+                            />
+                            <div className="quick-learn__video-overlay">
+                              <span className="quick-learn__play">
+                                <Play size={24} style={{ fill: 'currentColor' }} />
+                              </span>
+                            </div>
+                            <div className="quick-learn__badge">
+                              {lesson.duration} phút
+                            </div>
                           </div>
-                          <div className="quick-learn__badge">
-                            {lesson.duration} phút
+                          <div className="quick-learn__content">
+                            <h3 className="quick-learn__title">{lesson.title}</h3>
+                            <div className="quick-learn__meta">
+                              <span className="quick-learn__link">
+                                Xem bài học <ArrowRight size={16} />
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        <div className="quick-learn__content">
-                          <h3 className="quick-learn__title">{lesson.title}</h3>
-                          <div className="quick-learn__meta">
-                            <span className="quick-learn__link">
-                              Xem bài học <ArrowRight size={16} />
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
-                    ))
+                        </button>
+                      );
+                    })
                   : (videoItemsToShow as Video[]).map((video) => (
                       <div key={video.id} className="card quick-learn__card">
                         <div className="quick-learn__image">
@@ -317,6 +337,13 @@ export default function QuickLearnSection({ blogPosts: blogProp, videos: videosP
           </div>
         )}
       </div>
+
+      <LoginRequiredModal
+        open={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+        redirectPath={loginModalRedirect}
+        content="Vui lòng đăng nhập để xem bài học."
+      />
     </section>
   );
 }

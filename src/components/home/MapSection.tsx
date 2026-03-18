@@ -115,6 +115,9 @@ const createProvinceMarkerIcon = (province?: Province) => {
 
 const cultureItemsCache = new Map<number, CultureItem[]>();
 
+// Cache GeoJSON để tránh fetch lại mỗi lần mount (giảm lag)
+let geoJsonCache: unknown | null = null;
+
 function debounce<T extends (...args: any[]) => void>(fn: T, wait: number) {
   let t: ReturnType<typeof setTimeout> | null = null;
   return (...args: Parameters<T>) => {
@@ -220,9 +223,10 @@ export default function MapSection({ provinces: provincesProp }: MapSectionProps
     if (!mapRef.current || mapInstanceRef.current) return;
 
     // Fix case layout chưa ổn định khiến tile bị “co nhỏ”
-    const ro = new ResizeObserver(() => {
+    const debouncedInvalidate = debounce(() => {
       mapInstanceRef.current?.invalidateSize();
-    });
+    }, 150);
+    const ro = new ResizeObserver(() => debouncedInvalidate());
     ro.observe(mapRef.current);
 
     const timer = setTimeout(() => {
@@ -264,6 +268,10 @@ export default function MapSection({ provinces: provincesProp }: MapSectionProps
 
         // Load GeoJSON sau khi map đã hiển thị (ưu tiên file “chuẩn” của bạn)
         setTimeout(() => {
+          if (geoJsonCache) {
+            setGeoJsonData(geoJsonCache);
+            return;
+          }
           const geoJsonUrlCandidates = ['/geo/geo-vietnam.geojson', '/geo/vietnam.geojson'];
 
           const loadFirstAvailableGeoJson = async () => {
@@ -280,7 +288,9 @@ export default function MapSection({ provinces: provincesProp }: MapSectionProps
                 if (!response.ok) {
                   throw new Error(`Không thể tải file GeoJSON: ${response.status} ${response.statusText}`);
                 }
-                return JSON.parse(text);
+                const data = JSON.parse(text);
+                geoJsonCache = data;
+                return data;
               } catch (e) {
                 lastError = e;
               }

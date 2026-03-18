@@ -26,7 +26,9 @@ html {
 
 body {
   width: 100%;
-  height: 100%;
+  max-width: 100vw;
+  min-width: 0;
+  overflow-x: hidden;
   margin: 0;
   padding: 0;
   font-family: variables.$font-family-base;
@@ -35,7 +37,7 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  
+
   // Ẩn scrollbar khi ở trang login/register
   &.no-scroll {
     overflow: hidden;
@@ -45,7 +47,8 @@ body {
 
 #root {
   width: 100%;
-  height: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 img {
@@ -96,7 +99,13 @@ a {
   }
 }
 
-// Custom Scrollbar
+// Custom Scrollbar – ẩn scrollbar ngang trên mobile
+@media (max-width: 767px) {
+  ::-webkit-scrollbar {
+    height: 0 !important;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

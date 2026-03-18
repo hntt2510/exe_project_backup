@@ -46,32 +46,24 @@ $content-width: 30%; // 3/10 bức ảnh
 @keyframes hero-thumb-click {
   0% {
     transform: scale(1);
-    filter: blur(0);
   }
   40% {
     transform: scale(0.92);
-    filter: blur(2px);
   }
   100% {
     transform: scale(1);
-    filter: blur(0);
   }
 }
 
-// Zoom overlay: ảnh nhỏ phóng to dần thay thế ảnh lớn (không opacity/animation cuối - tránh giật)
+// Zoom overlay: dùng transform (GPU-accelerated) thay vì left/top/width/height
 @keyframes hero-zoom-expand {
   0% {
-    left: var(--zoom-from-left, 0);
-    top: var(--zoom-from-top, 0);
-    width: var(--zoom-from-width, 200px);
-    height: var(--zoom-from-height, 150px);
+    transform: translate(var(--zoom-from-left, 0), var(--zoom-from-top, 0))
+      scale(var(--zoom-scale-x, 0.2), var(--zoom-scale-y, 0.15));
     border-radius: 12px;
   }
   100% {
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
+    transform: translate(0, 0) scale(1, 1);
     border-radius: 0;
   }
 }
@@ -79,35 +71,54 @@ $content-width: 30%; // 3/10 bức ảnh
 .hero-section {
   position: relative;
   width: 100%;
+  min-height: 100svh;
+  min-height: 100dvh;
   min-height: 100vh;
   overflow: hidden;
   background-color: #1a1a1a;
-
-  @include mixins.respond-to(md) {
-    min-height: 100vh;
-  }
 
   // Carousel container - full viewport background
   &__carousel {
     position: relative;
     width: 100%;
+    height: 100svh;
+    height: 100dvh;
     height: 100vh;
-    min-height: 600px;
+    min-height: 360px; // Điện thoại nhỏ (iPhone SE 320x568)
+    contain: layout;
+
+    @include mixins.respond-to(sm) {
+      min-height: 420px;
+    }
+
+    @include mixins.respond-to(md) {
+      min-height: 520px;
+    }
+
+    @include mixins.respond-to(lg) {
+      min-height: 600px;
+    }
+
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     overflow: hidden;
   }
 
-  // Zoom overlay - ảnh nhỏ phóng to dần (không animation cuối)
+  // Zoom overlay - dùng transform (GPU-accelerated), will-change chỉ khi animate
   &__zoom-overlay {
     position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
     z-index: 50;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    transform-origin: 0 0;
     animation: hero-zoom-expand 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    will-change: left, top, width, height;
+    will-change: transform;
   }
 
   // Progress bar (time running) - ref: .carousel .timeRunning
@@ -135,44 +146,69 @@ $content-width: 30%; // 3/10 bức ảnh
     z-index: 10;
     animation: hero-fade-in 0.4s ease forwards;
 
+    // Mobile / điện thoại - dùng nút <> thay thumbnails
+    @include mixins.respond-to-max(md) {
+      width: 100%;
+      max-width: none;
+      left: 0.75rem;
+      right: 0.75rem;
+      padding: 1rem 1rem 1.25rem;
+      top: auto;
+      bottom: 0;
+      transform: none;
+      padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    @include mixins.respond-to-max(sm) {
+      left: 0.5rem;
+      right: 0.5rem;
+      padding: 0.75rem 0.5rem 1rem;
+      padding-bottom: calc(3rem + env(safe-area-inset-bottom, 0px));
+    }
+
     @include mixins.respond-to(md) {
       left: 15%;
       padding: 2.5rem 3rem 2.5rem 0;
     }
-
-    @media (max-width: 767px) {
-      width: 100%;
-      max-width: none;
-      left: 1.5rem;
-      padding: 2rem 1.5rem 2rem 0;
-      top: auto;
-      bottom: 0;
-      transform: none;
-      padding-bottom: 12rem;
-    }
   }
 
   &__brand {
-    font-size: 0.85rem;
+    font-size: 0.65rem;
     font-weight: 600;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.15em;
     color: rgba(255, 255, 255, 0.9);
     text-transform: uppercase;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.35rem;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 0, 0, 0.3);
+
+    @include mixins.respond-to(sm) {
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      margin-bottom: 0.5rem;
+    }
+
+    @include mixins.respond-to(md) {
+      font-size: 0.85rem;
+    }
   }
 
   &__heading {
     font-family: 'iCiel Lodestone', 'Be Vietnam Pro', sans-serif;
-    font-size: 2rem;
+    font-size: 1.35rem;
     font-weight: normal;
     color: #fff;
     line-height: 1.2;
-    margin: 0 0 1rem;
+    margin: 0 0 0.5rem;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 24px rgba(0, 0, 0, 0.3);
+
+    @include mixins.respond-to(sm) {
+      font-size: 1.6rem;
+      margin-bottom: 0.75rem;
+    }
 
     @include mixins.respond-to(md) {
       font-size: 2.5rem;
+      margin-bottom: 1rem;
     }
 
     @include mixins.respond-to(lg) {
@@ -189,34 +225,61 @@ $content-width: 30%; // 3/10 bức ảnh
 
   &__description {
     font-family: 'Afacad', 'Be Vietnam Pro', sans-serif;
-    font-size: 1rem;
+    font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.95);
-    line-height: 1.6;
-    margin: 0 0 1.5rem;
+    line-height: 1.5;
+    margin: 0 0 0.75rem;
     max-width: 380px;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 0, 0, 0.3);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 
-    @include mixins.respond-to(md) {
-      font-size: 1.1rem;
+    @include mixins.respond-to(sm) {
+      font-size: 0.9rem;
+      -webkit-line-clamp: 2;
+      margin-bottom: 1rem;
     }
 
-    @media (max-width: 767px) {
-      max-width: none;
+    @include mixins.respond-to(md) {
+      font-size: 1rem;
+      -webkit-line-clamp: unset;
+      overflow: visible;
+      margin-bottom: 1.5rem;
+    }
+
+    @include mixins.respond-to(lg) {
+      font-size: 1.1rem;
     }
   }
 
   &__buttons {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: 0.5rem;
+
+    @include mixins.respond-to(md) {
+      gap: 0.75rem;
+    }
   }
 
   &__button {
     font-family: 'Afacad', 'Be Vietnam Pro', sans-serif;
-    padding: 0.7rem 1.4rem;
+    padding: 0.5rem 1rem;
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.85rem;
     font-weight: 600;
+
+    @include mixins.respond-to(sm) {
+      padding: 0.6rem 1.2rem;
+      font-size: 0.9rem;
+    }
+
+    @include mixins.respond-to(md) {
+      padding: 0.7rem 1.4rem;
+      font-size: 1rem;
+    }
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -248,7 +311,51 @@ $content-width: 30%; // 3/10 bức ảnh
     }
   }
 
-  // Cards ảnh bên phải
+  // Nút mũi tên < > - chỉ hiện trên mobile
+  &__arrows {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 12;
+    pointer-events: none;
+
+    @include mixins.respond-to-max(md) {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 0.5rem;
+      pointer-events: auto;
+    }
+  }
+
+  &__arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    color: #1a1a1a;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+    transition: background 0.2s, transform 0.2s;
+
+    &:hover {
+      background: #fff;
+      transform: scale(1.05);
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+
+  // Cards ảnh bên phải - ẩn trên mobile
   &__thumbnails {
     position: absolute;
     bottom: 3rem;
@@ -261,25 +368,25 @@ $content-width: 30%; // 3/10 bức ảnh
     align-items: flex-end;
     gap: 1rem;
 
-    @media (max-width: 767px) {
-      bottom: 5rem;
-      padding: 0 0.5rem;
-      align-items: center;
+    @include mixins.respond-to-max(md) {
+      display: none;
     }
   }
 
   &__thumbnails-list {
     display: flex;
-    gap: 0.875rem;
+    gap: 0.5rem;
     overflow-x: auto;
-    padding: 0.5rem 0;
+    overflow-y: hidden;
+    padding: 0.25rem 0;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     flex-direction: row;
     justify-content: flex-end;
+    max-width: 100%;
 
     &::-webkit-scrollbar {
-      height: 4px;
+      height: 3px;
     }
     &::-webkit-scrollbar-thumb {
       background: rgba(255, 255, 255, 0.3);
@@ -287,7 +394,7 @@ $content-width: 30%; // 3/10 bức ảnh
     }
   }
 
-  // Card thumbnail
+  // Card thumbnail - chỉ dùng trên desktop
   &__thumb-item {
     flex-shrink: 0;
     width: 190px;
@@ -308,12 +415,11 @@ $content-width: 30%; // 3/10 bức ảnh
       border-color: #f59e0b;
     }
 
-    // Animation khi click vào ảnh
     &--clicked {
       animation: hero-thumb-click 0.4s ease;
     }
 
-    @include mixins.respond-to(md) {
+    @include mixins.respond-to(lg) {
       width: 210px;
     }
   }
@@ -326,15 +432,15 @@ $content-width: 30%; // 3/10 bức ảnh
     display: block;
   }
 
-  // Dots - mobile only
+  // Dots - mobile/tablet only
   &__dots {
     position: absolute;
-    bottom: 1.25rem;
+    bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
     left: 50%;
     transform: translateX(-50%);
     z-index: 15;
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
 
     @include mixins.respond-to(lg) {
       display: none;
@@ -342,14 +448,19 @@ $content-width: 30%; // 3/10 bức ảnh
   }
 
   &__dot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     border: none;
     background: rgba(255, 255, 255, 0.4);
     cursor: pointer;
     padding: 0;
     transition: background 0.2s, transform 0.2s;
+
+    @include mixins.respond-to(sm) {
+      width: 8px;
+      height: 8px;
+    }
 
     &:hover {
       background: rgba(255, 255, 255, 0.7);

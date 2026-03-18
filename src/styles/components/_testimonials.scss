@@ -183,4 +183,56 @@
       background: var(--color-primary);
     }
   }
+
+  // Flow marquee - hiệu ứng chạy từ trái sang phải
+  &__flow-wrapper {
+    overflow: hidden;
+    padding: variables.$spacing-lg 0;
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      black variables.$spacing-lg,
+      black calc(100% - #{variables.$spacing-lg}),
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      black variables.$spacing-lg,
+      black calc(100% - #{variables.$spacing-lg}),
+      transparent 100%
+    );
+  }
+
+  &__flow-track {
+    display: flex;
+    width: max-content;
+    animation: testimonials-flow 30s linear infinite;
+
+    .testimonials__flow-wrapper:hover & {
+      animation-play-state: paused;
+    }
+  }
+
+  &__flow-inner {
+    display: flex;
+    gap: variables.$spacing-xl;
+    padding: 0 variables.$spacing-xl;
+    flex-shrink: 0;
+  }
+
+  &__flow-card {
+    flex-shrink: 0;
+    width: 320px;
+    min-width: 320px;
+  }
+}
+
+@keyframes testimonials-flow {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0);
+  }
 }

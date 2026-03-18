@@ -130,7 +130,17 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     line-height: 1.25;
+    margin: 0 0 $spacing-sm;
+  }
+
+  &__subtitle {
+    font-family: 'Afacad', 'Be Vietnam Pro', sans-serif;
+    font-size: clamp(0.95rem, 2vw, 1.15rem);
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.5;
     margin: 0 0 $spacing-md;
+    max-width: 640px;
+    font-weight: $font-weight-normal;
   }
 
   &__meta {
@@ -146,6 +156,26 @@
     display: inline-flex;
     align-items: center;
     gap: $spacing-xs;
+  }
+}
+
+// Panorama full-width section
+.blog-detail-panorama {
+  width: 100%;
+  max-height: 420px;
+  overflow: hidden;
+  background: $color-gray-100;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+  }
+
+  @media (max-width: $breakpoint-md) {
+    max-height: 280px;
   }
 }
 
@@ -294,7 +324,7 @@
     }
   }
 
-  // Gallery
+  // Gallery - bố cục ảnh thông minh theo số lượng
   &__gallery {
     margin-top: $spacing-2xl;
     padding-top: $spacing-2xl;
@@ -310,12 +340,10 @@
 
   &__gallery-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: $spacing-md;
   }
 
   &__gallery-item {
-    aspect-ratio: 4/3;
     border-radius: $radius-md;
     overflow: hidden;
     background: $color-gray-100;
@@ -330,6 +358,64 @@
     &:hover img {
       transform: scale(1.05);
     }
+  }
+}
+
+// Gallery layouts theo số ảnh
+.blog-detail-gallery--count-1 .blog-detail-body__gallery-grid {
+  grid-template-columns: 1fr;
+  .blog-detail-body__gallery-item { aspect-ratio: 21/9; }
+}
+
+.blog-detail-gallery--count-2 .blog-detail-body__gallery-grid {
+  grid-template-columns: repeat(2, 1fr);
+  .blog-detail-body__gallery-item { aspect-ratio: 4/3; }
+}
+
+.blog-detail-gallery--count-3 .blog-detail-body__gallery-grid {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  .blog-detail-body__gallery-item { aspect-ratio: 4/3; }
+  .blog-detail-body__gallery-item:first-child {
+    grid-column: 1 / -1;
+    aspect-ratio: 21/9;
+  }
+}
+
+.blog-detail-gallery--count-4 .blog-detail-body__gallery-grid {
+  grid-template-columns: repeat(2, 1fr);
+  .blog-detail-body__gallery-item { aspect-ratio: 4/3; }
+}
+
+.blog-detail-gallery--count-5 .blog-detail-body__gallery-grid {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: auto auto;
+  .blog-detail-body__gallery-item { aspect-ratio: 4/3; }
+  .blog-detail-body__gallery-item:first-child {
+    grid-column: 1 / -1;
+    aspect-ratio: 21/9;
+  }
+}
+
+.blog-detail-gallery--count-6 .blog-detail-body__gallery-grid,
+.blog-detail-gallery--count-7 .blog-detail-body__gallery-grid,
+.blog-detail-gallery--count-8 .blog-detail-body__gallery-grid,
+.blog-detail-gallery--count-many .blog-detail-body__gallery-grid {
+  grid-template-columns: repeat(3, 1fr);
+  .blog-detail-body__gallery-item { aspect-ratio: 4/3; }
+}
+
+@media (max-width: $breakpoint-md) {
+  .blog-detail-gallery--count-2 .blog-detail-body__gallery-grid,
+  .blog-detail-gallery--count-4 .blog-detail-body__gallery-grid {
+    grid-template-columns: 1fr;
+  }
+  .blog-detail-gallery--count-5 .blog-detail-body__gallery-grid,
+  .blog-detail-gallery--count-6 .blog-detail-body__gallery-grid,
+  .blog-detail-gallery--count-7 .blog-detail-body__gallery-grid,
+  .blog-detail-gallery--count-8 .blog-detail-body__gallery-grid,
+  .blog-detail-gallery--count-many .blog-detail-body__gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -351,6 +437,21 @@
 
   @media (max-width: $breakpoint-lg) {
     position: static;
+  }
+}
+
+.blog-detail-sidebar__thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: $radius-md;
+  overflow: hidden;
+  margin-bottom: $spacing-md;
+  background: $color-gray-100;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 }
 

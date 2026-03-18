@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { ArrowLeft, Eye, MapPin, Calendar, ChevronRight } from "lucide-react";
 import { getBlogPostById } from "../../../services/api";
 import type { BlogPost } from "../../../types";
@@ -52,13 +53,24 @@ function extractHtmlContent(post: BlogPost): string {
       return post.content;
     }
   }
+  // Ưu tiên narrativeContent nếu có (nội dung kể chuyện)
+  if (post.narrativeContent?.trim()) return post.narrativeContent;
   return post.content;
 }
 
-/** Parse chuỗi images (phân cách bởi dấu phẩy) */
+/** Parse chuỗi images (phân cách bởi dấu phẩy hoặc JSON array) */
 function parseImages(imagesStr?: string): string[] {
   if (!imagesStr?.trim()) return [];
-  return imagesStr.split(",").map((s) => s.trim()).filter(Boolean);
+  const trimmed = imagesStr.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === "string") : [];
+    } catch {
+      // fallback to comma split
+    }
+  }
+  return trimmed.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
 export default function BlogDetailPage() {
@@ -112,15 +124,31 @@ export default function BlogDetailPage() {
   const contentHtml = extractHtmlContent(post);
   const images = parseImages(post.images);
   const viewCount = post.viewCount ?? 0;
+  const hasPanorama = Boolean(post.panoramaImageUrl?.trim());
+
+  const sectionMotion = {
+    initial: { opacity: 0, y: 24 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, margin: "-60px" },
+    transition: { duration: 0.5 },
+  };
 
   return (
     <div className="blog-detail">
-      {/* Hero banner */}
-      <section className="blog-detail-hero">
-        <img
+      {/* Hero banner - featuredImageUrl + title + heroSubtitle */}
+      <motion.section
+        className="blog-detail-hero"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <motion.img
           className="blog-detail-hero__bg"
           src={featuredImg}
           alt={post.title}
+          initial={{ scale: 1.05 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
           onError={(e) => {
             (e.target as HTMLImageElement).src = FALLBACK_IMG;
           }}
@@ -131,8 +159,16 @@ export default function BlogDetailPage() {
           <ArrowLeft size={20} />
         </Link>
 
-        <div className="blog-detail-hero__content">
+        <motion.div
+          className="blog-detail-hero__content"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
           <h1 className="blog-detail-hero__title">{post.title}</h1>
+          {post.heroSubtitle && (
+            <p className="blog-detail-hero__subtitle">{post.heroSubtitle}</p>
+          )}
           <div className="blog-detail-hero__meta">
             {provinceName && (
               <span className="blog-detail-hero__meta-item">
@@ -151,11 +187,32 @@ export default function BlogDetailPage() {
               {viewCount} lượt xem
             </span>
           </div>
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
+
+      {/* Panorama full-width (panoramaImageUrl) */}
+      {hasPanorama && (
+        <motion.section
+          className="blog-detail-panorama"
+          {...sectionMotion}
+        >
+          <img
+            src={post.panoramaImageUrl!}
+            alt={`${post.title} - Toàn cảnh`}
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </motion.section>
+      )}
 
       {/* Article body - layout 2 cột: nội dung + sidebar */}
-      <div className="blog-detail-body-wrap">
+      <motion.div
+        className="blog-detail-body-wrap"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.15 }}
+      >
         <article className="blog-detail-body">
           <nav className="blog-detail-body__breadcrumb">
             <Link to="/">Trang chủ</Link>
@@ -170,30 +227,61 @@ export default function BlogDetailPage() {
             dangerouslySetInnerHTML={{ __html: contentHtml }}
           />
 
+          {/* Gallery - bố cục ảnh thông minh theo số lượng */}
           {images.length > 0 && (
-            <div className="blog-detail-body__gallery">
+            <motion.div
+              className={`blog-detail-body__gallery blog-detail-gallery--count-${images.length <= 8 ? images.length : "many"}`}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+            >
               <h3 className="blog-detail-body__gallery-title">Hình ảnh</h3>
               <div className="blog-detail-body__gallery-grid">
                 {images.map((url, idx) => (
-                  <div key={idx} className="blog-detail-body__gallery-item">
+                  <motion.div
+                    key={idx}
+                    className="blog-detail-body__gallery-item"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: idx * 0.05 }}
+                  >
                     <img
                       src={url}
                       alt={`${post.title} - ${idx + 1}`}
+                      loading="lazy"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = FALLBACK_IMG;
                       }}
                     />
-                  </div>
+                  </motion.div>
                 ))}
               </div>
-            </div>
+            </motion.div>
           )}
         </article>
 
-        {/* Sidebar - thông tin tỉnh */}
+        {/* Sidebar - thông tin tỉnh (province đầy đủ từ API) */}
         {post.province && (
-          <aside className="blog-detail-sidebar">
+          <motion.aside
+            className="blog-detail-sidebar"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
             <div className="blog-detail-sidebar__card">
+              {post.province.thumbnailUrl && (
+                <div className="blog-detail-sidebar__thumb">
+                  <img
+                    src={post.province.thumbnailUrl}
+                    alt={post.province.name}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
               <h3 className="blog-detail-sidebar__title">
                 <MapPin size={18} />
                 {post.province.name}
@@ -220,9 +308,9 @@ export default function BlogDetailPage() {
                 </div>
               )}
             </div>
-          </aside>
+          </motion.aside>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

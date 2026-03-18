@@ -8,6 +8,8 @@
 .tour-page {
   background: linear-gradient(180deg, #fef7f5 0%, #faf9f6 12%);
   min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
 
   &__content {
     padding: $spacing-3xl 0 $spacing-4xl;
@@ -15,8 +17,12 @@
 
   &__container {
     width: 100%;
-    max-width: 1560px;
+    max-width: 100%;
     margin: 0 auto;
+
+    @include respond-to(md) {
+      max-width: 1560px;
+    }
     padding: 0 $spacing-lg;
 
     @include respond-to(md) {

@@ -238,6 +238,19 @@ export default function ProfilePage() {
     setUser(updated);
   };
 
+  const handleReviewSuccess = async () => {
+    try {
+      const storedUser = localStorage.getItem('userInfo');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        const bookingsData = await getUserBookings();
+        setBookings(bookingsData);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   /* ---------- Loading ---------- */
   if (loading || !user) {
     return (
@@ -307,7 +320,7 @@ export default function ProfilePage() {
             ref={(el) => { sectionRefs.current.orders = el; }}
             className="profile-page__section profile-page__section--card"
           >
-            <ProfileOrders bookings={bookings} />
+            <ProfileOrders bookings={bookings} onReviewSuccess={handleReviewSuccess} />
           </div>
 
           <div

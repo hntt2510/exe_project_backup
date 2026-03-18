@@ -7,6 +7,18 @@ export default defineConfig({
   optimizeDeps: {
     include: ['leaflet'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-leaflet': ['leaflet'],
+          'vendor-antd': ['antd'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
   server: {
     proxy: {
       '/api': {

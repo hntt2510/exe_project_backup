@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import type { PublicArtisan } from "../../types";
 import ArtisanCard from "./ArtisanCard";
 import ArtisanPagination from "./ArtisanPagination";
@@ -10,6 +11,15 @@ interface Props {
   artisans: PublicArtisan[];
   loading: boolean;
 }
+
+const cardVariants = {
+  initial: { opacity: 0, y: 24 },
+  animate: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, delay: 0.05 * i },
+  }),
+};
 
 function SkeletonCard() {
   return (
@@ -37,12 +47,38 @@ export default function ArtisanGrid({ artisans, loading }: Props) {
   return (
     <section className="artisan-grid">
       <div className="artisan-grid__inner">
-        <h2 className="artisan-grid__title">Nghệ nhân tiêu biểu</h2>
+        <motion.h2
+          className="artisan-grid__title"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          Nghệ nhân tiêu biểu
+        </motion.h2>
 
         <div className="artisan-grid__list">
           {loading
-            ? Array.from({ length: PAGE_SIZE }).map((_, i) => <SkeletonCard key={i} />)
-            : paginatedArtisans.map((a) => <ArtisanCard key={a.id} artisan={a} />)}
+            ? Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: i * 0.05 }}
+                >
+                  <SkeletonCard />
+                </motion.div>
+              ))
+            : paginatedArtisans.map((a, i) => (
+                <motion.div
+                  key={a.id}
+                  variants={cardVariants}
+                  initial="initial"
+                  animate="animate"
+                  custom={i}
+                >
+                  <ArtisanCard artisan={a} />
+                </motion.div>
+              ))}
         </div>
 
         {!loading && artisans.length === 0 && (

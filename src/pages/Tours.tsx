@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import type { Province, Tour } from '../types';
 import { getProvinces, getPublicTours } from '../services/api';
 import TourHero from '../components/tour/TourHero';
@@ -119,36 +120,55 @@ export default function Tours() {
 
       <section id="tour-content" className="tour-page__content">
         <div className="tour-page__container">
-          <TourFilterBar
-            search={search}
-            onSearchChange={setSearch}
-            provinces={provinces}
-            selectedProvinceId={selectedProvinceId}
-            onProvinceChange={setSelectedProvinceId}
-            artisans={artisanOptions}
-            selectedArtisanId={selectedArtisanId}
-            onArtisanChange={setSelectedArtisanId}
-            sortBy={sortBy}
-            onSortChange={(value) => setSortBy(value as SortOption)}
-            onReset={() => {
-              setSearch('');
-              setSelectedProvinceId('all');
-              setSelectedArtisanId('all');
-              setSortBy('latest');
-            }}
-            total={sortedTours.length}
-          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <TourFilterBar
+              search={search}
+              onSearchChange={setSearch}
+              provinces={provinces}
+              selectedProvinceId={selectedProvinceId}
+              onProvinceChange={setSelectedProvinceId}
+              artisans={artisanOptions}
+              selectedArtisanId={selectedArtisanId}
+              onArtisanChange={setSelectedArtisanId}
+              sortBy={sortBy}
+              onSortChange={(value) => setSortBy(value as SortOption)}
+              onReset={() => {
+                setSearch('');
+                setSelectedProvinceId('all');
+                setSelectedArtisanId('all');
+                setSortBy('latest');
+              }}
+              total={sortedTours.length}
+            />
+          </motion.div>
 
-          <h2 className="tour-page__headline">TOUR NỔI BẬT</h2>
+          <motion.h2
+            className="tour-page__headline"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+          >
+            TOUR NỔI BẬT
+          </motion.h2>
 
           <div className="tour-page__results">
             <TourGrid tours={pageTours} loading={loading} error={error} />
 
-            <TourPagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.5 }}
+            >
+              <TourPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </motion.div>
           </div>
         </div>
       </section>

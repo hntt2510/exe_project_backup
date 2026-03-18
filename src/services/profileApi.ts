@@ -17,11 +17,13 @@ export interface UserProfile {
   createdAt: string;
 }
 
+/** PUT /api/users/{id} - Schema chuẩn backend */
 export interface UpdateUserRequest {
   phone?: string;
   password?: string;
   fullName?: string;
   email?: string;
+  /** YYYY-MM-DD */
   dateOfBirth?: string;
   avatarUrl?: string;
 }
@@ -56,6 +58,8 @@ export interface UserBooking {
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | string;
   createdAt: string;
   updatedAt: string;
+  /** true = đã đánh giá, ẩn nút Đánh giá */
+  isReview?: boolean;
 }
 
 export interface UserVoucher {
@@ -120,6 +124,25 @@ export interface FeaturedCourse {
 }
 
 // ========== User Profile ==========
+
+/** Lấy thông tin user hiện tại từ token (GET /api/users/me) */
+export const getCurrentUser = async (): Promise<UserProfile> => {
+  const res = await api.get<ApiResponse<UserProfile>>('/api/users/me');
+  const raw = res.data.data as Record<string, unknown>;
+  return {
+    id: Number(raw.id),
+    username: (raw.username as string) ?? '',
+    email: (raw.email as string) ?? '',
+    phone: (raw.phone as string) ?? '',
+    fullName: (raw.fullName as string) ?? '',
+    avatarUrl: (raw.avatarUrl as string) ?? '',
+    dateOfBirth: raw.dateOfBirth ? String(raw.dateOfBirth).split('T')[0] : '',
+    gender: (raw.gender as UserProfile['gender']) ?? 'OTHER',
+    role: (raw.role as UserProfile['role']) ?? 'CUSTOMER',
+    status: (raw.status as string) ?? 'ACTIVE',
+    createdAt: (raw.createdAt as string) ?? '',
+  };
+};
 
 export const getUserProfile = async (userId: number): Promise<UserProfile> => {
   const res = await api.get<ApiResponse<UserProfile>>(`/api/users/${userId}`);
@@ -186,9 +209,36 @@ export const createReview = async (data: CreateReviewRequest): Promise<unknown> 
 
 // ========== Vouchers ==========
 
+/** Voucher từ Learn (quiz 100%) — BE không áp dụng giảm giá, nên FE ẩn khỏi danh sách */
+const LEARN_VOUCHER_CODE_PREFIX = 'COIVIET-LEARN-';
+
+export function isLearnVoucher(code: string): boolean {
+  return (code ?? '').toUpperCase().startsWith(LEARN_VOUCHER_CODE_PREFIX);
+}
+
+/** Lọc bỏ voucher từ Learn (không dùng được khi thanh toán) */
+export function filterOutLearnVouchers<T extends { code?: string }>(vouchers: T[]): T[] {
+  return vouchers.filter((v) => !isLearnVoucher(v.code ?? ''));
+}
+
+/** Lấy voucher đã claim của user - GET /api/vouchers/my-claimed (chuẩn BE). Loại bỏ voucher từ Learn. */
 export const getUserVouchers = async (): Promise<UserVoucher[]> => {
-  const res = await api.get<ApiResponse<UserVoucher[]>>('/api/vouchers/me');
-  return res.data.data;
+  const res = await api.get<ApiResponse<UserVoucher[]>>('/api/vouchers/my-claimed');
+  const raw = res.data.data ?? [];
+  const mapped = raw.map((v: Record<string, unknown>) => ({
+    id: v.id as number,
+    code: v.code as string,
+    discountType: (v.discountType as string) ?? 'PERCENTAGE',
+    discountValue: Number(v.discountValue ?? 0),
+    minPurchase: Number(v.minPurchase ?? 0),
+    maxUsage: Number(v.maxUsage ?? 1),
+    currentUsage: Number(v.currentUsage ?? 0),
+    validFrom: (v.validFrom as string) ?? '',
+    validUntil: (v.validUntil as string) ?? '',
+    isActive: (v.isActive as boolean) ?? true,
+    createdAt: (v.claimedAt as string) ?? (v.createdAt as string) ?? '',
+  }));
+  return filterOutLearnVouchers(mapped);
 };
 
 // ========== Learn Stats ==========
