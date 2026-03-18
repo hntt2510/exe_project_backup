@@ -149,7 +149,11 @@ export interface BlogPostProvince {
   name: string;
   slug: string;
   region?: string;
+  latitude?: number;
+  longitude?: number;
+  thumbnailUrl?: string;
   description?: string;
+  isActive?: boolean;
   bestSeason?: string;
   transportation?: string;
   culturalTips?: string;
@@ -162,12 +166,15 @@ export interface BlogPost {
   title: string;
   slug: string;
   content: string;
+  narrativeContent?: string;
   blocksJson?: string;
   featuredImageUrl: string;
+  heroSubtitle?: string;
+  panoramaImageUrl?: string;
   provinceId?: number;
   provinceName?: string;
   province?: BlogPostProvince;
-  images?: string; // comma-separated URLs
+  images?: string; // comma-separated URLs or JSON array
   status: string;
   viewCount?: number;
   publishedAt?: string;
@@ -207,7 +214,7 @@ export interface UserMemory {
   updatedAt: string;
 }
 
-// Review
+// Review (GET /api/reviews, GET /api/reviews/tour/{tourId})
 export interface Review {
   id: number;
   userId: number;
@@ -219,6 +226,7 @@ export interface Review {
   rating: number;
   comment: string;
   images: string[];
+  status?: string; // VISIBLE, HIDDEN, etc.
   createdAt: string;
 }
 

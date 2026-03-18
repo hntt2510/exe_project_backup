@@ -14,7 +14,7 @@ import {
   type PaymentMethod,
   type Voucher,
 } from '../../services/paymentApi';
-import { getUserVouchers, type UserVoucher } from '../../services/profileApi';
+import { getUserVouchers, isLearnVoucher, type UserVoucher } from '../../services/profileApi';
 import type { Tour, Province } from '../../types';
 import type { ContactInfo } from '../tourBooking/ContactForm';
 import type { BookingDetailsData } from '../tourBooking/BookingDetails';
@@ -142,6 +142,10 @@ export default function PaymentPage() {
     const code = voucherCode.trim().toUpperCase();
     if (!code) {
       setVoucherError('Vui lòng nhập mã voucher.');
+      return;
+    }
+    if (isLearnVoucher(code)) {
+      setVoucherError('Voucher từ Learn không áp dụng giảm giá khi đặt tour.');
       return;
     }
     setVoucherLoading(true);

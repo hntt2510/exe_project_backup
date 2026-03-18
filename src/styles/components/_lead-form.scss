@@ -12,37 +12,50 @@
     width: 100%;
     max-width: 720px;
     margin: 0 auto;
-    padding: 0 variables.$spacing-md;
+    padding: 0 variables.$spacing-sm;
 
-    @media (min-width: variables.$breakpoint-md) {
-      max-width: min(57.14vw, 1000px); // ~4/7 màn hình
+    @include mixins.respond-to(sm) {
+      padding: 0 variables.$spacing-md;
+    }
+
+    @include mixins.respond-to(md) {
+      max-width: min(57.14vw, 1000px);
       padding: 0 variables.$spacing-lg;
     }
   }
 
   &__form {
     background: #fff;
-    border-radius: variables.$radius-xl;
-    padding: variables.$spacing-2xl;
+    border-radius: variables.$radius-lg;
+    padding: variables.$spacing-lg;
     box-shadow: variables.$shadow-lg;
     border: 1px solid variables.$color-border;
+
+    @include mixins.respond-to(md) {
+      border-radius: variables.$radius-xl;
+      padding: variables.$spacing-2xl;
+    }
   }
 
   &__grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: variables.$spacing-lg;
-    margin-bottom: variables.$spacing-lg;
+    gap: variables.$spacing-md;
+    margin-bottom: variables.$spacing-md;
 
-    @media (min-width: variables.$breakpoint-md) {
+    @include mixins.respond-to(md) {
       grid-template-columns: repeat(3, 1fr);
+      gap: variables.$spacing-lg;
+      margin-bottom: variables.$spacing-lg;
     }
 
     &--2 {
       grid-template-columns: 1fr;
+      gap: variables.$spacing-md;
 
-      @media (min-width: variables.$breakpoint-md) {
+      @include mixins.respond-to(md) {
         grid-template-columns: 1fr 1fr;
+        gap: variables.$spacing-lg;
       }
     }
   }
@@ -53,10 +66,14 @@
   }
 
   &__label {
-    font-size: variables.$font-size-sm;
+    font-size: variables.$font-size-xs;
     font-weight: variables.$font-weight-semibold;
     color: variables.$color-gray-700;
     margin-bottom: variables.$spacing-xs;
+
+    @include mixins.respond-to(md) {
+      font-size: variables.$font-size-sm;
+    }
   }
 
   &__required {
@@ -65,11 +82,19 @@
 
   &__input,
   &__select {
-    padding: variables.$spacing-md variables.$spacing-lg;
+    width: 100%;
+    padding: variables.$spacing-sm variables.$spacing-md;
     border: 1px solid variables.$color-border;
-    border-radius: variables.$radius-lg;
+    border-radius: variables.$radius-md;
     font-size: variables.$font-size-base;
+    min-height: 44px;
     transition: border-color variables.$transition-base;
+    appearance: auto;
+
+    @include mixins.respond-to(md) {
+      padding: variables.$spacing-md variables.$spacing-lg;
+      border-radius: variables.$radius-lg;
+    }
 
     &:focus {
       outline: none;
@@ -88,14 +113,21 @@
   }
 
   &__textarea {
-    padding: variables.$spacing-md variables.$spacing-lg;
+    width: 100%;
+    padding: variables.$spacing-sm variables.$spacing-md;
     border: 1px solid variables.$color-border;
-    border-radius: variables.$radius-lg;
+    border-radius: variables.$radius-md;
     font-size: variables.$font-size-base;
     resize: vertical;
-    min-height: 88px;
+    min-height: 80px;
     font-family: inherit;
     transition: border-color variables.$transition-base;
+
+    @include mixins.respond-to(md) {
+      padding: variables.$spacing-md variables.$spacing-lg;
+      border-radius: variables.$radius-lg;
+      min-height: 88px;
+    }
 
     &:focus {
       outline: none;
@@ -109,20 +141,33 @@
   }
 
   &__tour-section {
-    margin-bottom: variables.$spacing-xl;
-    padding: variables.$spacing-lg;
+    margin-bottom: variables.$spacing-lg;
+    padding: variables.$spacing-md;
     background: rgba(var(--color-primary-rgb, 155, 44, 44), 0.04);
-    border-radius: variables.$radius-lg;
+    border-radius: variables.$radius-md;
     border: 1px solid rgba(var(--color-primary-rgb, 155, 44, 44), 0.12);
+
+    @include mixins.respond-to(md) {
+      margin-bottom: variables.$spacing-xl;
+      padding: variables.$spacing-lg;
+      border-radius: variables.$radius-lg;
+    }
   }
 
   &__tour-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: variables.$spacing-sm;
-    margin-bottom: variables.$spacing-md;
-    font-size: variables.$font-size-sm;
+    margin-bottom: variables.$spacing-sm;
+    font-size: variables.$font-size-xs;
     color: variables.$color-gray-700;
+    line-height: 1.4;
+
+    @include mixins.respond-to(md) {
+      align-items: center;
+      margin-bottom: variables.$spacing-md;
+      font-size: variables.$font-size-sm;
+    }
   }
 
   &__icon {
@@ -141,18 +186,28 @@
   }
 
   &__btn {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: variables.$spacing-sm;
-    margin-top: variables.$spacing-xl;
-    padding: variables.$spacing-md variables.$spacing-2xl;
-    font-size: variables.$font-size-base;
+    width: 100%;
+    margin-top: variables.$spacing-lg;
+    padding: variables.$spacing-md variables.$spacing-xl;
+    font-size: variables.$font-size-sm;
     font-weight: variables.$font-weight-semibold;
     border-radius: variables.$radius-lg;
     border: none;
     cursor: pointer;
     transition: all variables.$transition-base;
+    min-height: 44px;
+
+    @include mixins.respond-to(md) {
+      width: auto;
+      margin-top: variables.$spacing-xl;
+      padding: variables.$spacing-md variables.$spacing-2xl;
+      font-size: variables.$font-size-base;
+      min-height: auto;
+    }
 
     &:disabled {
       opacity: 0.7;
@@ -189,16 +244,26 @@
 
   &__success {
     text-align: center;
-    padding: variables.$spacing-3xl;
+    padding: variables.$spacing-xl;
     background: #fff;
-    border-radius: variables.$radius-xl;
+    border-radius: variables.$radius-lg;
     box-shadow: variables.$shadow-lg;
     border: 1px solid variables.$color-border;
 
+    @include mixins.respond-to(md) {
+      padding: variables.$spacing-3xl;
+      border-radius: variables.$radius-xl;
+    }
+
     p {
-      font-size: variables.$font-size-lg;
+      font-size: variables.$font-size-base;
       color: variables.$color-gray-700;
-      margin-bottom: variables.$spacing-xl;
+      margin-bottom: variables.$spacing-lg;
+
+      @include mixins.respond-to(md) {
+        font-size: variables.$font-size-lg;
+        margin-bottom: variables.$spacing-xl;
+      }
     }
   }
 }

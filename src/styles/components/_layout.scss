@@ -5,13 +5,20 @@
 @use '../variables';
 @use '../mixins';
 
-// Main Layout
+// Main Layout – chặn scroll ngang trên mobile
 .main-layout {
   @include mixins.flex-col;
   min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 
   &__content {
     flex-grow: 1;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 }
 

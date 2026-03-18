@@ -326,6 +326,14 @@ export const getTourCultureItems = async (
 };
 
 // ========== Reviews API ==========
+/** GET /api/reviews - Lấy tất cả reviews (dùng cho homepage) */
+export const getReviews = async (): Promise<Review[]> => {
+  return cachedFetch("reviews:all", async () => {
+    const response = await api.get<ApiResponse<Review[]>>("/api/reviews");
+    return response.data.data ?? [];
+  });
+};
+
 export const getTourReviews = async (tourId: number): Promise<Review[]> => {
   return cachedFetch(`reviews:tour:${tourId}`, async () => {
     const response = await api.get<ApiResponse<Review[]>>(

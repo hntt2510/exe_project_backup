@@ -1,24 +1,25 @@
-import { useEffect, useState, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
-  Star,
-  MapPin,
-  Play,
+  BookOpen,
   Calendar,
   Car,
-  BookOpen,
-  Utensils,
-  Landmark,
   HandHeart,
+  Landmark,
+  MapPin,
+  Play,
+  Star,
+  Utensils,
 } from "lucide-react";
 
 import {
-  getTourById,
-  getTourHighlights,
-  getTourCultureItems,
   getProvinceById,
+  getTourById,
+  getTourCultureItems,
+  getTourHighlights,
 } from "../../services/api";
-import type { Tour, CultureItem, Province } from "../../types";
+import type { CultureItem, Province, Tour } from "../../types";
 import "../../styles/pages/tourDetail.scss";
 
 type TabKey = "intro" | "highlights" | "videos" | "festivals" | "food";
@@ -75,17 +76,13 @@ const renderStars = (rating: number, prefix = "star") =>
 const toYouTubeEmbed = (url: string): string => {
   try {
     const u = new URL(url);
-    // Already embed URL
     if (u.pathname.startsWith("/embed/")) return url;
-    // https://www.youtube.com/watch?v=VIDEO_ID
     const vParam = u.searchParams.get("v");
     if (vParam) return `https://www.youtube.com/embed/${vParam}`;
-    // https://youtu.be/VIDEO_ID
     if (u.hostname === "youtu.be") {
       const videoId = u.pathname.slice(1);
       if (videoId) return `https://www.youtube.com/embed/${videoId}`;
     }
-    // https://www.youtube.com/shorts/VIDEO_ID
     const shortsMatch = u.pathname.match(/\/shorts\/([^/?]+)/);
     if (shortsMatch) return `https://www.youtube.com/embed/${shortsMatch[1]}`;
   } catch {
@@ -118,13 +115,8 @@ export default function TourDetail() {
     const fetchData = async () => {
       try {
         const tourData = await getTourById(tourId);
-        console.log(
-          "[TourDetail] tour =>",
-          JSON.parse(JSON.stringify(tourData)),
-        );
         setTour(tourData);
 
-        // provinceId có thể nằm ở tourData.provinceId hoặc tourData.province?.id
         const pId = tourData.provinceId || (tourData as any).province?.id;
 
         const [provinceData, highlights, culture] = await Promise.all([
@@ -132,11 +124,6 @@ export default function TourDetail() {
           getTourHighlights(tourId).catch(() => []),
           getTourCultureItems(tourId).catch(() => []),
         ]);
-
-        console.log(
-          "[TourDetail] highlights =>",
-          JSON.parse(JSON.stringify(highlights)),
-        );
 
         setProvince(provinceData);
         setHighlightItems(highlights);
@@ -195,7 +182,6 @@ export default function TourDetail() {
   const foodItems = allItems.filter((c) => c.category === "FOOD");
   const videoItem = allItems.find((c) => c.videoUrl);
 
-  // Extract enriched province info from API items (highlights/culture-items include nested province with bestSeason, etc.)
   const itemProvince = highlightItems[0]?.province || cultureItems[0]?.province;
   const bestSeason = itemProvince?.bestSeason || province?.bestSeason;
   const transportation =
@@ -203,19 +189,39 @@ export default function TourDetail() {
   const culturalTips = itemProvince?.culturalTips || province?.culturalTips;
   const provinceName = province?.name || itemProvince?.name;
 
+  const sectionMotion = {
+    initial: { opacity: 0, y: 24 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, margin: "-60px" },
+    transition: { duration: 0.5 },
+  };
+
   return (
     <div className="tour-detail">
       {/* Hero */}
-      <section className="td-hero">
-        <img
+      <motion.section
+        className="td-hero"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <motion.img
           className="td-hero__image"
           src={tour.thumbnailUrl || "/nen.png"}
           alt={tour.title}
+          initial={{ scale: 1.05 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
         />
-      </section>
+      </motion.section>
 
       {/* Tabs */}
-      <nav className="td-tabs">
+      <motion.nav
+        className="td-tabs"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
         <div className="td-tabs__container">
           {TABS.map((tab) => (
             <button
@@ -229,14 +235,15 @@ export default function TourDetail() {
             </button>
           ))}
         </div>
-      </nav>
+      </motion.nav>
 
       {/* GIỚI THIỆU CHUNG */}
-      <section
+      <motion.section
         className="td-section td-intro"
         ref={(el) => {
           sectionRefs.current.intro = el;
         }}
+        {...sectionMotion}
       >
         <div className="td-section__container">
           <h2 className="td-section__title td-section__title--decorated">
@@ -289,14 +296,15 @@ export default function TourDetail() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Video Section */}
-      <section
+      <motion.section
         className="td-section td-video"
         ref={(el) => {
           sectionRefs.current.videos = el;
         }}
+        {...sectionMotion}
       >
         <div className="td-video__wrapper">
           {videoItem?.videoUrl ? (
@@ -326,19 +334,20 @@ export default function TourDetail() {
           <p>
             {tour.description
               ? tour.description.length > 120
-                ? tour.description.slice(0, 120) + "..."
+                ? `${tour.description.slice(0, 120)}...`
                 : tour.description
               : `Khám phá vẻ đẹp thiên nhiên và văn hoá đặc sắc tại ${provinceName || "vùng đất này"}`}
           </p>
         </div>
-      </section>
+      </motion.section>
 
       {/* ĐỊA ĐIỂM NỔI BẬT */}
-      <section
+      <motion.section
         className="td-section td-highlights"
         ref={(el) => {
           sectionRefs.current.highlights = el;
         }}
+        {...sectionMotion}
       >
         <div className="td-section__container">
           <h2 className="td-section__title td-section__title--stamp">
@@ -347,8 +356,15 @@ export default function TourDetail() {
           <div className="td-highlights__grid">
             {(highlightFiltered.length > 0 ? highlightFiltered : allItems)
               .slice(0, 3)
-              .map((item) => (
-                <article key={item.id} className="td-stamp-card">
+              .map((item, i) => (
+                <motion.article
+                  key={item.id}
+                  className="td-stamp-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.45, delay: i * 0.1 }}
+                >
                   <div className="td-stamp-card__image-wrapper">
                     <div className="td-stamp-card__image-frame">
                       <img
@@ -362,20 +378,26 @@ export default function TourDetail() {
                     <h3 className="td-stamp-card__title">{item.title}</h3>
                     <div className="td-stamp-card__meta">
                       <span>
-                        <MapPin size={14} />{" "}
-                        {item.province?.name || provinceName || "Việt Nam"}
+                        <MapPin size={14} /> {item.province?.name || provinceName || "Việt Nam"}
                       </span>
                     </div>
                     <p className="td-stamp-card__desc">{item.description}</p>
                   </div>
-                </article>
+                </motion.article>
               ))}
             {highlightFiltered.length === 0 && allItems.length === 0 && (
               <>
                 {parseImages(tour.images)
                   .slice(0, 3)
                   .map((img, i) => (
-                    <article key={i} className="td-stamp-card">
+                    <motion.article
+                      key={i}
+                      className="td-stamp-card"
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.45, delay: i * 0.1 }}
+                    >
                       <div className="td-stamp-card__image-wrapper">
                         <div className="td-stamp-card__image-frame">
                           <img
@@ -386,31 +408,29 @@ export default function TourDetail() {
                         </div>
                       </div>
                       <div className="td-stamp-card__content">
-                        <h3 className="td-stamp-card__title">
-                          Điểm tham quan {i + 1}
-                        </h3>
+                        <h3 className="td-stamp-card__title">Điểm tham quan {i + 1}</h3>
                       </div>
-                    </article>
+                    </motion.article>
                   ))}
               </>
             )}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* LỄ HỘI - PHONG TỤC */}
-      <section
+      <motion.section
         className="td-section td-festivals"
         ref={(el) => {
           sectionRefs.current.festivals = el;
         }}
+        {...sectionMotion}
       >
         <div className="td-section__container">
           <h2 className="td-section__title td-section__title--decorated">
             LỄ HỘI &amp; PHONG TỤC
           </h2>
           <div className="td-festivals__body">
-            {/* Festival cards — max 2, left column */}
             <div className="td-festivals__cards">
               {(festivals.length > 0
                 ? festivals
@@ -431,23 +451,16 @@ export default function TourDetail() {
               ).map((item, idx) => (
                 <div key={item.id} className="td-festivals__card">
                   <div className="td-festivals__card-icon">
-                    {idx === 0 ? (
-                      <Calendar size={28} />
-                    ) : (
-                      <Landmark size={28} />
-                    )}
+                    {idx === 0 ? <Calendar size={28} /> : <Landmark size={28} />}
                   </div>
                   <div className="td-festivals__card-text">
                     <h4 className="td-festivals__card-title">{item.title}</h4>
-                    <p className="td-festivals__card-desc">
-                      {item.description}
-                    </p>
+                    <p className="td-festivals__card-desc">{item.description}</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Cultural behavior tips — hardcoded, right column */}
             <div className="td-festivals__tips-card">
               <h4 className="td-festivals__tips-heading">
                 <HandHeart size={20} />
@@ -461,8 +474,7 @@ export default function TourDetail() {
                   Tôn trọng không gian sinh hoạt chung
                 </li>
                 <li className="td-festivals__tip">
-                  Trước khi chụp ảnh người dân địa phương, hãy luôn chủ động xin
-                  phép họ
+                  Trước khi chụp ảnh người dân địa phương, hãy luôn chủ động xin phép họ
                 </li>
                 <li className="td-festivals__tip">
                   Không làm ồn trong khu vực linh thiêng
@@ -471,14 +483,15 @@ export default function TourDetail() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* ẨM THỰC ĐỊA PHƯƠNG */}
-      <section
+      <motion.section
         className="td-section td-food"
         ref={(el) => {
           sectionRefs.current.food = el;
         }}
+        {...sectionMotion}
       >
         <div className="td-section__container">
           <h2 className="td-section__title td-section__title--stamp">
@@ -486,8 +499,15 @@ export default function TourDetail() {
           </h2>
           <div className="td-food__grid">
             {foodItems.length > 0 ? (
-              foodItems.slice(0, 3).map((item) => (
-                <article key={item.id} className="td-stamp-card">
+              foodItems.slice(0, 3).map((item, i) => (
+                <motion.article
+                  key={item.id}
+                  className="td-stamp-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.45, delay: i * 0.1 }}
+                >
                   <div className="td-stamp-card__image-wrapper">
                     <div className="td-stamp-card__image-frame">
                       <img
@@ -501,7 +521,7 @@ export default function TourDetail() {
                     <h3 className="td-stamp-card__title">{item.title}</h3>
                     <p className="td-stamp-card__desc">{item.description}</p>
                   </div>
-                </article>
+                </motion.article>
               ))
             ) : (
               <div className="td-food__empty">
@@ -510,10 +530,16 @@ export default function TourDetail() {
             )}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* CTA BANNER */}
-      <section className="td-cta-banner">
+      <motion.section
+        className="td-cta-banner"
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+      >
         <div className="td-cta-banner__container">
           <h3>Sẵn sàng khám phá địa điểm này chưa?</h3>
           <p>
@@ -532,7 +558,7 @@ export default function TourDetail() {
             </Link>
           </div>
         </div>
-      </section>
+      </motion.section>
     </div>
   );
 }

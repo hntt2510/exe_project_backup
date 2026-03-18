@@ -2,28 +2,43 @@
 // Profile Overview – Personal Info + Quick Summary
 // ============================================
 @use '../../variables' as *;
+@use '../../mixins' as mixins;
 
 .profile-overview {
+  min-width: 0;
+  width: 100%;
+  overflow-x: hidden;
   display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  gap: 1rem;
 
-  @media (max-width: $breakpoint-md) {
-    grid-template-columns: 1fr;
+  @include mixins.respond-to(md) {
+    grid-template-columns: 1fr 340px;
+    gap: 1.5rem;
   }
 
   &__card {
     background: $color-white;
     border: 1px solid $color-gray-200;
-    border-radius: $radius-lg;
-    padding: 1.5rem;
+    border-radius: $radius-md;
+    padding: 1rem;
+
+    @include mixins.respond-to(md) {
+      border-radius: $radius-lg;
+      padding: 1.5rem;
+    }
   }
 
   &__card-title {
-    font-size: $font-size-lg;
+    font-size: $font-size-base;
     font-weight: $font-weight-bold;
     color: $color-primary;
-    margin: 0 0 1rem;
+    margin: 0 0 0.75rem;
+
+    @include mixins.respond-to(md) {
+      font-size: $font-size-lg;
+      margin: 0 0 1rem;
+    }
 
     &--accent {
       color: $color-primary;
@@ -47,7 +62,11 @@
 
   &__table-label {
     color: $color-gray-500;
-    width: 140px;
+    width: 100px;
+
+    @include mixins.respond-to(md) {
+      width: 140px;
+    }
   }
 
   &__table-value {

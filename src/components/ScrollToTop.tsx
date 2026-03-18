@@ -1,21 +1,32 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
+function scrollToTop() {
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
+/**
+ * Scroll lên đầu trang mỗi khi navigate sang route mới.
+ * Dùng requestAnimationFrame + setTimeout để xử lý lazy-loaded components
+ * render sau khi pathname đổi.
+ */
 export default function ScrollToTop() {
-  const { pathname, hash } = useLocation();
+  const { pathname } = useLocation();
 
   useEffect(() => {
-    if (hash) {
-      const el = document.getElementById(hash.slice(1));
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
-      } else {
-        window.scrollTo(0, 0);
-      }
-    } else {
-      window.scrollTo(0, 0);
-    }
-  }, [pathname, hash]);
+    scrollToTop();
+    const raf = requestAnimationFrame(() => {
+      scrollToTop();
+      requestAnimationFrame(() => scrollToTop());
+    });
+    const t = setTimeout(scrollToTop, 100);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
+  }, [pathname]);
 
   return null;
 }

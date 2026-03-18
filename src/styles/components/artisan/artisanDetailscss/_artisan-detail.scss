@@ -91,29 +91,6 @@
     );
   }
 
-  &__back {
-    position: absolute;
-    top: $spacing-lg;
-    left: $spacing-lg;
-    z-index: 2;
-    width: 40px;
-    height: 40px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(4px);
-    color: $color-white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background $transition-base;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.3);
-    }
-  }
-
   &__content {
     position: relative;
     z-index: 1;

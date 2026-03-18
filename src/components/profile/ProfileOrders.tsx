@@ -1,14 +1,15 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  Search, Eye, FileX, MessageCircle, X, Calendar, Clock, MapPin, Users, Mail, Phone,
+  Search, Eye, Download, X, Calendar, Clock, MapPin, Users, Mail, Phone,
   User as UserIcon, CreditCard, Tag, ChevronLeft, ChevronRight, Star, Package, Sparkles, CheckCircle2,
 } from 'lucide-react';
 import type { UserBooking } from '../../services/profileApi';
+import { ReviewModal } from '../bookingReview';
 import '../../styles/components/profile/_profile-orders.scss';
 
 interface ProfileOrdersProps {
   bookings: UserBooking[];
+  onReviewSuccess?: () => void;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -92,12 +93,59 @@ function isEligibleForFeedback(booking: UserBooking): boolean {
   return isCompleted(booking);
 }
 
+/** Có thể đánh giá: đủ điều kiện VÀ chưa đánh giá (isReview !== true) */
+function canShowReview(booking: UserBooking): boolean {
+  return isEligibleForFeedback(booking) && !(booking as { isReview?: boolean }).isReview;
+}
+
+/** Tải ticket dạng HTML, mở cửa sổ in (user có thể Save as PDF) */
+function downloadTicket(booking: UserBooking) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Ticket ${booking.bookingCode}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 1.25rem; margin: 0 0 1rem; color: #333; }
+    .code { font-size: 1.5rem; font-weight: bold; color: #8B0000; margin: 0.5rem 0; }
+    .row { margin: 0.5rem 0; display: flex; gap: 0.5rem; }
+    .label { color: #666; min-width: 120px; }
+    .value { font-weight: 500; }
+    .divider { border-top: 1px dashed #ccc; margin: 1rem 0; }
+    .note { font-size: 0.875rem; color: #666; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>VÉ THAM GIA TOUR</h1>
+  <div class="code">${booking.bookingCode}</div>
+  <div class="divider"></div>
+  <div class="row"><span class="label">Tour:</span><span class="value">${booking.tourTitle}</span></div>
+  <div class="row"><span class="label">Ngày khởi hành:</span><span class="value">${formatDateFull(booking.tourDate)}</span></div>
+  <div class="row"><span class="label">Giờ tập trung:</span><span class="value">${formatTime(booking.tourStartTime)}</span></div>
+  <div class="row"><span class="label">Số khách:</span><span class="value">${booking.numParticipants} người</span></div>
+  <div class="row"><span class="label">Liên hệ:</span><span class="value">${booking.contactName || '—'} | ${booking.contactPhone || '—'}</span></div>
+  <div class="divider"></div>
+  <div class="row"><span class="label">Tổng thanh toán:</span><span class="value">${formatPrice(booking.finalAmount)} VND</span></div>
+  <p class="note">Vui lòng mang theo mã đặt tour khi đến điểm hẹn. Mọi thắc mắc: 1900 xxxx</p>
+</body>
+</html>`;
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 300);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Ticket Modal
 // ---------------------------------------------------------------------------
-function TicketModal({ booking, onClose, onFeedback }: { booking: UserBooking; onClose: () => void; onFeedback?: (id: number) => void }) {
+function TicketModal({ booking, onClose, onFeedback, onDownloadTicket }: { booking: UserBooking; onClose: () => void; onFeedback?: (id: number) => void; onDownloadTicket?: () => void }) {
   const statusInfo = STATUS_MAP[booking.status] ?? { label: booking.status, cls: 'default' };
-  const canFeedback = isEligibleForFeedback(booking);
+  const canFeedback = canShowReview(booking);
 
   return (
     <div className="ticket-modal-overlay" onClick={onClose}>
@@ -216,8 +264,15 @@ function TicketModal({ booking, onClose, onFeedback }: { booking: UserBooking; o
             <p>Mọi thắc mắc xin liên hệ hotline: <strong>1900 xxxx</strong></p>
           </div>
 
-          {canFeedback && onFeedback && (
-            <div className="ticket-modal__feedback-cta">
+          <div className="ticket-modal__actions">
+            <button
+              type="button"
+              className="ticket-modal__download-btn"
+              onClick={() => downloadTicket(booking)}
+            >
+              <Download size={18} /> Tải ticket
+            </button>
+            {canShowReview(booking) && onFeedback && (
               <button
                 type="button"
                 className="ticket-modal__feedback-btn"
@@ -225,8 +280,8 @@ function TicketModal({ booking, onClose, onFeedback }: { booking: UserBooking; o
               >
                 <Star size={18} /> Đánh giá tour của bạn
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -242,12 +297,12 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode; filter: (b: Use
   { key: 'completed', label: 'Đã hoàn thành', icon: <CheckCircle2 size={18} />, filter: isCompleted },
 ];
 
-export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
-  const navigate = useNavigate();
+export default function ProfileOrders({ bookings, onReviewSuccess }: ProfileOrdersProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedBooking, setSelectedBooking] = useState<UserBooking | null>(null);
+  const [reviewBooking, setReviewBooking] = useState<UserBooking | null>(null);
 
   const filtered = useMemo(() => {
     const tabFilter = TABS.find((t) => t.key === activeTab)?.filter ?? (() => true);
@@ -291,7 +346,7 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
     return pages;
   };
 
-  const reviewableCount = useMemo(() => bookings.filter(isEligibleForFeedback).length, [bookings]);
+  const reviewableCount = useMemo(() => bookings.filter(canShowReview).length, [bookings]);
 
   return (
     <div className="profile-orders">
@@ -354,6 +409,63 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
         </div>
       ) : (
         <>
+          {/* Mobile: danh sách card xếp dọc */}
+          <div className="profile-orders__cards">
+            {paginatedItems.map((b) => {
+              const statusInfo = STATUS_MAP[b.status] ?? { label: b.status, cls: 'default' };
+              const paymentInfo = PAYMENT_STATUS_MAP[b.paymentStatus] ?? { label: b.paymentStatus, cls: 'default' };
+              const canReview = canShowReview(b);
+
+              return (
+                <div key={b.id} className="profile-orders__card">
+                  <div className="profile-orders__card-header">
+                    <span className="profile-orders__card-code">{b.bookingCode}</span>
+                    <span className={`profile-orders__badge profile-orders__badge--${statusInfo.cls}`}>
+                      {statusInfo.label}
+                    </span>
+                  </div>
+                  <h4 className="profile-orders__card-title">{b.tourTitle}</h4>
+                  <div className="profile-orders__card-meta">
+                    <span>
+                      <Calendar size={14} /> {formatDate(b.tourDate)}
+                    </span>
+                    <span>{b.numParticipants} khách</span>
+                    <span className="profile-orders__card-price">{formatPrice(b.finalAmount)} VND</span>
+                  </div>
+                  <span className={`profile-orders__badge profile-orders__badge--${paymentInfo.cls}`}>
+                    {paymentInfo.label}
+                  </span>
+                  <div className="profile-orders__card-actions">
+                    <button
+                      type="button"
+                      className="profile-orders__card-btn profile-orders__card-btn--primary"
+                      onClick={() => setSelectedBooking(b)}
+                    >
+                      <Eye size={16} /> Xem ticket
+                    </button>
+                    <button
+                      type="button"
+                      className="profile-orders__card-btn"
+                      onClick={() => downloadTicket(b)}
+                    >
+                      <Download size={16} /> Tải ticket
+                    </button>
+                    {canReview && (
+                      <button
+                        type="button"
+                        className="profile-orders__card-btn"
+                        onClick={() => setReviewBooking(b)}
+                      >
+                        <Star size={16} /> Đánh giá
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: bảng */}
           <div className="profile-orders__table-wrap">
             <table className="profile-orders__table">
               <thead>
@@ -371,7 +483,7 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
                 {paginatedItems.map((b) => {
                   const statusInfo = STATUS_MAP[b.status] ?? { label: b.status, cls: 'default' };
                   const paymentInfo = PAYMENT_STATUS_MAP[b.paymentStatus] ?? { label: b.paymentStatus, cls: 'default' };
-                  const canReview = isEligibleForFeedback(b);
+                  const canReview = canShowReview(b);
 
                   return (
                     <tr key={b.id}>
@@ -396,23 +508,22 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
                         >
                           <Eye size={14} /> Xem ticket
                         </button>
+                        <button
+                          className="profile-orders__action"
+                          title="Tải ticket"
+                          onClick={() => downloadTicket(b)}
+                        >
+                          <Download size={14} /> Tải ticket
+                        </button>
                         {canReview && (
                           <button
                             className="profile-orders__action profile-orders__action--feedback"
                             title="Đánh giá tour"
-                            onClick={() => navigate(`/bookings/${b.id}/review`)}
+                            onClick={() => setReviewBooking(b)}
                           >
                             <Star size={14} /> Đánh giá
                           </button>
                         )}
-                        {b.status === 'PENDING' && (
-                          <button className="profile-orders__action profile-orders__action--cancel" title="Tải hoá đơn">
-                            <FileX size={14} /> Tải hoá đơn
-                          </button>
-                        )}
-                        <button className="profile-orders__action" title="Liên hệ">
-                          <MessageCircle size={14} /> Liên hệ
-                        </button>
                       </td>
                     </tr>
                   );
@@ -461,9 +572,23 @@ export default function ProfileOrders({ bookings }: ProfileOrdersProps) {
         <TicketModal
           booking={selectedBooking}
           onClose={() => setSelectedBooking(null)}
-          onFeedback={(id) => { setSelectedBooking(null); navigate(`/bookings/${id}/review`); }}
+          onFeedback={(id) => {
+            const b = bookings.find((x) => x.id === id);
+            setSelectedBooking(null);
+            if (b) setReviewBooking(b);
+          }}
         />
       )}
+
+      <ReviewModal
+        open={!!reviewBooking}
+        booking={reviewBooking}
+        onClose={() => setReviewBooking(null)}
+        onSuccess={() => {
+          setReviewBooking(null);
+          onReviewSuccess?.();
+        }}
+      />
     </div>
   );
 }

@@ -2,15 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Review } from '../../types';
-import { getTourReviews } from '../../services/api';
-import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getReviews } from '../../services/api';
+import { Star } from 'lucide-react';
 
 export default function TestimonialsSection() {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const itemsPerView = 3;
 
   useEffect(() => {
     let mounted = true;
@@ -19,72 +17,32 @@ export default function TestimonialsSection() {
       setLoading(true);
       setError(null);
       try {
-        console.log('[TestimonialsSection] 🚀 Fetching reviews for tours 1, 2, 3, 4...');
-        const tourIds = [1, 2, 3, 4];
-
-        const results = await Promise.all(
-          tourIds.map((tourId) =>
-            getTourReviews(tourId).catch((err) => {
-              console.error(`[TestimonialsSection] ❌ Reviews error for tour ${tourId}:`, err);
-              return [];
-            })
-          )
-        );
-
+        const list = await getReviews();
         if (!mounted) return;
-        const merged = results.flat();
-        const uniqueMap = new Map<number, Review>();
-        merged.forEach((review) => {
-          uniqueMap.set(review.id, review);
-        });
-        const list = Array.from(uniqueMap.values());
-
-        console.log('[TestimonialsSection] ✅ Reviews received:', {
-          tours: tourIds.length,
-          reviews: list.length,
-          reviewsData: list,
-        });
         setReviews(list);
       } catch (err) {
         if (!mounted) return;
         console.error('[TestimonialsSection] ❌ API error:', err);
         setError('Không thể tải dữ liệu đánh giá');
       } finally {
-        if (mounted) {
-          console.log('[TestimonialsSection] 🏁 Fetch completed');
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
 
     fetchReviews();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
-  const displayTestimonials = useMemo(() => reviews, [reviews]);
-
-  const nextSlide = () => {
-    setCurrentIndex(
-      (prev) =>
-        (prev + 1) % Math.max(1, displayTestimonials.length - itemsPerView + 1)
+  // Lọc review 5 sao, có nội dung và tên khách hàng
+  const displayReviews = useMemo(() => {
+    return reviews.filter(
+      (r) =>
+        (r.rating >= 5 || r.rating === 5) &&
+        (r.comment?.trim?.()?.length ?? 0) > 0 &&
+        (r.userName?.trim?.()?.length ?? 0) > 0 &&
+        (r.status === 'VISIBLE' || !r.status)
     );
-  };
-
-  const prevSlide = () => {
-    setCurrentIndex((prev) =>
-      prev === 0
-        ? Math.max(0, displayTestimonials.length - itemsPerView)
-        : prev - 1
-    );
-  };
-
-  const visibleTestimonials = displayTestimonials.slice(
-    currentIndex,
-    currentIndex + itemsPerView
-  );
+  }, [reviews]);
 
   const getInitials = (name?: string) => {
     if (!name) return 'KH';
@@ -98,13 +56,38 @@ export default function TestimonialsSection() {
         key={i}
         size={16}
         className={`testimonials__star ${
-          i < Math.floor(rating)
-            ? 'testimonials__star--filled'
-            : 'testimonials__star--empty'
+          i < Math.floor(rating) ? 'testimonials__star--filled' : 'testimonials__star--empty'
         }`}
       />
     ));
   };
+
+  const renderCard = (review: Review, keySuffix?: string) => (
+    <div key={keySuffix ?? review.id} className="testimonials__card testimonials__flow-card">
+      <div className="testimonials__card-header">
+        {review.userAvatar ? (
+          <div
+            className="testimonials__avatar"
+            style={{ backgroundImage: `url('${review.userAvatar}')` }}
+            role="img"
+            aria-label={`Avatar of ${review.userName}`}
+          />
+        ) : (
+          <div className="testimonials__avatar testimonials__avatar--fallback" aria-label={`Avatar of ${review.userName}`}>
+            {getInitials(review.userName)}
+          </div>
+        )}
+        <div className="testimonials__user-info">
+          <p className="testimonials__user-name">{review.userName || 'Khách hàng'}</p>
+          {review.tourTitle && (
+            <p className="testimonials__user-role">{review.tourTitle}</p>
+          )}
+        </div>
+      </div>
+      <div className="testimonials__stars">{renderStars(review.rating || 0)}</div>
+      <p className="testimonials__comment">{review.comment}</p>
+    </div>
+  );
 
   return (
     <section className="section-container testimonials">
@@ -126,96 +109,25 @@ export default function TestimonialsSection() {
           </div>
         )}
 
-        {!loading && !error && displayTestimonials.length === 0 && (
+        {!loading && !error && displayReviews.length === 0 && (
           <div className="testimonials__state">
-            <p className="testimonials__state-text">Chưa có dữ liệu đánh giá</p>
+            <p className="testimonials__state-text">Chưa có đánh giá 5 sao</p>
           </div>
         )}
 
-        {!loading && !error && displayTestimonials.length > 0 && (
-          <div className="testimonials__carousel">
-            <div className="testimonials__grid">
-              {visibleTestimonials.map((testimonial, idx) => (
-                <div
-                  key={`${testimonial.id}-${currentIndex}-${idx}`}
-                  className="testimonials__card"
-                >
-                  <div className="testimonials__card-header">
-                    {testimonial.userAvatar ? (
-                      <div
-                        className="testimonials__avatar"
-                        style={{
-                          backgroundImage: `url('${testimonial.userAvatar}')`,
-                        }}
-                        role="img"
-                        aria-label={`Avatar of ${testimonial.userName}`}
-                      />
-                    ) : (
-                      <div
-                        className="testimonials__avatar testimonials__avatar--fallback"
-                        aria-label={`Avatar of ${testimonial.userName}`}
-                      >
-                        {getInitials(testimonial.userName)}
-                      </div>
-                    )}
-                    <div className="testimonials__user-info">
-                      <p className="testimonials__user-name">
-                        {testimonial.userName || 'Khách hàng'}
-                      </p>
-                      <p className="testimonials__user-role">
-                        Khách hàng
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="testimonials__stars">{renderStars(testimonial.rating || 0)}</div>
-
-                  <p className="testimonials__comment">
-                    {testimonial.comment}
-                  </p>
-                </div>
-              ))}
+        {!loading && !error && displayReviews.length > 0 && (
+          <div className="testimonials__flow-wrapper">
+            <div className="testimonials__flow-track" aria-hidden="true">
+              <div className="testimonials__flow-inner">
+                {displayReviews.map((r, i) => renderCard(r, `1-${i}`))}
+              </div>
+              <div className="testimonials__flow-inner" aria-hidden="true">
+                {displayReviews.map((r, i) => renderCard(r, `2-${i}`))}
+              </div>
             </div>
-
-            {displayTestimonials.length > itemsPerView && (
-              <>
-                <button
-                  onClick={prevSlide}
-                  className="testimonials__nav-btn testimonials__nav-btn--prev"
-                  aria-label="Previous testimonials"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                <button
-                  onClick={nextSlide}
-                  className="testimonials__nav-btn testimonials__nav-btn--next"
-                  aria-label="Next testimonials"
-                >
-                  <ChevronRight size={20} />
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
-        {displayTestimonials.length > itemsPerView && (
-          <div className="testimonials__dots">
-            {Array.from({
-              length: Math.max(1, displayTestimonials.length - itemsPerView + 1),
-            }).map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className={`testimonials__dot ${
-                  index === currentIndex ? 'testimonials__dot--active' : ''
-                }`}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
           </div>
         )}
       </div>
     </section>
   );
 }
-

@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import Breadcrumbs from "../../../components/Breadcrumbs";
+import LoginRequiredModal from "../../../components/LoginRequiredModal";
 import { getApiErrorMessage, getModuleById } from "../../../services/api";
 import { getModuleUserProgress } from "../../../services/learnApi";
 import type { LearnModule } from "../../../types";
 import "../../../styles/features/learn/_learn-public.scss";
+
+function hasAuthToken(): boolean {
+  return !!localStorage.getItem("accessToken");
+}
 
 function parseQuickNotes(json?: string): string[] {
   if (!json?.trim()) return [];
@@ -25,6 +31,8 @@ export default function ModuleDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<number>>(new Set());
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [loginModalRedirect, setLoginModalRedirect] = useState<string>("");
 
   useEffect(() => {
     const id = Number(moduleId);
@@ -81,10 +89,22 @@ export default function ModuleDetailPage() {
     );
   }
 
+  const sectionMotion = {
+    initial: { opacity: 0, y: 24 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, margin: "-40px" },
+    transition: { duration: 0.5 },
+  };
+
   return (
     <div className="learn-public module-detail">
       {/* Hero — ảnh lên trên cùng, bo góc, ko viền */}
-      <div className="learn-hero-wrap">
+      <motion.div
+        className="learn-hero-wrap"
+        initial={{ opacity: 0, scale: 1.02 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6 }}
+      >
         <div className="md-hero__image-wrap">
           <img
             src={module.thumbnailUrl || "/nen.png"}
@@ -93,10 +113,15 @@ export default function ModuleDetailPage() {
             onError={(e) => { (e.target as HTMLImageElement).src = "/nen.png"; }}
           />
         </div>
-      </div>
+      </motion.div>
 
       {/* White — breadcrumbs, info */}
-      <section className="learn-section learn-section--white">
+      <motion.section
+        className="learn-section learn-section--white"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+      >
         <div className="learn-public__container">
           <Breadcrumbs
             items={[
@@ -115,19 +140,28 @@ export default function ModuleDetailPage() {
               <button
                 type="button"
                 className="learn-btn md-hero__cta"
-                onClick={() =>
-                  navigate(`/learn/${module.id}/quiz`, { state: { quizId: module.quizPrompt?.id } })
-                }
+                onClick={() => {
+                  const path = `/learn/${module.id}/quiz`;
+                  if (hasAuthToken()) {
+                    navigate(path, { state: { quizId: module.quizPrompt?.id } });
+                  } else {
+                    setLoginModalRedirect(path);
+                    setLoginModalOpen(true);
+                  }
+                }}
               >
                 Làm Quiz ngay
               </button>
             )}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Paper — chỉ 1 lần ở giữa: Ghi chú + Danh sách bài học */}
-      <section className="learn-section learn-section--paper">
+      <motion.section
+        className="learn-section learn-section--paper"
+        {...sectionMotion}
+      >
         <div className="learn-public__container">
           <div className="md-body">
             {notes.length > 0 && (
@@ -146,11 +180,21 @@ export default function ModuleDetailPage() {
               <div className="md-lesson-list">
                 {lessons.map((lesson) => {
                   const isCompleted = completedLessonIds.has(lesson.id);
+                  const lessonPath = `/lesson?id=${lesson.id}&moduleId=${module.id}`;
+                  const handleLessonClick = () => {
+                    if (hasAuthToken()) {
+                      navigate(lessonPath);
+                    } else {
+                      setLoginModalRedirect(lessonPath);
+                      setLoginModalOpen(true);
+                    }
+                  };
                   return (
-                    <Link
+                    <button
                       key={lesson.id}
+                      type="button"
                       className={`md-lesson-item ${isCompleted ? "md-lesson-item--completed" : ""}`}
-                      to={`/lesson?id=${lesson.id}&moduleId=${module.id}`}
+                      onClick={handleLessonClick}
                     >
                       <img
                         src={lesson.thumbnailUrl || "/nen.png"}
@@ -173,18 +217,21 @@ export default function ModuleDetailPage() {
                           </div>
                         )}
                       </div>
-                    </Link>
+                    </button>
                   );
                 })}
               </div>
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* White — Văn hóa */}
       {(module.culturalEtiquetteTitle || module.culturalEtiquetteText) && (
-        <section className="learn-section learn-section--white">
+        <motion.section
+          className="learn-section learn-section--white"
+          {...sectionMotion}
+        >
           <div className="learn-public__container">
             <div className="md-culture">
               <div className="md-card">
@@ -193,8 +240,15 @@ export default function ModuleDetailPage() {
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
       )}
+
+      <LoginRequiredModal
+        open={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+        redirectPath={loginModalRedirect}
+        content="Vui lòng đăng nhập để xem bài học và làm quiz."
+      />
     </div>
   );
 }

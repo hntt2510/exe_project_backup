@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Clock, MapPin, Star, User } from 'lucide-react';
 import type { Tour } from '../../types';
-import { formatPrice } from '../tour/TourDetail/utils';
+import { formatPrice } from './TourDetail/utils';
 import '../../styles/components/tourCard.scss';
 
 const buildImageUrl = (tour: Tour) => {
@@ -27,10 +28,12 @@ export default function TourCard({ tour }: TourCardProps) {
   const navigate = useNavigate();
 
   return (
-    <article
+    <motion.article
       className="tour-card"
       onClick={() => navigate(`/tours/${tour.id}`)}
       style={{ cursor: 'pointer' }}
+      whileHover={{ y: -6, transition: { duration: 0.2 } }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       <div className="tour-card__image-wrapper">
         <div className="tour-card__image-frame">
@@ -86,6 +89,6 @@ export default function TourCard({ tour }: TourCardProps) {
           </button>
         </div>
       </div>
-    </article>
+    </motion.article>
   );
 }

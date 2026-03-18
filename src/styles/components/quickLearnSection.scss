@@ -61,6 +61,18 @@
     cursor: pointer;
   }
 
+  // Reset button khi dùng thay Link (bài học cần đăng nhập)
+  button.quick-learn__card {
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    background: inherit;
+    padding: 0;
+  }
+
   &__image {
     position: relative;
     height: 12rem;

@@ -1,8 +1,18 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import type { BlogPost } from "../../types";
 import BlogCard from "./BlogCard";
 import ArtisanPagination from "../artisan/ArtisanPagination";
 import "../../styles/components/blog/_blog-grid.scss";
+
+const cardVariants = {
+  initial: { opacity: 0, y: 24 },
+  animate: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, delay: 0.05 * i },
+  }),
+};
 
 const PAGE_SIZE = 6;
 
@@ -39,10 +49,25 @@ export default function BlogGrid({ posts, loading }: Props) {
         <div className="blog-grid__list">
           {loading
             ? Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                <SkeletonCard key={i} />
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: i * 0.05 }}
+                >
+                  <SkeletonCard />
+                </motion.div>
               ))
-            : paginatedPosts.map((post) => (
-                <BlogCard key={post.id} post={post} />
+            : paginatedPosts.map((post, i) => (
+                <motion.div
+                  key={post.id}
+                  variants={cardVariants}
+                  initial="initial"
+                  animate="animate"
+                  custom={i}
+                >
+                  <BlogCard post={post} />
+                </motion.div>
               ))}
         </div>
 

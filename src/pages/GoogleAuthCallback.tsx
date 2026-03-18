@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { message, Spin } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { AuthLoginResponse } from "../services/authApi";
-import { clearAuthSession, persistAuthSession } from "../utils/authSession";
+import { clearAuthSession, persistAuthSession, syncUserInfoFromProfile } from "../utils/authSession";
 import { consumeLoginRedirect } from "../utils/loginRedirectCookie";
 
 type OAuthCallbackPayload = {
@@ -15,6 +15,7 @@ type OAuthCallbackPayload = {
   userId: number;
   username: string;
   email: string;
+  avatarUrl?: string;
   message?: string;
 };
 
@@ -128,6 +129,7 @@ const getPayloadFromUrl = (search: string, hash: string): OAuthCallbackPayload =
     userId,
     username,
     email: params.get("email") ?? "",
+    avatarUrl: params.get("avatarUrl") ?? undefined,
     message: params.get("message") ?? params.get("error_description") ?? params.get("error") ?? undefined,
   };
 };
@@ -165,7 +167,14 @@ const GoogleAuthCallback = () => {
       email: payload.email,
       role: payload.role,
       expiresIn: payload.expiresIn,
+      avatarUrl: payload.avatarUrl,
     });
+
+    // OAuth redirect không có avatarUrl → fetch profile để đồng bộ
+    const userId = payload.userId || 0;
+    if (userId) {
+      syncUserInfoFromProfile(userId).catch(() => {});
+    }
 
     const storedToken = localStorage.getItem("accessToken");
     if (!storedToken) {

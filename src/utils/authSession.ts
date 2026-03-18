@@ -1,4 +1,5 @@
 import type { AuthLoginResponse } from "../services/authApi";
+import { getUserProfile } from "../services/profileApi";
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const SESSION_LOGIN_TIME_KEY = "sessionLoginTime";
@@ -17,12 +18,33 @@ export const persistAuthSession = (response: AuthLoginResponse) => {
       email: response.email,
       fullName: response.username || response.email,
       phone: "",
-      avatarUrl: "",
+      avatarUrl: response.avatarUrl ?? "",
       role: response.role || "CUSTOMER",
       status: "ACTIVE",
       createdAt: new Date().toISOString(),
     })
   );
+};
+
+/**
+ * Đồng bộ userInfo (đặc biệt avatarUrl) từ profile API.
+ * Gọi sau khi đăng nhập (OAuth) khi response không có avatarUrl.
+ */
+export const syncUserInfoFromProfile = async (userId: number): Promise<void> => {
+  try {
+    const profile = await getUserProfile(userId);
+    const stored = localStorage.getItem("userInfo");
+    if (!stored) return;
+    const parsed = JSON.parse(stored);
+    const updated = {
+      ...parsed,
+      fullName: profile.fullName || parsed.fullName,
+      avatarUrl: profile.avatarUrl || parsed.avatarUrl,
+    };
+    localStorage.setItem("userInfo", JSON.stringify(updated));
+  } catch {
+    // ignore - token có thể chưa sẵn sàng
+  }
 };
 
 export const isSessionExpired = (): boolean => {

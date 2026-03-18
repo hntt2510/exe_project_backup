@@ -117,7 +117,39 @@ export async function submitQuiz(
   return res.data.data;
 }
 
+/** Kiểm tra user đã nhận voucher cho quiz chưa - GET /api/learn/quizzes/{quizId}/voucher-claimed */
+export async function checkQuizVoucherClaimed(quizId: number): Promise<boolean> {
+  const res = await api.get<ApiResponse<boolean>>(`/api/learn/quizzes/${quizId}/voucher-claimed`);
+  return res.data.data ?? false;
+}
+
 /** Nhận voucher khi đạt 100% - POST /api/learn/achievements/{attemptId}/claim-voucher */
 export async function claimVoucher(attemptId: number): Promise<void> {
   await api.post<ApiResponse<null>>(`/api/learn/achievements/${attemptId}/claim-voucher`);
+}
+
+/** Voucher đã nhận (sau claim) - dùng để hiển thị mã voucher */
+export interface ClaimedVoucherInfo {
+  id: number;
+  code: string;
+  discountType: string;
+  discountValue: number;
+  minPurchase: number;
+  validUntil: string;
+  claimedAt?: string;
+}
+
+/** Lấy voucher đã claim - GET /api/vouchers/my-claimed */
+export async function getMyClaimedVouchers(): Promise<ClaimedVoucherInfo[]> {
+  const res = await api.get<ApiResponse<Array<Record<string, unknown>>>>('/api/vouchers/my-claimed');
+  const raw = res.data.data ?? [];
+  return raw.map((v) => ({
+    id: (v.id as number) ?? 0,
+    code: (v.code as string) ?? '',
+    discountType: (v.discountType as string) ?? 'PERCENTAGE',
+    discountValue: Number(v.discountValue ?? 0),
+    minPurchase: Number(v.minPurchase ?? 0),
+    validUntil: (v.validUntil as string) ?? '',
+    claimedAt: v.claimedAt as string | undefined,
+  }));
 }

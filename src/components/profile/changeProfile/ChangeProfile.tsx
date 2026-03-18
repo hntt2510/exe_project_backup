@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, User, Mail, Phone, Calendar } from 'lucide-react';
 import { message } from 'antd';
-import { updateUserProfile, type UserProfile, type UpdateUserRequest } from '../../../services/profileApi';
+import { updateUserProfile, getCurrentUser, type UserProfile, type UpdateUserRequest } from '../../../services/profileApi';
 import '../../../styles/components/profile/changeProfilescss/_change-profile.scss';
 
 interface ChangeProfileProps {
@@ -61,17 +61,21 @@ export default function ChangeProfile({ open, user, onClose, onUpdated }: Change
       return;
     }
 
-    // Always send ALL fields – unchanged ones keep their current value
+    // Payload chuẩn PUT /api/users/{id}: phone, fullName, email, dateOfBirth (YYYY-MM-DD)
     const payload: UpdateUserRequest = {
       fullName: fullName.trim() || user.fullName,
       email: email.trim() || user.email,
       phone: phone.trim() || user.phone,
-      dateOfBirth: dateOfBirth || user.dateOfBirth?.split('T')[0] || '',
     };
+    const dobValue = dateOfBirth?.trim() || user.dateOfBirth?.split('T')[0]?.trim();
+    if (dobValue && /^\d{4}-\d{2}-\d{2}$/.test(dobValue)) {
+      payload.dateOfBirth = dobValue;
+    }
 
     setLoading(true);
     try {
-      const updated = await updateUserProfile(user.id, payload);
+      const currentUser = await getCurrentUser();
+      const updated = await updateUserProfile(currentUser.id, payload);
       setSuccess(true);
       message.success('Cập nhật hồ sơ thành công!');
 
@@ -88,9 +92,17 @@ export default function ChangeProfile({ open, user, onClose, onUpdated }: Change
       onUpdated(updated);
       setTimeout(() => handleClose(), 1200);
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      const errMsg =
-        axiosErr?.response?.data?.message || 'Cập nhật thất bại. Vui lòng thử lại.';
+      const axiosErr = err as { response?: { data?: { message?: string; data?: Record<string, string>; errors?: Record<string, string> } } };
+      const resData = axiosErr?.response?.data;
+      let errMsg = resData?.message || 'Cập nhật thất bại. Vui lòng thử lại.';
+      // Backend trả validation errors trong data.data hoặc data.errors
+      const errDetails = (resData?.data ?? resData?.errors) as Record<string, string> | undefined;
+      if (errDetails && typeof errDetails === 'object') {
+        const details = Object.entries(errDetails)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join('. ');
+        if (details) errMsg = details;
+      }
       setError(errMsg);
       message.error(errMsg);
     } finally {

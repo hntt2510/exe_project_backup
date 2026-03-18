@@ -4,7 +4,7 @@
 
 @use 'variables';
 
-// Responsive Breakpoints
+// Responsive Breakpoints (min-width - mobile first)
 @mixin respond-to($breakpoint) {
   @if $breakpoint == sm {
     @media (min-width: variables.$breakpoint-sm) { @content; }
@@ -20,6 +20,22 @@
   }
   @if $breakpoint == 2xl {
     @media (min-width: variables.$breakpoint-2xl) { @content; }
+  }
+}
+
+// Max-width breakpoints (cho mobile/điện thoại)
+@mixin respond-to-max($breakpoint) {
+  @if $breakpoint == sm {
+    @media (max-width: #{variables.$breakpoint-sm - 1px}) { @content; }
+  }
+  @else if $breakpoint == md {
+    @media (max-width: #{variables.$breakpoint-md - 1px}) { @content; }
+  }
+  @else if $breakpoint == lg {
+    @media (max-width: #{variables.$breakpoint-lg - 1px}) { @content; }
+  }
+  @else if $breakpoint == xl {
+    @media (max-width: #{variables.$breakpoint-xl - 1px}) { @content; }
   }
 }
 

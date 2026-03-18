@@ -1,0 +1,182 @@
+@use '../../styles/variables' as *;
+
+.review-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+
+  &--visible {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.review-modal {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(139, 0, 0, 0.08);
+  animation: reviewModalSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  &__close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: $color-gray-100;
+    color: $color-gray-600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 2;
+
+    &:hover {
+      background: $color-gray-200;
+      color: $color-text-primary;
+    }
+  }
+
+  &__header {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem 1.5rem 0;
+    padding-right: 3rem;
+  }
+
+  &__header-icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(139, 0, 0, 0.1) 0%, rgba(139, 0, 0, 0.05) 100%);
+    border-radius: 12px;
+    color: $color-primary;
+  }
+
+  &__title {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $color-text-primary;
+    margin: 0 0 0.25rem;
+  }
+
+  &__subtitle {
+    font-size: $font-size-sm;
+    color: $color-gray-600;
+    margin: 0;
+  }
+
+  &__body {
+    padding: 1rem 1.5rem 1.5rem;
+
+    .booking-review-form {
+      margin: 0;
+      max-width: none;
+    }
+
+    .booking-review-form__card {
+      padding: 1.25rem 1.5rem;
+    }
+  }
+
+  // Success state
+  &__success {
+    padding: 2.5rem 2rem;
+    text-align: center;
+  }
+
+  &__success-icon-wrap {
+    margin-bottom: 1rem;
+    animation: reviewSuccessPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+  }
+
+  &__success-icon {
+    color: #22c55e;
+  }
+
+  &__success-title {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $color-text-primary;
+    margin: 0 0 0.5rem;
+    animation: reviewFadeUp 0.4s ease 0.2s both;
+  }
+
+  &__success-text {
+    font-size: $font-size-base;
+    color: $color-gray-600;
+    margin: 0 0 1.5rem;
+    line-height: 1.5;
+    animation: reviewFadeUp 0.4s ease 0.3s both;
+  }
+
+  &__success-btn {
+    padding: 0.75rem 2rem;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: #fff;
+    background: linear-gradient(135deg, $color-primary 0%, $color-primary-hover 100%);
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    animation: reviewFadeUp 0.4s ease 0.4s both;
+
+    &:hover {
+      opacity: 0.95;
+    }
+  }
+}
+
+@keyframes reviewModalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes reviewSuccessPop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes reviewFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

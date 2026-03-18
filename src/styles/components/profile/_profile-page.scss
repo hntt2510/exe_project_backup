@@ -2,33 +2,60 @@
 // Profile Page – Landing Layout with Sticky Sidebar
 // ============================================
 @use '../../variables' as *;
+@use '../../mixins' as mixins;
 
 .profile-page {
   max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
-  padding: 1rem 1.5rem 4rem;
-  padding-top: calc(var(--navbar-h, 88px) + 1rem);
+  padding: 0.75rem 0.75rem 3rem;
+  overflow-x: hidden;
+  padding-top: calc(var(--navbar-h, 88px) + 0.75rem);
+
+  @include mixins.respond-to(sm) {
+    padding: 1rem 1rem 3.5rem;
+    padding-top: calc(var(--navbar-h, 88px) + 1rem);
+  }
+
+  @include mixins.respond-to(md) {
+    padding: 1rem 1.5rem 4rem;
+    padding-top: calc(var(--navbar-h, 88px) + 1rem);
+  }
 
   // Two-column body: sticky sidebar + sections
   &__body {
     display: flex;
-    gap: 2rem;
-    margin-top: 2rem;
+    gap: 1.5rem;
+    margin-top: 1.25rem;
     align-items: flex-start;
+
+    @include mixins.respond-to(md) {
+      gap: 2rem;
+      margin-top: 2rem;
+    }
   }
 
-  // Sticky sidebar navigation
+  // Sticky sidebar – đi theo khi scroll
   &__sidebar {
     position: sticky;
-    top: calc(var(--navbar-h, 88px) + 1.5rem);
+    top: calc(var(--navbar-h, 88px) + 0.75rem);
+    align-self: flex-start;
     flex-shrink: 0;
-    width: 220px;
+    width: 240px;
+    max-height: calc(100vh - var(--navbar-h, 88px) - 2rem);
+    overflow-y: auto;
     background: $color-white;
     border-radius: 12px;
     border: 1px solid $color-gray-200;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     padding: 0.5rem;
-    z-index: 10;
+    z-index: 20;
+
+    @include mixins.respond-to-max(md) {
+      top: calc(var(--navbar-h, 88px) + 0.5rem);
+      width: 100%;
+      max-height: none;
+    }
   }
 
   &__nav {
@@ -90,11 +117,19 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 2.5rem;
+    gap: 1.5rem;
+
+    @include mixins.respond-to(md) {
+      gap: 2.5rem;
+    }
   }
 
   &__section {
-    scroll-margin-top: calc(var(--navbar-h, 88px) + 2rem);
+    scroll-margin-top: calc(var(--navbar-h, 88px) + 1.5rem);
+
+    @include mixins.respond-to(md) {
+      scroll-margin-top: calc(var(--navbar-h, 88px) + 2rem);
+    }
 
     // Wrapper cho section có nội dung cần nền trắng (orders, learn, voucher)
     &--card {
@@ -102,10 +137,15 @@
       .profile-learn,
       .profile-voucher {
         background: $color-white;
-        border-radius: $radius-lg;
-        padding: 1.5rem 1.75rem;
+        border-radius: $radius-md;
+        padding: 1rem 1rem;
         border: 1px solid $color-gray-200;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+
+        @include mixins.respond-to(md) {
+          border-radius: $radius-lg;
+          padding: 1.5rem 1.75rem;
+        }
       }
     }
   }
@@ -138,8 +178,8 @@
   to { transform: rotate(360deg); }
 }
 
-// ---- Responsive ----
-@media (max-width: 900px) {
+// ---- Responsive: mobile nav horizontal ----
+@include mixins.respond-to-max(md) {
   .profile-page {
     &__body {
       flex-direction: column;
@@ -150,9 +190,8 @@
       top: var(--navbar-h, 88px);
       width: 100%;
       background: $color-white;
-      border-radius: 0;
-      border-left: none;
-      border-right: none;
+      border-radius: $radius-md;
+      border: 1px solid $color-gray-200;
       padding: 0.25rem 0.5rem;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     }
@@ -160,17 +199,30 @@
     &__nav {
       flex-direction: row;
       overflow-x: auto;
+      overflow-y: hidden;
       gap: 0;
+      -webkit-overflow-scrolling: touch;
+
+      // Ẩn scrollbar ngang trên mobile - không scroll ngang trang
+      scrollbar-width: none;
+      -ms-overflow-style: none;
 
       &::-webkit-scrollbar {
         display: none;
+        height: 0;
       }
     }
 
     &__nav-item {
-      padding: 0.625rem 0.875rem;
-      font-size: 0.85rem;
-      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      border-radius: $radius-md;
+      flex-shrink: 0;
+
+      @include mixins.respond-to(sm) {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.85rem;
+      }
 
       &--active {
         box-shadow: none;
@@ -180,7 +232,7 @@
     }
 
     &__sections {
-      gap: 2rem;
+      gap: 1.5rem;
     }
   }
 }

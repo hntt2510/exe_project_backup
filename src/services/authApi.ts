@@ -39,6 +39,7 @@ export type AuthLoginResponse = {
   email: string;
   role: "CUSTOMER" | "ARTISAN" | "ADMIN" | "STAFF";
   expiresIn: number;
+  avatarUrl?: string;
 };
 
 export type RefreshTokenRequest = {

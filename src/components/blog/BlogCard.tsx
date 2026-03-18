@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Eye } from "lucide-react";
 import type { BlogPost } from "../../types";
 import "../../styles/components/blog/_blog-card.scss";
@@ -35,6 +36,7 @@ export default function BlogCard({ post }: Props) {
   const publishedDate = formatDate(post.publishedAt || post.createdAt);
 
   return (
+    <motion.div whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
     <Link to={`/blog/${post.id}`} className="blog-card">
       <div className="blog-card__img-wrap">
         <img
@@ -65,5 +67,6 @@ export default function BlogCard({ post }: Props) {
         </div>
       </div>
     </Link>
+    </motion.div>
   );
 }
