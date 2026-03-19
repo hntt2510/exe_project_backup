@@ -5,8 +5,9 @@ import {
   getTourById,
   getCultureItemsByProvince,
   getProvinceById,
+  getTourReviews,
 } from '../../../services/api';
-import type { Tour, CultureItem, Province } from '../../../types';
+import type { Tour, CultureItem, Province, Review } from '../../../types';
 import '../../../styles/pages/tourDetail.scss';
 
 import IntroSection from './IntroSection';
@@ -16,12 +17,15 @@ import QuickInfoBar from './QuickInfoBar';
 import BookingSidebar from './BookingSidebar';
 import GallerySection from './GallerySection';
 import FourBlockGrid from './FourBlockGrid';
+import ReviewsSection from './ReviewsSection';
 
 export default function TourDetail() {
   const { id } = useParams<{ id: string }>();
   const [tour, setTour] = useState<Tour | null>(null);
   const [province, setProvince] = useState<Province | null>(null);
   const [cultureItems, setCultureItems] = useState<CultureItem[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     if (!id) return;
@@ -45,6 +49,12 @@ export default function TourDetail() {
 
         setProvince(provinceData);
         setCultureItems(culture);
+
+        setReviewsLoading(true);
+        getTourReviews(tourId)
+          .then((list) => setReviews(list ?? []))
+          .catch(() => setReviews([]))
+          .finally(() => setReviewsLoading(false));
       } catch (err) {
         console.error('Failed to load tour detail:', err);
       } finally {
@@ -117,6 +127,12 @@ export default function TourDetail() {
             />
 
             <GallerySection tour={tour} cultureItems={cultureItems} />
+
+            <ReviewsSection
+              reviews={reviews}
+              loading={reviewsLoading}
+              sectionRef={() => {}}
+            />
 
             <FourBlockGrid
               artisan={tour.artisan ?? null}

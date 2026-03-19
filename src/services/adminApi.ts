@@ -88,7 +88,14 @@ export interface AdminTour {
   minParticipants: number;
   maxParticipants: number;
   durationHours: number;
-  status: "OPEN" | "NEAR_DEADLINE" | "FULL" | "NOT_ENOUGH" | "CANCELLED" | "ACTIVE" | "INACTIVE";
+  status:
+    | "OPEN"
+    | "NEAR_DEADLINE"
+    | "FULL"
+    | "NOT_ENOUGH"
+    | "CANCELLED"
+    | "ACTIVE"
+    | "INACTIVE";
   thumbnailUrl: string;
   images: string[];
   artisanId?: number;
@@ -119,11 +126,16 @@ function parseTourImages(images?: string | string[]): string[] {
       return [];
     }
   }
-  return trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+  return trimmed
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 /** Chuẩn hóa PublicTourDetail thành AdminTour - chỉ dùng field từ API */
-export function normalizePublicTourDetail(raw: PublicTourDetail | Record<string, unknown>): AdminTour {
+export function normalizePublicTourDetail(
+  raw: PublicTourDetail | Record<string, unknown>,
+): AdminTour {
   const r = raw as Record<string, unknown>;
   const province = r.province as { id?: number; name?: string } | undefined;
   const artisan = r.artisan as { id?: number; fullName?: string } | undefined;
@@ -169,7 +181,14 @@ export interface CreateTourRequest {
   bestSeason?: string;
   transportation?: string;
   culturalTips?: string;
-  status?: "OPEN" | "NEAR_DEADLINE" | "FULL" | "NOT_ENOUGH" | "CANCELLED" | "ACTIVE" | "INACTIVE";
+  status?:
+    | "OPEN"
+    | "NEAR_DEADLINE"
+    | "FULL"
+    | "NOT_ENOUGH"
+    | "CANCELLED"
+    | "ACTIVE"
+    | "INACTIVE";
 }
 
 export interface UpdateTourRequest extends Partial<CreateTourRequest> {
@@ -194,7 +213,11 @@ export const getAdminTours = async (params?: {
     ApiResponse<
       | PublicTourDetail[]
       | AdminTour[]
-      | { tours?: PublicTourDetail[] | AdminTour[]; content?: PublicTourDetail[] | AdminTour[]; total?: number }
+      | {
+          tours?: PublicTourDetail[] | AdminTour[];
+          content?: PublicTourDetail[] | AdminTour[];
+          total?: number;
+        }
     >
   >("/api/tours/public", { params });
   const raw = response.data.data;
@@ -205,33 +228,49 @@ export const getAdminTours = async (params?: {
     total = items.length;
   } else if (raw && typeof raw === "object") {
     const obj = raw as Record<string, unknown>;
-    items = (obj.tours as (PublicTourDetail | AdminTour)[]) ?? (obj.content as (PublicTourDetail | AdminTour)[]) ?? [];
+    items =
+      (obj.tours as (PublicTourDetail | AdminTour)[]) ??
+      (obj.content as (PublicTourDetail | AdminTour)[]) ??
+      [];
     total = (obj.total as number) ?? items.length;
   }
   const data = items.map((item) =>
     "provinceId" in item && typeof item.provinceId === "number"
       ? (item as AdminTour)
-      : normalizePublicTourDetail(item as PublicTourDetail)
+      : normalizePublicTourDetail(item as PublicTourDetail),
   );
   return { data, total };
 };
 
 /** GET /api/tours/public/{id} - Chi tiết tour theo JSON spec */
 export const getAdminTourById = async (id: number): Promise<AdminTour> => {
-  const response = await api.get<ApiResponse<PublicTourDetail | Record<string, unknown>>>(
-    `/api/tours/public/${id}`,
-  );
+  const response = await api.get<
+    ApiResponse<PublicTourDetail | Record<string, unknown>>
+  >(`/api/tours/public/${id}`);
   const raw = response.data.data;
   if (!raw || typeof raw !== "object") throw new Error("API không trả về data");
   return normalizePublicTourDetail(raw as PublicTourDetail);
 };
 
 /** API Tour yêu cầu multipart/form-data (theo .md docs). Build FormData từ payload. */
-function buildTourFormData(data: CreateTourRequest | Partial<CreateTourRequest>): FormData {
+function buildTourFormData(
+  data: CreateTourRequest | Partial<CreateTourRequest>,
+): FormData {
   const form = new FormData();
   const entries: (keyof CreateTourRequest)[] = [
-    "provinceId", "title", "slug", "description", "bestSeason", "transportation",
-    "culturalTips", "preparationTips", "durationHours", "maxParticipants", "price", "artisanId", "status",
+    "provinceId",
+    "title",
+    "slug",
+    "description",
+    "bestSeason",
+    "transportation",
+    "culturalTips",
+    "preparationTips",
+    "durationHours",
+    "maxParticipants",
+    "price",
+    "artisanId",
+    "status",
   ];
   for (const k of entries) {
     const v = data[k];
@@ -240,12 +279,21 @@ function buildTourFormData(data: CreateTourRequest | Partial<CreateTourRequest>)
     if (typeof v === "string" && !v.trim()) continue;
     form.append(k, typeof v === "number" ? String(v) : String(v).trim());
   }
-  if (data.thumbnailUrl && typeof data.thumbnailUrl === "string" && data.thumbnailUrl.trim()) {
+  if (
+    data.thumbnailUrl &&
+    typeof data.thumbnailUrl === "string" &&
+    data.thumbnailUrl.trim()
+  ) {
     form.append("thumbnailUrl", data.thumbnailUrl.trim());
   }
   if (data.images) {
     const img = data.images;
-    const str = typeof img === "string" ? img : (Array.isArray(img) ? JSON.stringify(img) : "");
+    const str =
+      typeof img === "string"
+        ? img
+        : Array.isArray(img)
+          ? JSON.stringify(img)
+          : "";
     if (str.trim()) form.append("images", str.trim());
   }
   return form;
@@ -255,10 +303,9 @@ export const createTour = async (
   data: CreateTourRequest,
 ): Promise<AdminTour> => {
   const formData = buildTourFormData(data);
-  const response = await api.post<ApiResponse<PublicTourDetail | Record<string, unknown>>>(
-    "/api/tours",
-    formData,
-  );
+  const response = await api.post<
+    ApiResponse<PublicTourDetail | Record<string, unknown>>
+  >("/api/tours", formData);
   const raw = response.data.data;
   if (!raw || typeof raw !== "object") throw new Error("API không trả về data");
   return normalizePublicTourDetail(raw as PublicTourDetail);
@@ -269,10 +316,9 @@ export const updateTour = async (
   data: Partial<CreateTourRequest>,
 ): Promise<AdminTour> => {
   const formData = buildTourFormData(data);
-  const response = await api.put<ApiResponse<PublicTourDetail | Record<string, unknown>>>(
-    `/api/tours/${id}`,
-    formData,
-  );
+  const response = await api.put<
+    ApiResponse<PublicTourDetail | Record<string, unknown>>
+  >(`/api/tours/${id}`, formData);
   const raw = response.data.data;
   if (!raw || typeof raw !== "object") throw new Error("API không trả về data");
   return normalizePublicTourDetail(raw as PublicTourDetail);
@@ -862,6 +908,63 @@ export const getAdminFeedbackById = async (
   return response.data?.data ?? null;
 };
 
+// ========== Admin Reviews (Feedback Tour) API ==========
+/** Review từ GET /api/reviews - đánh giá tour của khách */
+export interface AdminReview {
+  id: number;
+  bookingId: number;
+  userId: number;
+  userName?: string;
+  userAvatar?: string;
+  tourId: number;
+  tourTitle?: string;
+  rating: number;
+  comment: string;
+  images: string[];
+  status?: string; // VISIBLE, HIDDEN, etc.
+  createdAt: string;
+}
+
+/** GET /api/reviews - Danh sách đánh giá tour (feedback tour) */
+export const getAdminReviews = async (): Promise<{
+  data: AdminReview[];
+  total: number;
+}> => {
+  const response = await api.get<ApiResponse<AdminReview[]>>("/api/reviews");
+  const d = response.data?.data;
+  if (!d) return { data: [], total: 0 };
+  const data = Array.isArray(d) ? d : [];
+  return { data, total: data.length };
+};
+
+/** GET /api/reviews/{id} - Chi tiết đánh giá theo ID */
+export const getAdminReviewById = async (
+  id: number,
+): Promise<AdminReview | null> => {
+  const response = await api.get<ApiResponse<AdminReview>>(
+    `/api/reviews/${id}`,
+  );
+  return response.data?.data ?? null;
+};
+
+/** DELETE /api/reviews/{id} - Xóa đánh giá (Admin auth qua Bearer token) */
+export const deleteAdminReview = async (id: number): Promise<void> => {
+  await api.delete<ApiResponse<unknown>>(`/api/reviews/${id}`);
+};
+
+/** GET /api/reviews/tour/{tourId} - Đánh giá theo tour */
+export const getAdminReviewsByTourId = async (
+  tourId: number,
+): Promise<{ data: AdminReview[]; total: number }> => {
+  const response = await api.get<ApiResponse<AdminReview[]>>(
+    `/api/reviews/tour/${tourId}`,
+  );
+  const d = response.data?.data;
+  if (!d) return { data: [], total: 0 };
+  const data = Array.isArray(d) ? d : [];
+  return { data, total: data.length };
+};
+
 // ========== Admin Mail API ==========
 /** Khớp GET /api/admin/mails - content item */
 export interface AdminMail {
@@ -1146,8 +1249,21 @@ export interface AdminArtisanDetail {
   images: string[];
   panoramaImageUrl: string | null;
   narrativeContent: { title: string; content: string; imageUrl?: string }[];
-  relatedTours: { id: number; title: string; slug: string; thumbnailUrl: string; location: string; description: string; price: number }[];
-  relatedCultureItems: { id: number; title: string; thumbnailUrl: string; description: string }[];
+  relatedTours: {
+    id: number;
+    title: string;
+    slug: string;
+    thumbnailUrl: string;
+    location: string;
+    description: string;
+    price: number;
+  }[];
+  relatedCultureItems: {
+    id: number;
+    title: string;
+    thumbnailUrl: string;
+    description: string;
+  }[];
   otherArtisans: { id: number; fullName: string; profileImageUrl: string }[];
 }
 

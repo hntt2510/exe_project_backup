@@ -41,6 +41,8 @@ import {
   getAdminArtisanById,
   getAdminArtisanDetail,
   updateUserStatus,
+  updateUserRole,
+  updateUserRoleAndStatus,
   type UpdateArtisanRequest,
   type CreateArtisanRequest,
   type AdminArtisanDetail,
@@ -67,6 +69,7 @@ interface Artisan {
   createdAt?: string;
   userId?: number; // ID của user account để khóa tài khoản
   userStatus?: "ACTIVE" | "INACTIVE"; // Status của user account
+  userRole?: "CUSTOMER" | "STAFF"; // Role của user (chỉ CUSTOMER hoặc STAFF, không ADMIN)
 }
 
 export default function ArtisanManagement() {
@@ -116,7 +119,7 @@ export default function ArtisanManagement() {
     const a = item as Record<string, unknown>;
     const province = a.province as { id?: number; name?: string } | undefined;
     const user = a.user as
-      | { id?: number; avatarUrl?: string; status?: string }
+      | { id?: number; avatarUrl?: string; status?: string; role?: string }
       | undefined;
     const provinceName = province?.name ?? "";
     const provinceId = province?.id;
@@ -139,6 +142,10 @@ export default function ArtisanManagement() {
       createdAt: (a.createdAt as string) ?? "",
       userId: user?.id,
       userStatus: user?.status as "ACTIVE" | "INACTIVE" | undefined,
+      userRole:
+        user?.role === "STAFF" || user?.role === "CUSTOMER"
+          ? (user.role as "CUSTOMER" | "STAFF")
+          : undefined,
     };
   };
 
@@ -176,13 +183,20 @@ export default function ArtisanManagement() {
     fetchArtisans();
   }, []);
 
+  // Ẩn nghệ nhân đã chuyển role sang CUSTOMER hoặc STAFF (đã cập nhật thành công)
+  const artisansInScope = artisans.filter(
+    (a) => a.userRole !== "CUSTOMER" && a.userRole !== "STAFF",
+  );
+
   const provinceOptions = [
     ...provinces.map((p) => p.name),
-    ...Array.from(new Set(artisans.map((a) => a.location).filter(Boolean))),
+    ...Array.from(
+      new Set(artisansInScope.map((a) => a.location).filter(Boolean)),
+    ),
   ].filter(Boolean);
   const uniqueProvinces = Array.from(new Set(provinceOptions)).sort();
 
-  const filteredArtisans = artisans.filter((artisan) => {
+  const filteredArtisans = artisansInScope.filter((artisan) => {
     if (filter.location !== "all" && artisan.location !== filter.location)
       return false;
     if (filter.status !== "all" && artisan.status !== filter.status)
@@ -236,6 +250,7 @@ export default function ArtisanManagement() {
       workshopAddress: record.workshopAddress || "",
       provinceId: record.provinceId,
       userStatus: record.userStatus || "ACTIVE",
+      userRole: record.userRole || "CUSTOMER",
     };
 
     if (fromDetail) {
@@ -256,6 +271,9 @@ export default function ArtisanManagement() {
         (artisanDetail.user?.status as "ACTIVE" | "INACTIVE") ||
         editData.userStatus;
       editData.userId = artisanDetail.user?.id;
+      const userRole = (artisanDetail.user as { role?: string })?.role;
+      editData.userRole =
+        userRole === "STAFF" || userRole === "CUSTOMER" ? userRole : "CUSTOMER";
       editData.provinceId = artisanDetail.province?.id ?? record.provinceId;
 
       // dateOfBirth: ưu tiên artisan, fallback user, fallback từ age (nếu có fromDetail)
@@ -452,21 +470,8 @@ export default function ArtisanManagement() {
           ? parseInt(selectedArtisan.id, 10)
           : selectedArtisan.id;
 
-      console.log("[ArtisanManagement] Updating artisan:", {
-        artisanId,
-        artisanIdType: typeof artisanId,
-        originalId: selectedArtisan.id,
-        originalIdType: typeof selectedArtisan.id,
-        payload: JSON.parse(JSON.stringify(payload)), // Deep clone để log chính xác
-      });
-
-      await updateArtisan(artisanId, payload);
-
-      // Cập nhật status của user account nếu có userId và status thay đổi
-      // Lấy userId từ form hoặc từ selectedArtisan, nếu không có thì fetch lại
+      // Lấy userId trước để cập nhật role/status (giống UserManagement)
       let userId = values.userId || selectedArtisan.userId;
-
-      // Nếu không có userId, thử fetch lại từ API
       if (!userId) {
         try {
           const artisanDetail = await getAdminArtisanById(
@@ -485,45 +490,55 @@ export default function ArtisanManagement() {
         | "ACTIVE"
         | "INACTIVE"
         | undefined;
+      const newUserRole = values.userRole as "CUSTOMER" | "STAFF" | undefined;
       const oldUserStatus = selectedArtisan.userStatus;
+      const oldUserRole = (selectedArtisan as Artisan & { userRole?: string })
+        ?.userRole;
 
-      console.log("[ArtisanManagement] Updating user status:", {
-        userId,
-        newUserStatus,
-        oldUserStatus,
-        hasUserId: !!userId,
-        hasNewStatus: !!newUserStatus,
-        statusChanged: newUserStatus !== oldUserStatus,
-        selectedArtisanId: selectedArtisan.id,
-      });
+      const roleChanged =
+        newUserRole &&
+        (newUserRole === "CUSTOMER" || newUserRole === "STAFF") &&
+        newUserRole !== oldUserRole;
+      const statusChanged = newUserStatus && newUserStatus !== oldUserStatus;
 
-      if (userId && newUserStatus) {
-        // Luôn cập nhật nếu có userId và newUserStatus
+      // Cập nhật role/status TRƯỚC (đúng flow như UserManagement - PUT /api/admin/users/{id}/role, status)
+      if (userId && (roleChanged || statusChanged)) {
         try {
-          await updateUserStatus(userId, newUserStatus);
-          console.log(
-            "[ArtisanManagement] ✅ User status updated successfully",
-          );
+          if (roleChanged && statusChanged) {
+            await updateUserRoleAndStatus(
+              userId,
+              newUserRole!,
+              newUserStatus!,
+            );
+          } else if (roleChanged) {
+            await updateUserRole(userId, newUserRole!);
+          } else if (statusChanged) {
+            await updateUserStatus(userId, newUserStatus!);
+          }
         } catch (err) {
           console.error(
-            "[ArtisanManagement] ❌ Error updating user status:",
+            "[ArtisanManagement] ❌ Error updating user role/status:",
             err,
           );
-          // Không throw error để không block việc cập nhật artisan
           message.warning(
-            "Đã cập nhật nghệ nhân nhưng không thể cập nhật trạng thái tài khoản.",
+            "Không thể cập nhật vai trò/trạng thái tài khoản. Vui lòng thử lại.",
           );
+          setSaving(false);
+          return;
         }
-      } else {
-        console.warn("[ArtisanManagement] ⚠️ Cannot update user status:", {
-          userId,
-          newUserStatus,
-          reason: !userId ? "No userId" : "No newUserStatus",
-        });
-        if (!userId) {
+      }
+
+      // Sau đó cập nhật thông tin nghệ nhân - PUT /api/artisans/{id}
+      try {
+        await updateArtisan(artisanId, payload);
+      } catch (err) {
+        console.error("[ArtisanManagement] Error updating artisan:", err);
+        if (roleChanged || statusChanged) {
           message.warning(
-            "Nghệ nhân này chưa có tài khoản user, không thể cập nhật trạng thái.",
+            "Đã cập nhật vai trò/trạng thái nhưng cập nhật thông tin nghệ nhân thất bại.",
           );
+        } else {
+          throw err;
         }
       }
 
@@ -542,16 +557,18 @@ export default function ArtisanManagement() {
     }
   };
 
-  /** Thống kê tính từ danh sách artisans trong state */
+  /** Thống kê tính từ danh sách artisans (đã loại trừ CUSTOMER/STAFF) */
   const stats = {
-    total: artisans.length,
-    active: artisans.filter((a) => a.status === "ACTIVE").length,
-    inactive: artisans.filter((a) => a.status === "INACTIVE").length,
+    total: artisansInScope.length,
+    active: artisansInScope.filter((a) => a.status === "ACTIVE").length,
+    inactive: artisansInScope.filter((a) => a.status === "INACTIVE").length,
     avgRating:
-      artisans.length > 0
+      artisansInScope.length > 0
         ? (
-            artisans.reduce((sum, a) => sum + (a.averageRating || 0), 0) /
-            artisans.length
+            artisansInScope.reduce(
+              (sum, a) => sum + (a.averageRating || 0),
+              0,
+            ) / artisansInScope.length
           ).toFixed(1)
         : "0.0",
   };
@@ -1325,6 +1342,16 @@ export default function ArtisanManagement() {
             <Select placeholder="Chọn trạng thái">
               <Select.Option value="ACTIVE">Hoạt động</Select.Option>
               <Select.Option value="INACTIVE">Không hoạt động</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item
+            label="Vai trò tài khoản"
+            name="userRole"
+            tooltip="Chỉ áp dụng nếu nghệ nhân có tài khoản user. Không thể chọn Admin."
+          >
+            <Select placeholder="Chọn vai trò">
+              <Select.Option value="CUSTOMER">Khách hàng</Select.Option>
+              <Select.Option value="STAFF">Nhân viên</Select.Option>
             </Select>
           </Form.Item>
         </Form>

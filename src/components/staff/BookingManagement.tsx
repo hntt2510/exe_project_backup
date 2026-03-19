@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   App,
   Card,
@@ -22,25 +22,29 @@ import {
   EyeOutlined,
   SearchOutlined,
   ExportOutlined,
-  EditOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 dayjs.extend(utc);
 
+import {
+  getAdminBookings,
+  getAdminBookingById,
+  type AdminBooking,
+} from "../../services/adminApi";
+import { getPublicTours } from "../../services/api";
+import type { Tour } from "../../types";
+import Breadcrumbs from "../Breadcrumbs";
+import BookingSummaryCards from "../admin/BookingSummaryCards";
+
 /** Format datetime từ UTC sang giờ Việt Nam (UTC+7) */
 function formatDateTimeVN(isoString: string | null | undefined): string {
   if (!isoString) return "-";
-  
   try {
-    // Nếu timestamp có Z hoặc timezone indicator → parse UTC và thêm 7 giờ
     if (isoString.includes("Z") || isoString.match(/[+-]\d{2}:\d{2}$/)) {
       return dayjs.utc(isoString).add(7, "hour").format("DD/MM/YYYY HH:mm");
     }
-    
-    // Nếu không có timezone indicator, giả định là UTC (backend thường trả về UTC)
-    // dayjs.utc() sẽ tự động parse ISO string không có timezone như UTC
     return dayjs.utc(isoString).add(7, "hour").format("DD/MM/YYYY HH:mm");
   } catch (err) {
     console.error("Error parsing datetime:", isoString, err);
@@ -51,14 +55,12 @@ function formatDateTimeVN(isoString: string | null | undefined): string {
 /** Format thời gian từ string "HH:mm" sang định dạng 12 giờ với AM/PM */
 function formatTime12h(timeStr: string | null | undefined): string {
   if (!timeStr) return "—";
-  // Nếu là ISO string, parse và format
   if (timeStr.includes("T") || timeStr.includes("Z")) {
     const d = dayjs.utc(timeStr).add(7, "hour");
     const hour12 = d.hour() === 0 ? 12 : d.hour() > 12 ? d.hour() - 12 : d.hour();
     const ampm = d.hour() < 12 ? "AM" : "PM";
     return `${String(hour12).padStart(2, "0")}:${String(d.minute()).padStart(2, "0")} ${ampm}`;
   }
-  // Nếu là "HH:mm" format
   const [h, m] = timeStr.split(":").map(Number);
   if (isNaN(h) || isNaN(m)) return timeStr;
   const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
@@ -66,16 +68,11 @@ function formatTime12h(timeStr: string | null | undefined): string {
   return `${String(hour12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-import {
-  getAdminBookings,
-  getAdminBookingById,
-  updateBooking,
-  type AdminBooking,
-} from "../../services/adminApi";
-import { getPublicTours } from "../../services/api";
-import type { Tour } from "../../types";
-import Breadcrumbs from "../Breadcrumbs";
-import BookingSummaryCards from "../admin/BookingSummaryCards";
+function formatRevenue(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M ₫`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K ₫`;
+  return `${value.toLocaleString("vi-VN")} ₫`;
+}
 
 type BookingRow = AdminBooking & { key: string };
 
@@ -83,18 +80,12 @@ const statusConfig: Record<
   string,
   { label: string; color: string; bgColor?: string }
 > = {
-  PENDING: { label: "Chờ thanh toán", color: "#faad14", bgColor: "#fffbe6" },
+  PENDING: { label: "Chờ xử lý", color: "#faad14", bgColor: "#fffbe6" },
   CONFIRMED: { label: "Đã xác nhận", color: "#52c41a", bgColor: "#f6ffed" },
   PAID: { label: "Đã thanh toán", color: "#52c41a", bgColor: "#f6ffed" },
   CANCELLED: { label: "Đã hủy", color: "#ff4d4f", bgColor: "#fff1f0" },
   REFUNDED: { label: "Đã hoàn tiền", color: "#8c8c8c", bgColor: "#fafafa" },
 };
-
-const staffLabels = [
-  "Đã liên hệ",
-  "Khách đồng ý đổi tour",
-  "Khách không phản hồi",
-];
 
 const paymentStatusConfig: Record<string, { label: string; color: string }> = {
   UNPAID: { label: "Chưa thanh toán", color: "#faad14" },
@@ -112,60 +103,23 @@ const paymentMethodLabels: Record<string, string> = {
   MOMO: "MoMo",
 };
 
-function formatRevenue(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M ₫`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K ₫`;
-  return `${value.toLocaleString("vi-VN")} ₫`;
-}
-
 export default function BookingManagement() {
   const { message } = App.useApp();
   const [bookings, setBookings] = useState<BookingRow[]>([]);
+  const [totalBookings, setTotalBookings] = useState<number>(0);
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasFetchedRef = useRef(false);
 
   const [filter, setFilter] = useState<{ status: string; tour: string }>({
     status: "all",
     tour: "all",
   });
   const [searchText, setSearchText] = useState("");
-  const [selectedBooking, setSelectedBooking] = useState<BookingRow | null>(
-    null,
-  );
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
-  const [noteText, setNoteText] = useState("");
+  const [selectedBooking, setSelectedBooking] = useState<BookingRow | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [staffLabelsMap, setStaffLabelsMap] = useState<Record<number, string>>(
-    {},
-  );
-  const [notesMap, setNotesMap] = useState<Record<number, string>>({});
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [bookingsResult, toursData] = await Promise.all([
-        getAdminBookings(),
-        getPublicTours(),
-      ]);
-      setTours(toursData);
-      setBookings(
-        (bookingsResult.data ?? []).map((b) => ({ ...b, key: String(b.id) })),
-      );
-    } catch (err) {
-      console.error("Error fetching bookings:", err);
-      setError("Không thể tải dữ liệu bookings. Vui lòng thử lại sau.");
-      message.error("Không thể tải dữ liệu bookings");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const openDetailModal = async (record: BookingRow) => {
     setSelectedBooking(record);
@@ -175,11 +129,51 @@ export default function BookingManagement() {
       const fresh = await getAdminBookingById(record.id);
       setSelectedBooking({ ...fresh, key: String(fresh.id) });
     } catch {
-      // Giữ dữ liệu từ bảng
+      // Giữ dữ liệu từ bảng nếu gọi API lỗi
     } finally {
       setDetailLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (hasFetchedRef.current) return;
+    let cancelled = false;
+    const fetchData = async () => {
+      try {
+        hasFetchedRef.current = true;
+        setLoading(true);
+        setError(null);
+        const [bookingsResult, toursData] = await Promise.all([
+          getAdminBookings({ limit: 100 }),
+          getPublicTours(),
+        ]);
+        if (cancelled) {
+          hasFetchedRef.current = false;
+          return;
+        }
+        setTours(toursData);
+        const rows: BookingRow[] = (bookingsResult.data ?? []).map((b) => ({
+          ...b,
+          key: String(b.id),
+        }));
+        setBookings(rows);
+        setTotalBookings(bookingsResult.total ?? rows.length);
+      } catch (err) {
+        hasFetchedRef.current = false;
+        if (cancelled) return;
+        console.error("Error fetching bookings data:", err);
+        setError("Không thể tải dữ liệu bookings. Vui lòng thử lại sau.");
+        message.error("Không thể tải dữ liệu bookings");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => {
+      cancelled = true;
+      hasFetchedRef.current = false;
+    };
+  }, [message]);
 
   const filteredBookings = bookings
     .filter((b) => {
@@ -202,41 +196,6 @@ export default function BookingManagement() {
       const dateB = b.createdAt ? dayjs(b.createdAt).valueOf() : 0;
       return dateB - dateA;
     });
-
-  const handleStaffLabel = (id: number, label: string) => {
-    setStaffLabelsMap((prev) => ({ ...prev, [id]: label }));
-    message.success("Đã cập nhật nhãn");
-  };
-
-  const handleAddNote = async (id: number, note: string) => {
-    try {
-      await updateBooking(id, { notes: note });
-      setNotesMap((prev) => ({ ...prev, [id]: note }));
-      message.success("Đã lưu ghi chú");
-    } catch {
-      setNotesMap((prev) => ({ ...prev, [id]: note }));
-      message.success("Đã thêm ghi chú (lưu cục bộ)");
-    }
-    setIsNoteModalOpen(false);
-    setNoteText("");
-  };
-
-
-  const stats = {
-    total: bookings.length,
-    confirmed: bookings.filter((b) => b.status === "CONFIRMED").length,
-    cancelled: bookings.filter((b) => b.status === "CANCELLED").length,
-    totalRevenue: bookings
-      .filter(
-        (b) =>
-          b.status !== "CANCELLED" &&
-          b.status !== "REFUNDED" &&
-          (b.status === "PAID" ||
-            b.status === "CONFIRMED" ||
-            b.paymentStatus === "PAID"),
-      )
-      .reduce((sum, b) => sum + (b.finalAmount ?? b.totalAmount ?? 0), 0),
-  };
 
   const columns: ColumnsType<BookingRow> = [
     {
@@ -316,56 +275,60 @@ export default function BookingManagement() {
     {
       title: "Thao tác",
       key: "action",
-      width: 200,
+      width: 120,
       fixed: "right",
       render: (_, record) => (
-        <Space direction="vertical" size="small" style={{ width: "100%" }}>
-          <Button
-            type="link"
-            icon={<EyeOutlined />}
-            size="small"
-            onClick={() => openDetailModal(record)}
-          >
-            Xem chi tiết
-          </Button>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            size="small"
-            onClick={() => {
-              setSelectedBooking(record);
-              setNoteText(notesMap[record.id] || "");
-              setIsNoteModalOpen(true);
-            }}
-          >
-            Ghi chú
-          </Button>
-        </Space>
+        <Button
+          type="link"
+          icon={<EyeOutlined />}
+          size="small"
+          onClick={() => openDetailModal(record)}
+        >
+          Xem chi tiết
+        </Button>
       ),
     },
   ];
 
+  const stats = {
+    total: bookings.length,
+    confirmed: bookings.filter((b) => b.status === "CONFIRMED").length,
+    cancelled: bookings.filter((b) => b.status === "CANCELLED").length,
+    totalRevenue: bookings
+      .filter(
+        (b) =>
+          b.status !== "CANCELLED" &&
+          b.status !== "REFUNDED" &&
+          (b.status === "PAID" ||
+            b.status === "CONFIRMED" ||
+            b.paymentStatus === "PAID"),
+      )
+      .reduce((sum, b) => sum + (b.finalAmount ?? b.totalAmount ?? 0), 0),
+  };
+
   const tourOptions = [
     ...tours.map((t) => t.title),
-    ...Array.from(
-      new Set(
-        bookings
-          .filter(
-            (b) => b.tourTitle && !tours.some((t) => t.title === b.tourTitle),
-          )
-          .map((b) => b.tourTitle),
-      ),
-    ),
+    ...bookings
+      .filter(
+        (b) => b.tourTitle && !tours.some((t) => t.title === b.tourTitle),
+      )
+      .reduce((acc: { id: string; title: string }[], b) => {
+        if (!acc.some((x) => x.title === b.tourTitle))
+          acc.push({ id: String(b.tourId), title: b.tourTitle });
+        return acc;
+      }, [])
+      .map((t) => t.title),
   ].filter(Boolean);
 
   return (
-    <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
       <Breadcrumbs
         items={[
           { label: "Dashboard", path: "/staff" },
           { label: "Quản lý Booking" },
         ]}
       />
+
       <BookingSummaryCards
         stats={{
           total: stats.total,
@@ -376,18 +339,15 @@ export default function BookingManagement() {
       />
 
       <div style={{ marginBottom: 24 }}>
-        <Title
-          level={2}
-          style={{ margin: 0, fontWeight: 700, color: "#1a1a1a" }}
-        >
+        <Title level={2} style={{ margin: 0, fontWeight: 700, color: "#1a1a1a" }}>
           Quản lý Booking
         </Title>
         <Text type="secondary" style={{ fontSize: 16 }}>
-          Xem và xử lý booking của khách hàng
+          Xem và theo dõi booking của khách hàng
         </Text>
         <Alert
           message="Lưu ý"
-          description="Staff không có quyền hủy booking PAID hoặc thực hiện refund. Vui lòng liên hệ Admin để xử lý."
+          description="Staff chỉ có quyền xem danh sách và chi tiết booking. Không có quyền hủy booking hoặc thực hiện hoàn tiền. Vui lòng liên hệ Admin để xử lý."
           type="info"
           showIcon
           style={{ marginTop: 16 }}
@@ -401,10 +361,7 @@ export default function BookingManagement() {
           boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
         }}
         title={
-          <Title
-            level={5}
-            style={{ margin: 0, fontWeight: 600, color: "#1a1a1a" }}
-          >
+          <Title level={5} style={{ margin: 0, fontWeight: 600, color: "#1a1a1a" }}>
             Danh sách Booking
           </Title>
         }
@@ -421,7 +378,9 @@ export default function BookingManagement() {
               <Select.Option value="all">Tất cả</Select.Option>
               <Select.Option value="PENDING">Chờ xử lý</Select.Option>
               <Select.Option value="CONFIRMED">Đã xác nhận</Select.Option>
+              <Select.Option value="PAID">Đã thanh toán</Select.Option>
               <Select.Option value="CANCELLED">Đã hủy</Select.Option>
+              <Select.Option value="REFUNDED">Đã hoàn tiền</Select.Option>
             </Select>
           </Col>
           <Col xs={24} sm={12} md={6}>
@@ -466,17 +425,17 @@ export default function BookingManagement() {
           <Table
             columns={columns}
             dataSource={filteredBookings}
-            scroll={{ x: 1400 }}
+            scroll={{ x: 900 }}
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
-              showTotal: (total) => `Tổng ${total} booking`,
+              showTotal: (total, range) =>
+                `Hiển thị ${range[0]}-${range[1]} / Tổng ${totalBookings} booking`,
             }}
           />
         )}
       </Card>
 
-      {/* Modal Chi tiết */}
       <Modal
         title="Chi tiết Booking"
         open={isModalOpen}
@@ -495,9 +454,7 @@ export default function BookingManagement() {
           </div>
         ) : selectedBooking ? (
           <Descriptions column={1} bordered>
-            <Descriptions.Item label="ID">
-              {selectedBooking.id}
-            </Descriptions.Item>
+            <Descriptions.Item label="ID">{selectedBooking.id}</Descriptions.Item>
             <Descriptions.Item label="Mã đặt chỗ">
               {selectedBooking.bookingCode || "—"}
             </Descriptions.Item>
@@ -568,14 +525,10 @@ export default function BookingManagement() {
               </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="Ngày thanh toán">
-              {selectedBooking.paidAt
-                ? dayjs(selectedBooking.paidAt).format("DD/MM/YYYY HH:mm")
-                : "—"}
+              {formatDateTimeVN(selectedBooking.paidAt)}
             </Descriptions.Item>
             <Descriptions.Item label="Ngày hủy">
-              {selectedBooking.cancelledAt
-                ? dayjs(selectedBooking.cancelledAt).format("DD/MM/YYYY HH:mm")
-                : "—"}
+              {formatDateTimeVN(selectedBooking.cancelledAt)}
             </Descriptions.Item>
             <Descriptions.Item label="Phí hủy">
               {selectedBooking.cancellationFee != null &&
@@ -598,61 +551,13 @@ export default function BookingManagement() {
               )}
             </Descriptions.Item>
             <Descriptions.Item label="Ngày tạo">
-              {selectedBooking.createdAt
-                ? dayjs(selectedBooking.createdAt).format("DD/MM/YYYY HH:mm")
-                : "—"}
+              {formatDateTimeVN(selectedBooking.createdAt)}
             </Descriptions.Item>
             <Descriptions.Item label="Cập nhật lúc">
-              {selectedBooking.updatedAt
-                ? dayjs(selectedBooking.updatedAt).format("DD/MM/YYYY HH:mm")
-                : "—"}
+              {formatDateTimeVN(selectedBooking.updatedAt)}
             </Descriptions.Item>
-            {staffLabelsMap[selectedBooking.id] && (
-              <Descriptions.Item label="Nhãn">
-                <Tag
-                  color="#1890ff"
-                  style={{
-                    backgroundColor: "#e6f7ff",
-                    borderColor: "#1890ff",
-                    color: "#1890ff",
-                    fontWeight: 500,
-                    padding: "4px 12px",
-                  }}
-                >
-                  {staffLabelsMap[selectedBooking.id]}
-                </Tag>
-              </Descriptions.Item>
-            )}
-            {notesMap[selectedBooking.id] && (
-              <Descriptions.Item label="Ghi chú nội bộ">
-                {notesMap[selectedBooking.id]}
-              </Descriptions.Item>
-            )}
           </Descriptions>
         ) : null}
-      </Modal>
-
-      {/* Modal Ghi chú */}
-      <Modal
-        title="Ghi chú nội bộ"
-        open={isNoteModalOpen}
-        onOk={() => {
-          if (selectedBooking) handleAddNote(selectedBooking.id, noteText);
-        }}
-        onCancel={() => {
-          setIsNoteModalOpen(false);
-          setNoteText("");
-        }}
-        okText="Lưu"
-        cancelText="Hủy"
-        width={500}
-      >
-        <Input.TextArea
-          rows={6}
-          placeholder="Nhập ghi chú nội bộ cho booking này..."
-          value={noteText}
-          onChange={(e) => setNoteText(e.target.value)}
-        />
       </Modal>
     </Space>
   );
