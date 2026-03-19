@@ -1,6 +1,6 @@
-import { BookOpen, MapPin, Play, Landmark, Utensils } from 'lucide-react';
+import { BookOpen, MapPin, Play, Landmark, Utensils, Star } from 'lucide-react';
 
-export type TabKey = 'intro' | 'highlights' | 'videos' | 'festivals' | 'food';
+export type TabKey = 'intro' | 'highlights' | 'videos' | 'festivals' | 'food' | 'reviews';
 
 export interface TabItem {
   key: TabKey;
@@ -14,6 +14,7 @@ export const TABS: TabItem[] = [
   { key: 'videos', label: 'Videos/Story', icon: <Play size={16} /> },
   { key: 'festivals', label: 'Lễ hội - phong tục', icon: <Landmark size={16} /> },
   { key: 'food', label: 'Ẩm thực địa phương', icon: <Utensils size={16} /> },
+  { key: 'reviews', label: 'Đánh giá', icon: <Star size={16} /> },
 ];
 
 interface StickyTabsProps {

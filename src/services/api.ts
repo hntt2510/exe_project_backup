@@ -73,8 +73,13 @@ export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const msg = error.response?.data?.message;
     if (typeof msg === "string" && msg.trim()) return msg.trim();
-    if (error.response?.status === 500)
-      return "Lỗi máy chủ. Vui lòng thử lại sau.";
+    if (error.response?.status === 403)
+      return "Bạn không có quyền thực hiện thao tác này. Vui lòng đăng nhập bằng tài khoản Admin.";
+    if (error.response?.status === 500) {
+      const data = error.response?.data as { message?: string } | undefined;
+      const msg = typeof data?.message === "string" ? data.message.trim() : "";
+      return msg || "Lỗi máy chủ. Vui lòng thử lại sau hoặc liên hệ Admin backend.";
+    }
     if (error.response?.status)
       return `Lỗi ${error.response.status}. Vui lòng thử lại.`;
   }

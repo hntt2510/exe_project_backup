@@ -6,8 +6,9 @@ import {
   getToursByProvince,
   getCultureItemsByProvince,
   getProvinceById,
+  getTourReviews,
 } from '../../../services/api';
-import type { Tour, CultureItem, Province } from '../../../types';
+import type { Tour, CultureItem, Province, Review } from '../../../types';
 import '../../../styles/pages/tourDetail.scss';
 
 import StickyTabs, { type TabKey } from './StickyTabs';
@@ -15,6 +16,7 @@ import IntroSection from './IntroSection';
 import HighlightsSection from './HighlightsSection';
 import FestivalsSection from './FestivalsSection';
 import FoodSection from './FoodSection';
+import ReviewsSection from './ReviewsSection';
 import CTABanner from './CTABanner';
 import { formatPrice, parseImages, renderStars } from './utils';
 
@@ -24,6 +26,8 @@ export default function TourDetail() {
   const [province, setProvince] = useState<Province | null>(null);
   const [cultureItems, setCultureItems] = useState<CultureItem[]>([]);
   const [relatedTours, setRelatedTours] = useState<Tour[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('intro');
   const sectionRefs = useRef<Record<TabKey, HTMLElement | null>>({
@@ -32,6 +36,7 @@ export default function TourDetail() {
     videos: null,
     festivals: null,
     food: null,
+    reviews: null,
   });
 
   useEffect(() => {
@@ -54,6 +59,12 @@ export default function TourDetail() {
         setProvince(provinceData);
         setCultureItems(culture);
         setRelatedTours(related.filter((t) => t.id !== tourId).slice(0, 3));
+
+        setReviewsLoading(true);
+        getTourReviews(tourId)
+          .then((list) => setReviews(list ?? []))
+          .catch(() => setReviews([]))
+          .finally(() => setReviewsLoading(false));
       } catch (err) {
         console.error('Failed to load tour detail:', err);
       } finally {
@@ -146,6 +157,13 @@ export default function TourDetail() {
       <FoodSection
         foodItems={foodItems}
         sectionRef={(el) => { sectionRefs.current.food = el; }}
+      />
+
+      {/* Đánh giá */}
+      <ReviewsSection
+        reviews={reviews}
+        loading={reviewsLoading}
+        sectionRef={(el) => { sectionRefs.current.reviews = el; }}
       />
 
       {/* CTA Banner */}

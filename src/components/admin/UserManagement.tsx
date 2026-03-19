@@ -102,56 +102,59 @@ export default function UserManagement() {
   const [editForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchUsers = useCallback(async (forceRefresh = false) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params: { role?: string; status?: string; search?: string } = {};
-      if (filter.role !== "all") params.role = filter.role;
-      if (filter.status !== "all") params.status = filter.status;
-      if (filter.search?.trim()) params.search = filter.search.trim();
+  const fetchUsers = useCallback(
+    async (forceRefresh = false) => {
+      try {
+        setLoading(true);
+        setError(null);
+        const params: { role?: string; status?: string; search?: string } = {};
+        if (filter.role !== "all") params.role = filter.role;
+        if (filter.status !== "all") params.status = filter.status;
+        if (filter.search?.trim()) params.search = filter.search.trim();
 
-      // Force refresh bằng cách thêm timestamp vào params
-      const response = await getAdminUsers(forceRefresh ? { ...params, _force: Date.now() } : params);
-      if (!response?.data || !Array.isArray(response.data)) {
-        throw new Error("Invalid API response format");
+        // Force refresh bằng cách thêm timestamp vào params
+        const response = await getAdminUsers(
+          forceRefresh ? { ...params, _force: Date.now() } : params,
+        );
+        if (!response?.data || !Array.isArray(response.data)) {
+          throw new Error("Invalid API response format");
+        }
+
+        const mappedUsers: User[] = response.data
+          .filter((user: AdminUser) => user.role === "CUSTOMER")
+          .map((user: AdminUser) => ({
+            key: user.id.toString(),
+            id: user.id.toString(),
+            username: user.username || "",
+            name: user.fullName || "",
+            email: user.email || "",
+            phone: user.phone,
+            avatarUrl: user.avatarUrl,
+            dateOfBirth: user.dateOfBirth,
+            gender: user.gender,
+            role: (user.role || "CUSTOMER") as User["role"],
+            status: user.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+            createdAt: user.createdAt
+              ? new Date(user.createdAt).toLocaleDateString("vi-VN")
+              : "-",
+            lastLogin: user.lastLogin
+              ? new Date(user.lastLogin).toLocaleDateString("vi-VN")
+              : undefined,
+          }));
+        setUsers(mappedUsers);
+      } catch (err: unknown) {
+        const errMsg =
+          (err as any)?.response?.data?.message ||
+          (err as Error)?.message ||
+          "Không thể tải dữ liệu member. Vui lòng thử lại sau.";
+        setError(errMsg);
+        message.error(errMsg);
+      } finally {
+        setLoading(false);
       }
-
-      const mappedUsers: User[] = response.data
-        .filter(
-          (user: AdminUser) => user.role === "CUSTOMER",
-        )
-        .map((user: AdminUser) => ({
-          key: user.id.toString(),
-          id: user.id.toString(),
-          username: user.username || "",
-          name: user.fullName || "",
-          email: user.email || "",
-          phone: user.phone,
-          avatarUrl: user.avatarUrl,
-          dateOfBirth: user.dateOfBirth,
-          gender: user.gender,
-          role: (user.role || "CUSTOMER") as User["role"],
-          status: user.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
-          createdAt: user.createdAt
-            ? new Date(user.createdAt).toLocaleDateString("vi-VN")
-            : "-",
-          lastLogin: user.lastLogin
-            ? new Date(user.lastLogin).toLocaleDateString("vi-VN")
-            : undefined,
-        }));
-      setUsers(mappedUsers);
-    } catch (err: unknown) {
-      const errMsg =
-        (err as any)?.response?.data?.message ||
-        (err as Error)?.message ||
-        "Không thể tải dữ liệu member. Vui lòng thử lại sau.";
-      setError(errMsg);
-      message.error(errMsg);
-    } finally {
-      setLoading(false);
-    }
-  }, [filter.role, filter.status, filter.search, message]);
+    },
+    [filter.role, filter.status, filter.search, message],
+  );
 
   useEffect(() => {
     fetchUsers();
@@ -186,7 +189,6 @@ export default function UserManagement() {
     setEditModalOpen(true);
   };
 
-
   const handleDeleteUser = async (id: string) => {
     try {
       await deleteUser(parseInt(id));
@@ -206,9 +208,9 @@ export default function UserManagement() {
       content: (
         <div>
           <p>
-            Backend hiện chưa hỗ trợ admin reset mật khẩu cho user khác. Endpoint{" "}
-            <code>POST /api/users/change-password</code> chỉ dùng để user đổi mật
-            khẩu của chính mình (cần oldPassword).
+            Backend hiện chưa hỗ trợ admin reset mật khẩu cho user khác.
+            Endpoint <code>POST /api/users/change-password</code> chỉ dùng để
+            user đổi mật khẩu của chính mình (cần oldPassword).
           </p>
           <p style={{ marginTop: 8 }}>
             <strong>Giải pháp tạm thời:</strong> Member có thể đổi mật khẩu tại
@@ -257,7 +259,7 @@ export default function UserManagement() {
       const values = await editForm.validateFields();
       setSubmitting(true);
       const userId = parseInt(selectedUser.id);
-      
+
       // Cập nhật thông tin cơ bản (username, email, fullName, phone, dateOfBirth)
       await updateUser(userId, {
         username: values.username,
@@ -268,11 +270,11 @@ export default function UserManagement() {
           ? dayjs(values.dateOfBirth).format("YYYY-MM-DD")
           : undefined,
       });
-      
+
       // Cập nhật role và status nếu có thay đổi
       const roleChanged = values.role !== selectedUser.role;
       const statusChanged = values.status !== selectedUser.status;
-      
+
       if (roleChanged && statusChanged) {
         // Cả 2 đều thay đổi → gọi hàm cập nhật cả 2
         await updateUserRoleAndStatus(userId, values.role, values.status);
@@ -283,7 +285,7 @@ export default function UserManagement() {
         // Chỉ status thay đổi
         await updateUserStatus(userId, values.status);
       }
-      
+
       message.success("Cập nhật member thành công");
       setEditModalOpen(false);
       setSelectedUser(null);
@@ -573,9 +575,7 @@ export default function UserManagement() {
             }
             status={selectedUser.status}
             statusLabel={
-              selectedUser.status === "ACTIVE"
-                ? "Hoạt động"
-                : "Không hoạt động"
+              selectedUser.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động"
             }
             infoSections={[
               {
@@ -784,11 +784,17 @@ export default function UserManagement() {
             <Select>
               <Select.Option value="CUSTOMER">Khách hàng</Select.Option>
               <Select.Option value="STAFF">Nhân viên</Select.Option>
-              <Select.Option value="ADMIN">Quản trị viên</Select.Option>
+              {selectedUser?.role !== "CUSTOMER" && (
+                <Select.Option value="ADMIN">Quản trị viên</Select.Option>
+              )}
               <Select.Option value="ARTISAN">Nghệ nhân</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item label="Trạng thái" name="status" rules={[{ required: true }]}>
+          <Form.Item
+            label="Trạng thái"
+            name="status"
+            rules={[{ required: true }]}
+          >
             <Select>
               <Select.Option value="ACTIVE">Hoạt động</Select.Option>
               <Select.Option value="INACTIVE">Không hoạt động</Select.Option>
