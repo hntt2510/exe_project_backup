@@ -143,8 +143,8 @@ export interface FeaturedCourse {
 
 /** Lấy thông tin user hiện tại từ token (GET /api/users/me) */
 export const getCurrentUser = async (): Promise<UserProfile> => {
-  const res = await api.get<ApiResponse<UserProfile>>("/api/users/me");
-  const raw = res.data.data as Record<string, unknown>;
+  const res = await api.get<ApiResponse<unknown>>("/api/users/me");
+  const raw = (res.data.data ?? {}) as Record<string, unknown>;
   return {
     id: Number(raw.id),
     username: (raw.username as string) ?? "",
@@ -224,9 +224,11 @@ export interface MyReview {
 
 /** Lấy danh sách review của user (GET /api/reviews/my-reviews) */
 export const getMyReviews = async (): Promise<MyReview[]> => {
-  const res = await api.get<ApiResponse<MyReview[]>>("/api/reviews/my-reviews");
+  const res = await api.get<ApiResponse<unknown[]>>("/api/reviews/my-reviews");
   const raw = res.data.data ?? [];
-  return raw.map((r: Record<string, unknown>) => ({
+  return raw.map((item) => {
+    const r = item as Record<string, unknown>;
+    return {
     id: Number(r.id ?? 0),
     bookingId: Number(r.bookingId ?? 0),
     userId: Number(r.userId ?? 0),
@@ -239,7 +241,8 @@ export const getMyReviews = async (): Promise<MyReview[]> => {
     images: r.images as string[] | undefined,
     status: r.status as string | undefined,
     createdAt: (r.createdAt as string) ?? "",
-  }));
+    };
+  });
 };
 
 export interface CreateReviewRequest {
@@ -281,9 +284,11 @@ export function filterOutLearnVouchers<T extends { code?: string }>(vouchers: T[
 
 /** Lấy voucher đã claim của user. Loại bỏ voucher từ Learn. */
 export const getUserVouchers = async (): Promise<UserVoucher[]> => {
-  const res = await api.get<ApiResponse<UserVoucher[]>>("/api/vouchers/me");
+  const res = await api.get<ApiResponse<unknown[]>>("/api/vouchers/me");
   const raw = res.data.data ?? [];
-  const mapped = raw.map((v: Record<string, unknown>) => ({
+  const mapped = raw.map((item) => {
+    const v = item as Record<string, unknown>;
+    return {
     id: Number(v.id ?? 0),
     code: (v.code as string) ?? "",
     discountType: (v.discountType as string) ?? "PERCENTAGE",
@@ -296,7 +301,8 @@ export const getUserVouchers = async (): Promise<UserVoucher[]> => {
     isActive: (v.isActive as boolean) ?? true,
     createdAt: (v as any).claimedAt ?? (v.createdAt as string) ?? "",
     usedAt: (v.usedAt as string | null | undefined) ?? null,
-  }));
+    };
+  });
   return filterOutLearnVouchers(mapped);
 };
 
@@ -357,7 +363,9 @@ export const getLearnCourses = async (): Promise<FeaturedCourse[]> => {
     "/api/learn/users/me/courses",
   );
   const raw = res.data.data ?? [];
-  return raw.map((m: Record<string, unknown>) => ({
+  return raw.map((item) => {
+    const m = item as Record<string, unknown>;
+    return {
     id: Number(m.id ?? 0),
     title: (m.title as string) ?? "",
     slug: (m.slug as string) ?? "",
@@ -372,7 +380,8 @@ export const getLearnCourses = async (): Promise<FeaturedCourse[]> => {
     lessons: (m.lessons as FeaturedCourse["lessons"]) ?? [],
     quizPrompt: m.quizPrompt as FeaturedCourse["quizPrompt"],
     suggestedTours: m.suggestedTours as FeaturedCourse["suggestedTours"],
-  }));
+    };
+  });
 };
 
 /** Bài đã lưu - lessons user đã lưu (save button). Map sang format tương thích FeaturedCourse. */
@@ -381,7 +390,8 @@ export const getSavedLessons = async (): Promise<FeaturedCourse[]> => {
     "/api/learn/users/me/saved-lessons",
   );
   const raw = res.data.data ?? [];
-  return raw.map((l: Record<string, unknown>) => {
+  return raw.map((item) => {
+    const l = item as Record<string, unknown>;
     const moduleId = l.moduleId != null ? Number(l.moduleId) : l.id;
     return {
       id: moduleId,
