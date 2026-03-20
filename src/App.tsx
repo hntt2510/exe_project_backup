@@ -4,6 +4,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import Layout from "./components/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
 import StaffLayout from "./components/staff/StaffLayout";
+import ArtisanLayout from "./components/artisanPanel/ArtisanLayout";
 import RequireAuth from "./components/RequireAuth";
 
 // Critical path - load ngay
@@ -64,6 +65,11 @@ const StaffBookingManagementPage = lazy(() => import("./pages/staff/BookingManag
 const TourCoordinationPage = lazy(() => import("./pages/staff/TourCoordination"));
 const StaffArtisanManagementPage = lazy(() => import("./pages/staff/ArtisanManagement"));
 const StaffContentManagementPage = lazy(() => import("./pages/staff/ContentManagement"));
+
+// Artisan Panel
+const ArtisanDashboardPage = lazy(() => import("./pages/artisanPanel/ArtisanDashboardPage"));
+const ArtisanSchedulePage = lazy(() => import("./pages/artisanPanel/ArtisanSchedulePage"));
+const ArtisanProfilePage = lazy(() => import("./pages/artisanPanel/ArtisanProfilePage"));
 
 function PageFallback() {
   return (
@@ -139,13 +145,20 @@ function App() {
           <Route path="/admin/leads" element={<Suspense fallback={<PageFallback />}><LeadManagementPage /></Suspense>} />
         </Route>
 
-        {/* Staff Routes */}
-        <Route element={<StaffLayout />}>
+        {/* Staff Routes - yêu cầu đăng nhập */}
+        <Route element={<RequireAuth><StaffLayout /></RequireAuth>}>
           <Route path="/staff" element={<Suspense fallback={<PageFallback />}><StaffDashboardPage /></Suspense>} />
           <Route path="/staff/bookings" element={<Suspense fallback={<PageFallback />}><StaffBookingManagementPage /></Suspense>} />
           <Route path="/staff/tours" element={<Suspense fallback={<PageFallback />}><TourCoordinationPage /></Suspense>} />
           <Route path="/staff/artisans" element={<Suspense fallback={<PageFallback />}><StaffArtisanManagementPage /></Suspense>} />
           <Route path="/staff/content" element={<Suspense fallback={<PageFallback />}><StaffContentManagementPage /></Suspense>} />
+        </Route>
+
+        {/* Artisan Panel Routes - yêu cầu đăng nhập */}
+        <Route element={<RequireAuth><ArtisanLayout /></RequireAuth>}>
+          <Route path="/artisan" element={<Suspense fallback={<PageFallback />}><ArtisanDashboardPage /></Suspense>} />
+          <Route path="/artisan/schedule" element={<Suspense fallback={<PageFallback />}><ArtisanSchedulePage /></Suspense>} />
+          <Route path="/artisan/profile" element={<Suspense fallback={<PageFallback />}><ArtisanProfilePage /></Suspense>} />
         </Route>
       </Routes>
     </Router>

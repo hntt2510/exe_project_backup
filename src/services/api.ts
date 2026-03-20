@@ -73,17 +73,17 @@ api.interceptors.response.use(
 /** Lấy thông báo lỗi thân thiện từ response API hoặc axios (dùng cho UI). */
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    const msg = error.response?.data?.message;
-    if (typeof msg === "string" && msg.trim()) return msg.trim();
+    const data = error.response?.data as Record<string, unknown> | undefined;
+    const msg = typeof data?.message === "string" ? data.message.trim() : "";
+    if (msg) return msg;
+    const err = typeof data?.error === "string" ? data.error.trim() : "";
+    if (err) return err;
+    const details = Array.isArray(data?.errors) ? (data.errors as string[])[0] : undefined;
+    if (typeof details === "string" && details.trim()) return details.trim();
     if (error.response?.status === 403)
       return "Bạn không có quyền thực hiện thao tác này. Vui lòng đăng nhập bằng tài khoản Admin.";
-    if (error.response?.status === 500) {
-      const data = error.response?.data as { message?: string } | undefined;
-      const msg = typeof data?.message === "string" ? data.message.trim() : "";
-      return (
-        msg || "Lỗi máy chủ. Vui lòng thử lại sau hoặc liên hệ Admin backend."
-      );
-    }
+    if (error.response?.status === 500)
+      return "Lỗi máy chủ. Vui lòng thử lại sau hoặc liên hệ Admin backend.";
     if (error.response?.status)
       return `Lỗi ${error.response.status}. Vui lòng thử lại.`;
   }

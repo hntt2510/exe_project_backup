@@ -1,11 +1,12 @@
-import { MapPin, BadgeCheck, UserMinus, Clock, type LucideIcon } from "lucide-react";
+import { MapPin, BadgeCheck, UserX, Ban, type LucideIcon } from "lucide-react";
 import styles from "./SummaryCards.module.scss";
 
+/** Khớp TourEntityStatus (ACTIVE | INACTIVE | BANNED) */
 export interface TourSummaryStats {
   total: number;
-  open: number;
-  notEnough: number;
-  nearDeadline: number;
+  active: number;
+  inactive: number;
+  banned: number;
 }
 
 export interface SummaryCardConfig {
@@ -34,27 +35,27 @@ function buildCardsConfig(stats: TourSummaryStats): SummaryCardConfig[] {
       subText: SUBTEXT,
     },
     {
-      key: "open",
-      title: "Mở đăng ký",
-      value: stats.open,
+      key: "active",
+      title: "Đang hoạt động",
+      value: stats.active,
       icon: BadgeCheck,
       accentClass: "emerald",
       subText: SUBTEXT,
     },
     {
-      key: "notEnough",
-      title: "Không đủ người",
-      value: stats.notEnough,
-      icon: UserMinus,
-      accentClass: "rose",
+      key: "inactive",
+      title: "Không hoạt động",
+      value: stats.inactive,
+      icon: UserX,
+      accentClass: "amber",
       subText: SUBTEXT,
     },
     {
-      key: "nearDeadline",
-      title: "Gần hết hạn",
-      value: stats.nearDeadline,
-      icon: Clock,
-      accentClass: "amber",
+      key: "banned",
+      title: "Đã cấm",
+      value: stats.banned,
+      icon: Ban,
+      accentClass: "rose",
       subText: SUBTEXT,
     },
   ];

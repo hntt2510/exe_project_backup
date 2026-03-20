@@ -1,0 +1,228 @@
+// Staff Dashboard - Thiết kế hiện đại, đồng bộ với Admin
+.dashboard {
+  width: 100%;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  gap: 16px;
+}
+
+// Header với greeting
+.header {
+  margin-bottom: 28px;
+
+  &__greeting {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    color: #8B0000;
+    opacity: 0.9;
+  }
+}
+
+// Stat cards - grid responsive
+.stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.statCardWrapper {
+  text-decoration: none !important;
+  color: inherit;
+  display: block;
+
+  &:hover {
+    text-decoration: none !important;
+  }
+}
+
+.statCard {
+  position: relative;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 16px 16px 0 0;
+  }
+
+  &:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+  }
+
+  &--emerald::before {
+    background: linear-gradient(90deg, #059669, #10b981);
+  }
+
+  &--indigo::before {
+    background: linear-gradient(90deg, #4f46e5, #6366f1);
+  }
+
+  &--rose::before {
+    background: linear-gradient(90deg, #e11d48, #f43f5e);
+  }
+
+  &--amber::before {
+    background: linear-gradient(90deg, #d97706, #f59e0b);
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &--emerald &__icon {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+  }
+
+  &--indigo &__icon {
+    background: rgba(99, 102, 241, 0.12);
+    color: #4f46e5;
+  }
+
+  &--rose &__icon {
+    background: rgba(244, 63, 94, 0.12);
+    color: #e11d48;
+  }
+
+  &--amber &__icon {
+    background: rgba(245, 158, 11, 0.12);
+    color: #d97706;
+  }
+
+  &__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    display: block;
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+
+  &__value {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1f2937;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+
+    @media (min-width: 768px) {
+      font-size: 28px;
+    }
+  }
+
+  &__link {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    color: #8B0000;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+// Card chung
+.card {
+  border-radius: 16px !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+
+  :global(.ant-card-head) {
+    border-bottom: 1px solid #f0f0f0;
+  }
+}
+
+.cardLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #8B0000;
+  font-weight: 500;
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #a52a2a;
+  }
+}
+
+// Tour list
+.tourList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tourItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+.emptyState {
+  padding: 48px 24px;
+  text-align: center;
+}

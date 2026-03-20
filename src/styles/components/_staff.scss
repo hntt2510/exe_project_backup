@@ -5,6 +5,15 @@
 @use '../variables';
 @use '../mixins';
 
+// Bỏ gạch dưới cho tất cả link trong Staff panel
+.staff-layout a {
+  text-decoration: none !important;
+
+  &:hover {
+    text-decoration: none !important;
+  }
+}
+
 // Staff card - tương tự admin-card nhưng có thể tùy chỉnh riêng
 .staff-card {
   background-color: variables.$color-white;

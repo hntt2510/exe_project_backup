@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   App,
   Card,
@@ -20,7 +20,6 @@ import {
 } from "antd";
 import {
   PlusOutlined,
-  KeyOutlined,
   MailOutlined,
   EyeOutlined,
   PhoneOutlined,
@@ -38,7 +37,6 @@ import {
   updateUserStatus,
   updateUserRole,
   updateUserRoleAndStatus,
-  adminResetUserPassword,
   type AdminUser,
 } from "../../services/adminApi";
 import { getApiErrorMessage } from "../../services/api";
@@ -78,11 +76,9 @@ export default function UserManagement() {
   const [error, setError] = useState<string | null>(null);
 
   const [filter, setFilter] = useState<{
-    role: string;
     status: string;
     search: string;
   }>({
-    role: "all",
     status: "all",
     search: "",
   });
@@ -94,24 +90,16 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [form] = Form.useForm();
   const [editForm] = Form.useForm();
-  const [resetPwdForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [resetPwdModalOpen, setResetPwdModalOpen] = useState(false);
-  const [resetPwdSubmitting, setResetPwdSubmitting] = useState(false);
 
   const fetchUsers = useCallback(
     async (forceRefresh = false) => {
       try {
         setLoading(true);
         setError(null);
-        const params: { role?: string; status?: string; search?: string } = {};
-        if (filter.role !== "all") params.role = filter.role;
-        if (filter.status !== "all") params.status = filter.status;
-        if (filter.search?.trim()) params.search = filter.search.trim();
-
-        // Force refresh bằng cách thêm timestamp vào params
+        // Member: chỉ lấy danh sách từ API; lọc trạng thái & tìm kiếm xử lý phía frontend
         const response = await getAdminUsers(
-          forceRefresh ? { ...params, _force: Date.now() } : params,
+          forceRefresh ? { _force: Date.now() } : undefined,
         );
         if (!response?.data || !Array.isArray(response.data)) {
           throw new Error("Invalid API response format");
@@ -149,20 +137,32 @@ export default function UserManagement() {
         setLoading(false);
       }
     },
-    [filter.role, filter.status, filter.search, message],
+    [message],
   );
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      if (filter.status !== "all" && u.status !== filter.status) return false;
+      const q = filter.search?.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        u.name?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        u.username?.toLowerCase().includes(q) ||
+        (u.phone && u.phone.includes(filter.search.trim()))
+      );
+    });
+  }, [users, filter.status, filter.search]);
+
   const hasActiveFilters =
-    filter.role !== "all" ||
-    filter.status !== "all" ||
-    (filter.search?.trim()?.length ?? 0) > 0;
+    filter.status !== "all" || (filter.search?.trim()?.length ?? 0) > 0;
 
   const handleClearFilters = () => {
-    setFilter({ role: "all", status: "all", search: "" });
+    setFilter({ status: "all", search: "" });
     setSearchInput("");
   };
 
@@ -195,30 +195,6 @@ export default function UserManagement() {
     } catch (err) {
       message.error(getApiErrorMessage(err) || "Xóa member thất bại");
       throw err;
-    }
-  };
-
-  const handleOpenResetPassword = (record: User) => {
-    setSelectedUser(record);
-    resetPwdForm.resetFields();
-    setResetPwdModalOpen(true);
-  };
-
-  const handleResetPassword = async () => {
-    if (!selectedUser) return;
-    try {
-      const values = await resetPwdForm.validateFields();
-      setResetPwdSubmitting(true);
-      await adminResetUserPassword(parseInt(selectedUser.id), values.newPassword);
-      message.success("Đã đổi mật khẩu thành công");
-      setResetPwdModalOpen(false);
-      setSelectedUser(null);
-      resetPwdForm.resetFields();
-    } catch (err: unknown) {
-      if (err && typeof err === "object" && "errorFields" in err) return;
-      message.error(getApiErrorMessage(err) || "Đổi mật khẩu thất bại");
-    } finally {
-      setResetPwdSubmitting(false);
     }
   };
 
@@ -412,24 +388,7 @@ export default function UserManagement() {
 
       <Card>
         <Row gutter={[16, 16]} align="middle" style={{ marginBottom: 16 }}>
-          <Col xs={24} sm={12} md={6}>
-            <div style={{ marginBottom: 4, fontSize: 13, color: "#595959" }}>
-              Vai trò
-            </div>
-            <Select
-              style={{ width: "100%" }}
-              placeholder="Tất cả vai trò"
-              value={filter.role}
-              onChange={(value) => setFilter({ ...filter, role: value })}
-            >
-              <Select.Option value="all">Tất cả vai trò</Select.Option>
-              <Select.Option value="CUSTOMER">Khách hàng</Select.Option>
-              <Select.Option value="STAFF">Nhân viên</Select.Option>
-              <Select.Option value="ADMIN">Quản trị viên</Select.Option>
-              <Select.Option value="ARTISAN">Nghệ nhân</Select.Option>
-            </Select>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} md={8}>
             <div style={{ marginBottom: 4, fontSize: 13, color: "#595959" }}>
               Trạng thái
             </div>
@@ -444,7 +403,7 @@ export default function UserManagement() {
               <Select.Option value="INACTIVE">Không hoạt động</Select.Option>
             </Select>
           </Col>
-          <Col xs={24} sm={12} md={8}>
+          <Col xs={24} sm={12} md={12}>
             <div style={{ marginBottom: 4, fontSize: 13, color: "#595959" }}>
               Tìm kiếm
             </div>
@@ -461,7 +420,7 @@ export default function UserManagement() {
               }}
             />
           </Col>
-          <Col xs={24} sm={12} md={4}>
+          <Col xs={24} sm={24} md={4}>
             <Button
               style={{ marginTop: 22 }}
               onClick={() => setFilter({ ...filter, search: searchInput })}
@@ -492,12 +451,13 @@ export default function UserManagement() {
           />
         ) : users.length === 0 ? (
           <Empty
+            description={<span>Chưa có member nào.</span>}
+            style={{ padding: "48px 0" }}
+          />
+        ) : filteredUsers.length === 0 ? (
+          <Empty
             description={
-              <span>
-                {hasActiveFilters
-                  ? "Không tìm thấy member nào phù hợp với bộ lọc."
-                  : "Chưa có member nào."}
-              </span>
+              <span>Không có member nào phù hợp với bộ lọc trạng thái hoặc từ khóa tìm kiếm.</span>
             }
             style={{ padding: "48px 0" }}
           >
@@ -510,7 +470,7 @@ export default function UserManagement() {
         ) : (
           <Table
             columns={columns}
-            dataSource={users}
+            dataSource={filteredUsers}
             rowKey="id"
             loading={loading}
             scroll={{ x: 1100 }}
@@ -679,14 +639,6 @@ export default function UserManagement() {
         footer={
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <Space>
-              <Button
-                icon={<KeyOutlined />}
-                onClick={() =>
-                  selectedUser && handleOpenResetPassword(selectedUser)
-                }
-              >
-                Đổi mật khẩu
-              </Button>
               <Popconfirm
                 title="Xóa member"
                 description="Bạn có chắc muốn xóa member này? Hành động này không thể hoàn tác."
@@ -773,58 +725,6 @@ export default function UserManagement() {
               <Select.Option value="ACTIVE">Hoạt động</Select.Option>
               <Select.Option value="INACTIVE">Không hoạt động</Select.Option>
             </Select>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title="Đổi mật khẩu"
-        open={resetPwdModalOpen}
-        onCancel={() => {
-          setResetPwdModalOpen(false);
-          setSelectedUser(null);
-          resetPwdForm.resetFields();
-        }}
-        onOk={handleResetPassword}
-        okText="Đổi mật khẩu"
-        cancelText="Hủy"
-        confirmLoading={resetPwdSubmitting}
-        destroyOnClose
-      >
-        {selectedUser && (
-          <p style={{ marginBottom: 16 }}>
-            Đổi mật khẩu cho{" "}
-            <strong>{selectedUser.name || selectedUser.username}</strong>
-          </p>
-        )}
-        <Form form={resetPwdForm} layout="vertical">
-          <Form.Item
-            name="newPassword"
-            label="Mật khẩu mới"
-            rules={[
-              { required: true, message: "Vui lòng nhập mật khẩu mới" },
-              { min: 6, message: "Mật khẩu tối thiểu 6 ký tự" },
-            ]}
-          >
-            <Input.Password placeholder="••••••••" />
-          </Form.Item>
-          <Form.Item
-            name="confirmPassword"
-            label="Xác nhận mật khẩu"
-            dependencies={["newPassword"]}
-            rules={[
-              { required: true, message: "Vui lòng xác nhận mật khẩu" },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue("newPassword") === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error("Mật khẩu không khớp"));
-                },
-              }),
-            ]}
-          >
-            <Input.Password placeholder="••••••••" />
           </Form.Item>
         </Form>
       </Modal>

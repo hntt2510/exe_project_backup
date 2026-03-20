@@ -1,0 +1,14 @@
+// ============================================
+// Artisan Panel Styles
+// ============================================
+
+@use '../variables';
+@use '../mixins';
+
+.artisan-panel-layout a {
+  text-decoration: none !important;
+
+  &:hover {
+    text-decoration: none !important;
+  }
+}

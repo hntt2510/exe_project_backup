@@ -77,6 +77,15 @@ export interface PublicTourDetail {
   createdAt?: string;
 }
 
+/** Khớp enum Status entity Tour trên BE: ACTIVE, INACTIVE, BANNED */
+export type TourEntityStatus = "ACTIVE" | "INACTIVE" | "BANNED";
+
+export function normalizeTourStatus(raw: unknown): TourEntityStatus {
+  const s = String(raw ?? "").toUpperCase();
+  if (s === "INACTIVE" || s === "BANNED" || s === "ACTIVE") return s;
+  return "ACTIVE";
+}
+
 export interface AdminTour {
   id: number;
   title: string;
@@ -88,14 +97,7 @@ export interface AdminTour {
   minParticipants: number;
   maxParticipants: number;
   durationHours: number;
-  status:
-    | "OPEN"
-    | "NEAR_DEADLINE"
-    | "FULL"
-    | "NOT_ENOUGH"
-    | "CANCELLED"
-    | "ACTIVE"
-    | "INACTIVE";
+  status: TourEntityStatus;
   thumbnailUrl: string;
   images: string[];
   artisanId?: number;
@@ -149,7 +151,7 @@ export function normalizePublicTourDetail(
     minParticipants: 0, // API không có - dùng maxParticipants cho Đăng ký
     maxParticipants: (r.maxParticipants as number) ?? 0,
     durationHours: (r.durationHours as number) ?? 0,
-    status: (r.status as AdminTour["status"]) ?? "ACTIVE",
+    status: normalizeTourStatus(r.status),
     thumbnailUrl: (r.thumbnailUrl as string) ?? "",
     images: parseTourImages(r.images as string | string[]),
     artisanId: (r.artisanId as number) ?? artisan?.id,
@@ -186,19 +188,12 @@ export interface CreateTourRequest {
   bestSeason?: string;
   transportation?: string;
   culturalTips?: string;
-  status?: "ACTIVE" | "INACTIVE";
+  /** ACTIVE | INACTIVE | BANNED - gửi qua multipart */
+  status?: TourEntityStatus;
 }
 
 export interface UpdateTourRequest extends Partial<CreateTourRequest> {
   id?: number;
-  status?:
-    | "OPEN"
-    | "NEAR_DEADLINE"
-    | "FULL"
-    | "NOT_ENOUGH"
-    | "CANCELLED"
-    | "ACTIVE"
-    | "INACTIVE";
 }
 
 export const getAdminTours = async (params?: {
@@ -232,11 +227,13 @@ export const getAdminTours = async (params?: {
       [];
     total = (obj.total as number) ?? items.length;
   }
-  const data = items.map((item) =>
-    "provinceId" in item && typeof item.provinceId === "number"
-      ? (item as AdminTour)
-      : normalizePublicTourDetail(item as PublicTourDetail),
-  );
+  const data = items.map((item) => {
+    const row =
+      "provinceId" in item && typeof item.provinceId === "number"
+        ? { ...(item as AdminTour) }
+        : normalizePublicTourDetail(item as PublicTourDetail);
+    return { ...row, status: normalizeTourStatus(row.status) };
+  });
   return { data, total };
 };
 
@@ -268,6 +265,7 @@ function buildTourFormData(
     "maxParticipants",
     "price",
     "artisanId",
+    "status",
   ];
   for (const k of entries) {
     const v = data[k];
@@ -747,19 +745,6 @@ export const deleteUser = async (id: number): Promise<void> => {
   await api.delete(`/api/users/${id}`);
 };
 
-/**
- * Admin reset mật khẩu cho user.
- * Theo Swagger BE hiện tại: admin-user-controller có PUT /api/admin/users/{id}/status và /role.
- * Không có reset-password trong Swagger. Thử PUT /api/admin/users/{id}/password
- * (cùng pattern với status, role - admin cập nhật field của user).
- */
-export const adminResetUserPassword = async (
-  userId: number,
-  newPassword: string,
-): Promise<void> => {
-  await api.put(`/api/admin/users/${userId}/password`, { newPassword });
-};
-
 // ========== Admin Culture Items API (Quản lý Nội dung) ==========
 // Backend: /api/culture-items - FESTIVAL, FOOD, COSTUME, INSTRUMENT, DANCE, LEGEND, CRAFT
 export type CultureCategory =
@@ -1236,19 +1221,18 @@ export interface AdminArtisan {
   updatedAt?: string;
 }
 
-/** POST /api/artisans - Tạo nghệ nhân mới - khớp backend request/response */
+/** POST /api/artisans - Tạo nghệ nhân mới - khớp backend request (user, province nested) */
 export interface CreateArtisanRequest {
-  userId: number;
+  user: { id: number };
   fullName: string;
   specialization: string;
   bio?: string;
   profileImageUrl?: string;
-  provinceId?: number;
   province?: { id: number };
   workshopAddress?: string;
   ethnicity?: string;
   dateOfBirth?: string;
-  images?: string | string[];
+  images?: string;
   heroSubtitle?: string;
   narrativeContent?: string;
   panoramaImageUrl?: string;
@@ -1354,37 +1338,79 @@ export const createArtisan = async (
   return response.data.data;
 };
 
+/** Chuẩn hóa payload PUT /api/artisans/{id} - chỉ gửi field có giá trị, format khớp backend */
+function sanitizeUpdateArtisanPayload(
+  data: UpdateArtisanRequest
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const set = (k: string, v: unknown) => {
+    if (v !== undefined && v !== null && (typeof v !== "string" || v.trim() !== "")) {
+      out[k] = v;
+    }
+  };
+  set("fullName", data.fullName?.trim());
+  set("specialization", data.specialization?.trim());
+  set("bio", data.bio?.trim());
+  set("profileImageUrl", data.profileImageUrl?.trim());
+  set("workshopAddress", data.workshopAddress?.trim());
+  set("ethnicity", data.ethnicity?.trim());
+  set("dateOfBirth", data.dateOfBirth);
+  set("heroSubtitle", data.heroSubtitle?.trim());
+  set("panoramaImageUrl", data.panoramaImageUrl?.trim());
+  if (data.isActive !== undefined) set("isActive", data.isActive);
+
+  const pid = data.provinceId ?? data.province?.id;
+  if (pid != null) {
+    out.provinceId = Number(pid);
+  }
+
+  if (data.images != null) {
+    if (Array.isArray(data.images) && data.images.length > 0) {
+      out.images = data.images;
+    } else if (typeof data.images === "string" && data.images.trim()) {
+      try {
+        const parsed = JSON.parse(data.images);
+        out.images = Array.isArray(parsed) ? parsed : data.images.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+      } catch {
+        out.images = data.images.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+      }
+      if (Array.isArray(out.images) && out.images.length === 0) delete out.images;
+    }
+  }
+  if (data.narrativeContent != null && typeof data.narrativeContent === "string" && data.narrativeContent.trim()) {
+    try {
+      out.narrativeContent = JSON.parse(data.narrativeContent);
+    } catch {
+      /* bỏ qua */
+    }
+  }
+  return out;
+}
+
 /** Cập nhật nghệ nhân. Backend: PUT /api/artisans/{id} */
 export const updateArtisan = async (
   id: number,
   data: UpdateArtisanRequest,
 ): Promise<AdminArtisan> => {
-  // Đảm bảo id là number và hợp lệ
   const artisanId = Number(id);
   if (isNaN(artisanId) || artisanId <= 0) {
     throw new Error(`Invalid artisan ID: ${id}`);
   }
 
-  console.log(
-    `[updateArtisan] 🚀 Updating artisan ${artisanId} (type: ${typeof artisanId}) with data:`,
-    data,
-  );
-  console.log(`[updateArtisan] 🚀 Request URL: /api/artisans/${artisanId}`);
+  const payload = sanitizeUpdateArtisanPayload(data);
 
   try {
     const response = await api.put<ApiResponse<AdminArtisan>>(
       `/api/artisans/${artisanId}`,
-      data,
+      payload,
     );
-    console.log(`[updateArtisan] ✅ Success:`, response.data);
     return response.data.data;
   } catch (error: any) {
     console.error(
       `[updateArtisan] ❌ Error updating artisan ${artisanId}:`,
       error,
     );
-    console.error(`[updateArtisan] ❌ Request URL: /api/artisans/${artisanId}`);
-    console.error(`[updateArtisan] ❌ Request data:`, data);
+    console.error(`[updateArtisan] ❌ Request payload:`, payload);
     console.error(`[updateArtisan] ❌ Error response:`, error?.response?.data);
     console.error(
       `[updateArtisan] ❌ Error response status:`,

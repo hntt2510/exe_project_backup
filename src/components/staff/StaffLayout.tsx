@@ -7,9 +7,7 @@ import {
   Menu,
   Avatar,
   Dropdown,
-  Badge,
   Space,
-  Input,
   Breadcrumb,
   Button,
   Divider,
@@ -25,11 +23,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   SettingOutlined,
-  BellOutlined,
   LogoutOutlined,
-  SearchOutlined,
-  QuestionCircleOutlined,
-  GlobalOutlined,
 } from "@ant-design/icons";
 import { antdTheme } from "../../config/antd-theme";
 import { authLogout } from "../../services/authApi";
@@ -123,52 +117,12 @@ function StaffLayoutContent({ children }: StaffLayoutProps) {
     },
   ];
 
-  const notificationItems: MenuProps["items"] = [
-    {
-      key: "1",
-      label: (
-        <div style={{ padding: "8px 0" }}>
-          <div style={{ fontWeight: 500, marginBottom: 4 }}>Booking mới</div>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            Nguyễn Văn A đã đặt tour Lễ hội Cồng chiêng
-          </Text>
-          <div style={{ fontSize: 11, color: "#8c8c8c", marginTop: 4 }}>5 phút trước</div>
-        </div>
-      ),
-    },
-    {
-      key: "2",
-      label: (
-        <div style={{ padding: "8px 0" }}>
-          <div style={{ fontWeight: 500, marginBottom: 4 }}>Tour cần xử lý</div>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            Tour Ẩm thực Tây Nguyên còn thiếu người
-          </Text>
-          <div style={{ fontSize: 11, color: "#8c8c8c", marginTop: 4 }}>1 giờ trước</div>
-        </div>
-      ),
-    },
-    {
-      type: "divider",
-    },
-    {
-      key: "view-all",
-      label: (
-        <div style={{ textAlign: "center", padding: "8px 0" }}>
-          <Button type="link" style={{ padding: 0 }}>
-            Xem tất cả thông báo
-          </Button>
-        </div>
-      ),
-    },
-  ];
-
   const currentPath = location.pathname;
   const pageTitle = pageTitles[currentPath] || "Dashboard";
   const breadcrumbItems = breadcrumbMap[currentPath] || [{ title: "Dashboard" }];
 
   return (
-    <Layout style={{ minHeight: "100vh", background: "#f5f5f5" }}>
+    <Layout className="staff-layout" style={{ minHeight: "100vh", background: "#f5f5f5" }}>
         <Sider
           trigger={null}
           collapsible
@@ -318,97 +272,9 @@ function StaffLayoutContent({ children }: StaffLayoutProps) {
                 }))}
                 style={{ fontSize: 14 }}
               />
-
-              <div style={{ flex: 1, maxWidth: 400, marginLeft: "auto" }}>
-                <Input
-                  placeholder="Tìm kiếm..."
-                  prefix={<SearchOutlined style={{ color: "#8c8c8c" }} />}
-                  style={{
-                    borderRadius: 20,
-                    border: "1px solid #e8e8e8",
-                    transition: "all 0.2s",
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = "#8B0000";
-                    e.target.style.boxShadow = "0 0 0 2px rgba(139, 0, 0, 0.1)";
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "#e8e8e8";
-                    e.target.style.boxShadow = "none";
-                  }}
-                />
-              </div>
             </div>
 
             <Space size="middle" style={{ marginLeft: 24 }}>
-              <Button
-                type="text"
-                icon={<QuestionCircleOutlined />}
-                style={{
-                  width: 40,
-                  height: 40,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 8,
-                }}
-                title="Trợ giúp"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#f5f5f5";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                }}
-              />
-
-              <Button
-                type="text"
-                icon={<GlobalOutlined />}
-                style={{
-                  width: 40,
-                  height: 40,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 8,
-                }}
-                title="Ngôn ngữ"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#f5f5f5";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                }}
-              />
-
-              <Dropdown
-                menu={{ items: notificationItems }}
-                placement="bottomRight"
-                styles={{ root: { width: 320 } }}
-                trigger={["click"]}
-              >
-                <Badge count={3} size="small" offset={[-5, 5]}>
-                  <Button
-                    type="text"
-                    icon={<BellOutlined style={{ fontSize: 18 }} />}
-                    style={{
-                      width: 40,
-                      height: 40,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: 8,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#f5f5f5";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                    }}
-                  />
-                </Badge>
-              </Dropdown>
-
               <Dropdown 
                 menu={{ 
                   items: userMenuItems,

@@ -52,9 +52,31 @@ export type GoogleLoginRequest = {
 
 export const GOOGLE_OAUTH2_URL = `${API_BASE_URL}oauth2/authorization/google`;
 
+/** Chuẩn hóa response login — backend có thể trả role/userId ở top-level hoặc trong user */
+function normalizeLoginResponse(raw: unknown): AuthLoginResponse {
+  const d = (raw ?? {}) as Record<string, unknown>;
+  const user = d.user as Record<string, unknown> | undefined;
+  const roleRaw = (d.role as string) ?? (user?.role as string) ?? "CUSTOMER";
+  const role = String(roleRaw).toUpperCase() as AuthLoginResponse["role"];
+  const validRole = ["ADMIN", "STAFF", "ARTISAN", "CUSTOMER"].includes(role)
+    ? role
+    : "CUSTOMER";
+  return {
+    accessToken: (d.accessToken as string) ?? "",
+    refreshToken: (d.refreshToken as string) ?? "",
+    tokenType: (d.tokenType as string) ?? "Bearer",
+    userId: Number(d.userId ?? user?.id ?? 0),
+    username: (d.username as string) ?? (user?.username as string) ?? (user?.fullName as string) ?? "",
+    email: (d.email as string) ?? (user?.email as string) ?? "",
+    role: validRole,
+    expiresIn: Number(d.expiresIn ?? 3600),
+    avatarUrl: (d.avatarUrl as string) ?? (user?.avatarUrl as string),
+  };
+}
+
 export const authLogin = async (data: LoginRequest): Promise<AuthLoginResponse> => {
-  const response = await api.post<ApiResponse<AuthLoginResponse>>("/api/auth/login", data);
-  return response.data.data;
+  const response = await api.post<ApiResponse<unknown>>("/api/auth/login", data);
+  return normalizeLoginResponse(response.data.data);
 };
 
 export const authLogout = async (): Promise<void> => {
@@ -81,8 +103,8 @@ export const authResetPassword = async (data: ResetPasswordRequest): Promise<voi
 export const authGoogleLogin = async (
   data: GoogleLoginRequest
 ): Promise<AuthLoginResponse> => {
-  const response = await api.post<ApiResponse<AuthLoginResponse>>("/api/auth/google", data);
-  return response.data.data;
+  const response = await api.post<ApiResponse<unknown>>("/api/auth/google", data);
+  return normalizeLoginResponse(response.data.data);
 };
 
 export const startGoogleOAuth2Login = (): void => {
@@ -92,6 +114,6 @@ export const startGoogleOAuth2Login = (): void => {
 export const authRefreshToken = async (
   data: RefreshTokenRequest
 ): Promise<AuthLoginResponse> => {
-  const response = await api.post<ApiResponse<AuthLoginResponse>>("/api/auth/refresh", data);
-  return response.data.data;
+  const response = await api.post<ApiResponse<unknown>>("/api/auth/refresh", data);
+  return normalizeLoginResponse(response.data.data);
 };

@@ -20,7 +20,6 @@ import {
 } from "antd";
 import {
   PlusOutlined,
-  KeyOutlined,
   MailOutlined,
   EyeOutlined,
   PhoneOutlined,
@@ -653,21 +652,10 @@ export default function StaffManagement() {
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <Space>
               <Popconfirm
-                title="Reset mật khẩu"
-                description="Nhân viên sẽ phải đăng nhập lại bằng mật khẩu mới. Tiếp tục?"
-                onConfirm={() =>
-                  selectedStaff && handleResetPassword(selectedStaff)
-                }
-                okText="Đồng ý"
-                cancelText="Hủy"
-              >
-                <Button icon={<KeyOutlined />}>Reset mật khẩu</Button>
-              </Popconfirm>
-              <Popconfirm
                 title="Xóa nhân viên"
                 description="Bạn có chắc muốn xóa nhân viên này? Hành động này không thể hoàn tác."
                 onConfirm={() =>
-                  selectedStaff && handleDeleteUser(selectedStaff.id)
+                  selectedStaff && handleDelete(selectedStaff.id)
                 }
                 okText="Xóa"
                 cancelText="Hủy"

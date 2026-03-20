@@ -31,10 +31,9 @@ dayjs.extend(utc);
 import {
   getAdminBookings,
   getAdminBookingById,
+  getAdminTours,
   type AdminBooking,
 } from "../../services/adminApi";
-import { getPublicTours } from "../../services/api";
-import type { Tour } from "../../types";
 import Breadcrumbs from "../Breadcrumbs";
 import BookingSummaryCards from "../admin/BookingSummaryCards";
 
@@ -107,7 +106,7 @@ export default function BookingManagement() {
   const { message } = App.useApp();
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [totalBookings, setTotalBookings] = useState<number>(0);
-  const [tours, setTours] = useState<Tour[]>([]);
+  const [tourTitles, setTourTitles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasFetchedRef = useRef(false);
@@ -143,15 +142,15 @@ export default function BookingManagement() {
         hasFetchedRef.current = true;
         setLoading(true);
         setError(null);
-        const [bookingsResult, toursData] = await Promise.all([
+        const [bookingsResult, toursResult] = await Promise.all([
           getAdminBookings({ limit: 100 }),
-          getPublicTours(),
+          getAdminTours({ limit: 500 }),
         ]);
         if (cancelled) {
           hasFetchedRef.current = false;
           return;
         }
-        setTours(toursData);
+        setTourTitles((toursResult.data ?? []).map((t) => t.title).filter(Boolean));
         const rows: BookingRow[] = (bookingsResult.data ?? []).map((b) => ({
           ...b,
           key: String(b.id),
@@ -307,18 +306,14 @@ export default function BookingManagement() {
   };
 
   const tourOptions = [
-    ...tours.map((t) => t.title),
+    ...tourTitles,
     ...bookings
-      .filter(
-        (b) => b.tourTitle && !tours.some((t) => t.title === b.tourTitle),
-      )
-      .reduce((acc: { id: string; title: string }[], b) => {
-        if (!acc.some((x) => x.title === b.tourTitle))
-          acc.push({ id: String(b.tourId), title: b.tourTitle });
+      .filter((b) => b.tourTitle && !tourTitles.includes(b.tourTitle))
+      .reduce((acc: string[], b) => {
+        if (!acc.includes(b.tourTitle!)) acc.push(b.tourTitle!);
         return acc;
-      }, [])
-      .map((t) => t.title),
-  ].filter(Boolean);
+      }, []),
+  ];
 
   return (
     <Space direction="vertical" size="large" style={{ width: "100%" }}>

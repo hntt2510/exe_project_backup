@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authLogin, authGoogleLogin, type LoginRequest } from "../services/authApi";
+import { getCurrentUser } from "../services/profileApi";
 import { message } from "antd";
 import { persistAuthSession, syncUserInfoFromProfile } from "../utils/authSession";
 import { consumeLoginRedirect } from "../utils/loginRedirectCookie";
@@ -125,12 +126,28 @@ const Login = () => {
         return;
       }
 
-      // Chuyển hướng dựa trên role
-      if (response.role === "ADMIN") {
+      // Chuyển hướng dựa trên role (fallback: lấy role từ /api/users/me nếu login trả CUSTOMER)
+      let role = response.role;
+      if (role === "CUSTOMER") {
+        try {
+          const me = await getCurrentUser();
+          role = me.role;
+          // Cập nhật userInfo với role đúng
+          const stored = localStorage.getItem("userInfo");
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            parsed.role = role;
+            localStorage.setItem("userInfo", JSON.stringify(parsed));
+          }
+        } catch {
+          // Giữ CUSTOMER nếu không lấy được
+        }
+      }
+      if (role === "ADMIN") {
         navigate("/admin");
-      } else if (response.role === "STAFF") {
+      } else if (role === "STAFF") {
         navigate("/staff");
-      } else if (response.role === "ARTISAN") {
+      } else if (role === "ARTISAN") {
         navigate("/artisan");
       } else {
         navigate("/");
@@ -172,11 +189,26 @@ const Login = () => {
         return;
       }
 
-      if (response.role === "ADMIN") {
+      let role = response.role;
+      if (role === "CUSTOMER") {
+        try {
+          const me = await getCurrentUser();
+          role = me.role;
+          const stored = localStorage.getItem("userInfo");
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            parsed.role = role;
+            localStorage.setItem("userInfo", JSON.stringify(parsed));
+          }
+        } catch {
+          role = "CUSTOMER";
+        }
+      }
+      if (role === "ADMIN") {
         navigate("/admin");
-      } else if (response.role === "STAFF") {
+      } else if (role === "STAFF") {
         navigate("/staff");
-      } else if (response.role === "ARTISAN") {
+      } else if (role === "ARTISAN") {
         navigate("/artisan");
       } else {
         navigate("/");

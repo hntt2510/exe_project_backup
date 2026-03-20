@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Card,
   Table,
@@ -10,168 +10,169 @@ import {
   Row,
   Col,
   Modal,
-  Form,
-  message,
+  Descriptions,
+  Spin,
+  Image,
   Alert,
-  Upload,
+  Typography,
 } from "antd";
-import {
-  PlusOutlined,
-  EditOutlined,
-  SendOutlined,
-  FileTextOutlined,
-  PictureOutlined,
-} from "@ant-design/icons";
+import { EyeOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
+import { getProvinces } from "../../services/api";
+import {
+  getAdminCultureItems,
+  getAdminCultureItemById,
+  type AdminCultureItem,
+  type CultureCategory,
+} from "../../services/adminApi";
+import Breadcrumbs from "../Breadcrumbs";
+import ContentSummaryCards from "../admin/ContentSummaryCards";
 
 const { Search } = Input;
-const { TextArea } = Input;
+const { Title, Text } = Typography;
 
-interface Content {
-  key: string;
-  id: string;
-  title: string;
-  type: "festival" | "food" | "costume" | "language" | "legend" | "artisan";
-  province: string;
-  status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
-  author: string;
-  createdAt: string;
-  summary?: string;
-  body?: string;
-}
-
-const typeLabels: Record<string, string> = {
-  festival: "Lễ hội",
-  food: "Ẩm thực",
-  costume: "Trang phục",
-  language: "Ngôn ngữ",
-  legend: "Truyền thuyết",
-  artisan: "Nghệ nhân",
+const categoryLabels: Record<CultureCategory, string> = {
+  FESTIVAL: "Lễ hội",
+  FOOD: "Ẩm thực",
+  COSTUME: "Trang phục",
+  INSTRUMENT: "Nhạc cụ",
+  DANCE: "Múa",
+  LEGEND: "Truyền thuyết",
+  CRAFT: "Thủ công",
 };
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   DRAFT: { label: "Bản nháp", color: "default" },
-  PENDING: { label: "Chờ duyệt", color: "warning" },
   PUBLISHED: { label: "Đã xuất bản", color: "success" },
   ARCHIVED: { label: "Đã lưu trữ", color: "error" },
 };
 
-export default function ContentManagement() {
-  const [contents, setContents] = useState<Content[]>([
-    {
-      key: "1",
-      id: "1",
-      title: "Lễ hội Cồng chiêng Tây Nguyên",
-      type: "festival",
-      province: "Đắk Lắk",
-      status: "PUBLISHED",
-      author: "Admin",
-      createdAt: "15/01/2025",
-    },
-    {
-      key: "2",
-      id: "2",
-      title: "Rượu cần - Thức uống truyền thống",
-      type: "food",
-      province: "Đắk Lắk",
-      status: "PENDING",
-      author: "Staff A",
-      createdAt: "20/01/2025",
-      summary: "Rượu cần là thức uống đặc trưng của Tây Nguyên",
-    },
-    {
-      key: "3",
-      id: "3",
-      title: "Trang phục Êđê",
-      type: "costume",
-      province: "Gia Lai",
-      status: "DRAFT",
-      author: "Staff B",
-      createdAt: "22/01/2025",
-      summary: "Trang phục truyền thống của người Êđê",
-    },
-  ]);
+function formatDate(str: string | undefined): string {
+  if (!str) return "-";
+  try {
+    const d = new Date(str);
+    return d.toLocaleDateString("vi-VN");
+  } catch {
+    return str;
+  }
+}
 
+export default function ContentManagement() {
+  const [loading, setLoading] = useState(true);
+  const [contents, setContents] = useState<AdminCultureItem[]>([]);
+  const [provinces, setProvinces] = useState<{ id: number; name: string }[]>([]);
   const [filter, setFilter] = useState<{
-    type: string;
+    category: string;
     status: string;
-    province: string;
+    provinceId: string;
     search: string;
   }>({
-    type: "all",
+    category: "all",
     status: "all",
-    province: "all",
+    provinceId: "all",
     search: "",
   });
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedContent, setSelectedContent] = useState<Content | null>(null);
-  const [form] = Form.useForm();
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailData, setDetailData] = useState<AdminCultureItem | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
-  // Chỉ hiển thị nội dung DRAFT và PENDING (do staff tạo)
-  const staffContents = contents.filter(
-    (content) => content.status === "DRAFT" || content.status === "PENDING"
-  );
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [provincesRes, itemsRes] = await Promise.all([
+        getProvinces(),
+        getAdminCultureItems({
+          provinceId:
+            filter.provinceId !== "all"
+              ? Number(filter.provinceId)
+              : undefined,
+          category:
+            filter.category !== "all"
+              ? (filter.category as CultureCategory)
+              : undefined,
+        }),
+      ]);
+      setProvinces(provincesRes.map((p) => ({ id: p.id, name: p.name })));
+      setContents(itemsRes.data);
+    } catch (err) {
+      setContents([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter.provinceId, filter.category]);
 
-  const filteredContents = staffContents.filter((content) => {
-    if (filter.type !== "all" && content.type !== filter.type) return false;
-    if (filter.status !== "all" && content.status !== filter.status) return false;
-    if (filter.province !== "all" && content.province !== filter.province) return false;
-    if (filter.search && !content.title.toLowerCase().includes(filter.search.toLowerCase()))
-      return false;
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const contentStats = {
+    total: contents.length,
+    draft: contents.filter((c) => c.status === "DRAFT").length,
+    published: contents.filter((c) => c.status === "PUBLISHED").length,
+    archived: contents.filter((c) => c.status === "ARCHIVED").length,
+  };
+
+  const filteredContents = contents.filter((item) => {
+    if (filter.status !== "all" && item.status !== filter.status) return false;
+    if (filter.search) {
+      const q = filter.search.toLowerCase();
+      if (
+        !item.title?.toLowerCase().includes(q) &&
+        !item.description?.toLowerCase().includes(q)
+      )
+        return false;
+    }
     return true;
   });
 
-  const handleCreateOrUpdate = (values: any) => {
-    if (isEditMode && selectedContent) {
-      setContents(
-        contents.map((content) =>
-          content.id === selectedContent.id
-            ? { ...content, ...values, id: selectedContent.id, status: "DRAFT" }
-            : content
-        )
-      );
-      message.success("Đã cập nhật nội dung thành công");
-    } else {
-      const newContent: Content = {
-        key: String(contents.length + 1),
-        id: String(contents.length + 1),
-        ...values,
-        status: "DRAFT",
-        author: "Staff User",
-        createdAt: new Date().toLocaleDateString("vi-VN"),
-      };
-      setContents([...contents, newContent]);
-      message.success("Đã tạo nội dung thành công");
+  const handleViewDetail = async (id: number) => {
+    setDetailModalOpen(true);
+    setDetailData(null);
+    setDetailLoading(true);
+    try {
+      const data = await getAdminCultureItemById(id);
+      setDetailData(data);
+    } catch (err) {
+      setDetailData(null);
+    } finally {
+      setDetailLoading(false);
     }
-    setIsModalOpen(false);
-    setIsEditMode(false);
-    setSelectedContent(null);
-    form.resetFields();
   };
 
-  const handleEdit = (content: Content) => {
-    if (content.status === "PUBLISHED") {
-      message.warning("Không thể chỉnh sửa nội dung đã được xuất bản");
-      return;
-    }
-    setSelectedContent(content);
-    setIsEditMode(true);
-    form.setFieldsValue(content);
-    setIsModalOpen(true);
-  };
-
-  const handleSubmitForReview = (id: string) => {
-    setContents(
-      contents.map((content) =>
-        content.id === id ? { ...content, status: "PENDING" } : content
-      )
-    );
-    message.success("Đã gửi nội dung chờ Admin duyệt");
-  };
-
-  const columns: ColumnsType<Content> = [
+  const columns: ColumnsType<AdminCultureItem> = [
+    {
+      title: "Ảnh",
+      dataIndex: "thumbnailUrl",
+      key: "thumbnailUrl",
+      width: 70,
+      render: (url) =>
+        url ? (
+          <Image
+            src={url}
+            alt=""
+            width={48}
+            height={48}
+            style={{ objectFit: "cover", borderRadius: 8 }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              background: "#f0f0f0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 12,
+              color: "#999",
+              borderRadius: 8,
+            }}
+          >
+            —
+          </div>
+        ),
+    },
     {
       title: "Tiêu đề",
       dataIndex: "title",
@@ -180,13 +181,15 @@ export default function ContentManagement() {
     },
     {
       title: "Loại",
-      dataIndex: "type",
-      key: "type",
-      render: (type) => <Tag color="blue">{typeLabels[type]}</Tag>,
+      dataIndex: "category",
+      key: "category",
+      render: (cat: CultureCategory) => (
+        <Tag color="blue">{categoryLabels[cat] ?? cat}</Tag>
+      ),
     },
     {
       title: "Tỉnh",
-      dataIndex: "province",
+      dataIndex: ["province", "name"],
       key: "province",
     },
     {
@@ -194,7 +197,8 @@ export default function ContentManagement() {
       dataIndex: "status",
       key: "status",
       render: (status: string) => {
-        const config = statusConfig[status];
+        const config =
+          statusConfig[status] ?? { label: status, color: "default" };
         return <Tag color={config.color}>{config.label}</Tag>;
       },
     },
@@ -202,90 +206,74 @@ export default function ContentManagement() {
       title: "Ngày tạo",
       dataIndex: "createdAt",
       key: "createdAt",
+      render: (v) => formatDate(v),
     },
     {
       title: "Thao tác",
       key: "action",
+      width: 120,
       render: (_, record) => (
-        <Space size="small">
-          {record.status === "DRAFT" && (
-            <>
-              <Button type="link" icon={<EditOutlined />} size="small" onClick={() => handleEdit(record)}>
-                Sửa
-              </Button>
-              <Button
-                type="link"
-                icon={<SendOutlined />}
-                size="small"
-                onClick={() => handleSubmitForReview(record.id)}
-              >
-                Gửi duyệt
-              </Button>
-            </>
-          )}
-          {record.status === "PENDING" && (
-            <Button type="link" icon={<EditOutlined />} size="small" onClick={() => handleEdit(record)}>
-              Sửa
-            </Button>
-          )}
-          {record.status === "PUBLISHED" && (
-            <Tag color="success">Đã xuất bản - Không thể chỉnh sửa</Tag>
-          )}
-        </Space>
+        <Button
+          type="link"
+          icon={<EyeOutlined />}
+          size="small"
+          onClick={() => handleViewDetail(record.id)}
+        >
+          Xem chi tiết
+        </Button>
       ),
     },
   ];
 
   return (
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
-      <Card>
-        <Row gutter={[16, 16]} align="middle">
-          <Col flex="auto">
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Quản lý Nội dung Văn hóa</h2>
-            <p style={{ margin: "4px 0 0 0", color: "#8c8c8c", fontSize: 14 }}>
-              Tạo và chỉnh sửa nội dung văn hóa (chỉ DRAFT)
-            </p>
-          </Col>
-          <Col>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setIsEditMode(false);
-                setSelectedContent(null);
-                form.resetFields();
-                setIsModalOpen(true);
-              }}
-            >
-              Tạo nội dung mới
-            </Button>
-          </Col>
-        </Row>
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", path: "/staff" },
+          { label: "Quản lý Nội dung" },
+        ]}
+      />
+
+      <div>
+        <Title level={2} style={{ margin: 0, fontWeight: 700, color: "#1a1a1a" }}>
+          Quản lý Nội dung Văn hóa
+        </Title>
+        <Text type="secondary" style={{ fontSize: 16 }}>
+          Xem nội dung văn hóa (lễ hội, ẩm thực, trang phục...)
+        </Text>
         <Alert
           message="Lưu ý"
-          description="Staff chỉ có thể tạo và chỉnh sửa nội dung ở trạng thái DRAFT. Sau khi hoàn thành, gửi cho Admin duyệt. Không thể publish hoặc archive nội dung."
+          description="Staff chỉ có quyền xem nội dung. Không có quyền tạo, sửa, xuất bản hoặc xóa. Vui lòng liên hệ Admin để thay đổi."
           type="info"
           showIcon
           style={{ marginTop: 16 }}
         />
-      </Card>
+      </div>
 
-      <Card>
+      <ContentSummaryCards stats={contentStats} />
+
+      <Card
+        style={{
+          borderRadius: 16,
+          border: "1px solid #e5e7eb",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
+        }}
+        bodyStyle={{ padding: 24 }}
+      >
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col xs={24} sm={12} md={6}>
             <Select
               style={{ width: "100%" }}
               placeholder="Loại nội dung"
-              value={filter.type}
-              onChange={(value) => setFilter({ ...filter, type: value })}
+              value={filter.category}
+              onChange={(value) => setFilter({ ...filter, category: value })}
             >
               <Select.Option value="all">Tất cả</Select.Option>
-              <Select.Option value="festival">Lễ hội</Select.Option>
-              <Select.Option value="food">Ẩm thực</Select.Option>
-              <Select.Option value="costume">Trang phục</Select.Option>
-              <Select.Option value="language">Ngôn ngữ</Select.Option>
-              <Select.Option value="legend">Truyền thuyết</Select.Option>
-              <Select.Option value="artisan">Nghệ nhân</Select.Option>
+              {(Object.keys(categoryLabels) as CultureCategory[]).map((k) => (
+                <Select.Option key={k} value={k}>
+                  {categoryLabels[k]}
+                </Select.Option>
+              ))}
             </Select>
           </Col>
           <Col xs={24} sm={12} md={6}>
@@ -297,22 +285,23 @@ export default function ContentManagement() {
             >
               <Select.Option value="all">Tất cả</Select.Option>
               <Select.Option value="DRAFT">Bản nháp</Select.Option>
-              <Select.Option value="PENDING">Chờ duyệt</Select.Option>
+              <Select.Option value="PUBLISHED">Đã xuất bản</Select.Option>
+              <Select.Option value="ARCHIVED">Đã lưu trữ</Select.Option>
             </Select>
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Select
               style={{ width: "100%" }}
               placeholder="Tỉnh thành"
-              value={filter.province}
-              onChange={(value) => setFilter({ ...filter, province: value })}
+              value={filter.provinceId}
+              onChange={(value) => setFilter({ ...filter, provinceId: value })}
             >
               <Select.Option value="all">Tất cả</Select.Option>
-              <Select.Option value="Đắk Lắk">Đắk Lắk</Select.Option>
-              <Select.Option value="Gia Lai">Gia Lai</Select.Option>
-              <Select.Option value="Kon Tum">Kon Tum</Select.Option>
-              <Select.Option value="Đắk Nông">Đắk Nông</Select.Option>
-              <Select.Option value="Lâm Đồng">Lâm Đồng</Select.Option>
+              {provinces.map((p) => (
+                <Select.Option key={p.id} value={String(p.id)}>
+                  {p.name}
+                </Select.Option>
+              ))}
             </Select>
           </Col>
           <Col xs={24} sm={12} md={6}>
@@ -324,109 +313,85 @@ export default function ContentManagement() {
           </Col>
         </Row>
 
-        <Table
-          columns={columns}
-          dataSource={filteredContents}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total) => `Tổng ${total} mục`,
-          }}
-        />
+        <Spin spinning={loading}>
+          <Table
+            columns={columns}
+            dataSource={filteredContents.map((c) => ({ ...c, key: c.id }))}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total) => `Tổng ${total} mục`,
+            }}
+            locale={{ emptyText: "Chưa có nội dung" }}
+          />
+        </Spin>
       </Card>
 
       <Modal
-        title={isEditMode ? "Chỉnh sửa nội dung" : "Tạo nội dung mới"}
-        open={isModalOpen}
+        title="Chi tiết nội dung"
+        open={detailModalOpen}
         onCancel={() => {
-          setIsModalOpen(false);
-          setIsEditMode(false);
-          setSelectedContent(null);
-          form.resetFields();
+          setDetailModalOpen(false);
+          setDetailData(null);
         }}
         footer={null}
-        width={800}
+        width={640}
       >
-        <Form form={form} layout="vertical" onFinish={handleCreateOrUpdate}>
-          <Form.Item label="Tiêu đề" name="title" rules={[{ required: true }]}>
-            <Input placeholder="Nhập tiêu đề nội dung" />
-          </Form.Item>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="Loại nội dung" name="type" rules={[{ required: true }]}>
-                <Select placeholder="Chọn loại">
-                  <Select.Option value="festival">Lễ hội</Select.Option>
-                  <Select.Option value="food">Ẩm thực</Select.Option>
-                  <Select.Option value="costume">Trang phục</Select.Option>
-                  <Select.Option value="language">Ngôn ngữ</Select.Option>
-                  <Select.Option value="legend">Truyền thuyết</Select.Option>
-                  <Select.Option value="artisan">Nghệ nhân</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Tỉnh thành" name="province" rules={[{ required: true }]}>
-                <Select placeholder="Chọn tỉnh">
-                  <Select.Option value="Đắk Lắk">Đắk Lắk</Select.Option>
-                  <Select.Option value="Gia Lai">Gia Lai</Select.Option>
-                  <Select.Option value="Kon Tum">Kon Tum</Select.Option>
-                  <Select.Option value="Đắk Nông">Đắk Nông</Select.Option>
-                  <Select.Option value="Lâm Đồng">Lâm Đồng</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item label="Tóm tắt" name="summary">
-            <TextArea rows={3} placeholder="Nhập tóm tắt nội dung..." />
-          </Form.Item>
-          <Form.Item label="Nội dung chi tiết" name="body">
-            <TextArea rows={8} placeholder="Nhập nội dung chi tiết..." />
-          </Form.Item>
-          <Form.Item label="Hình ảnh" name="images">
-            <Upload
-              listType="picture-card"
-              multiple
-              beforeUpload={() => false}
-              accept="image/*"
-            >
-              <div>
-                <PictureOutlined />
-                <div style={{ marginTop: 8 }}>Upload</div>
-              </div>
-            </Upload>
-          </Form.Item>
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit">
-                {isEditMode ? "Cập nhật" : "Tạo bản nháp"}
-              </Button>
-              {isEditMode && selectedContent?.status === "DRAFT" && (
-                <Button
-                  type="default"
-                  icon={<SendOutlined />}
-                  onClick={() => {
-                    form.validateFields().then((values) => {
-                      handleCreateOrUpdate(values);
-                      handleSubmitForReview(selectedContent.id);
-                    });
-                  }}
-                >
-                  Lưu và gửi duyệt
-                </Button>
-              )}
-              <Button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setIsEditMode(false);
-                  setSelectedContent(null);
-                  form.resetFields();
-                }}
+        {detailLoading ? (
+          <div style={{ textAlign: "center", padding: 48 }}>
+            <Spin tip="Đang tải..." />
+          </div>
+        ) : detailData ? (
+          <Descriptions column={1} bordered size="small">
+            <Descriptions.Item label="Tiêu đề">
+              <strong>{detailData.title}</strong>
+            </Descriptions.Item>
+            <Descriptions.Item label="Loại">
+              <Tag color="blue">
+                {categoryLabels[detailData.category] ?? detailData.category}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Tỉnh thành">
+              {detailData.province?.name ?? "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">
+              <Tag
+                color={
+                  statusConfig[detailData.status]?.color ?? "default"
+                }
               >
-                Hủy
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
+                {statusConfig[detailData.status]?.label ?? detailData.status}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Mô tả">
+              {detailData.description || "—"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Ngày tạo">
+              {formatDate(detailData.createdAt)}
+            </Descriptions.Item>
+            {detailData.thumbnailUrl && (
+              <Descriptions.Item label="Ảnh đại diện">
+                <Image
+                  src={detailData.thumbnailUrl}
+                  alt=""
+                  width={200}
+                  style={{ borderRadius: 8 }}
+                />
+              </Descriptions.Item>
+            )}
+            {detailData.videoUrl && (
+              <Descriptions.Item label="Video">
+                <a
+                  href={detailData.videoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Xem video
+                </a>
+              </Descriptions.Item>
+            )}
+          </Descriptions>
+        ) : null}
       </Modal>
     </Space>
   );

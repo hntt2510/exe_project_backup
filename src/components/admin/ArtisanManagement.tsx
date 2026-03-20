@@ -69,7 +69,7 @@ interface Artisan {
   createdAt?: string;
   userId?: number; // ID của user account để khóa tài khoản
   userStatus?: "ACTIVE" | "INACTIVE"; // Status của user account
-  userRole?: "CUSTOMER" | "STAFF"; // Role của user (chỉ CUSTOMER hoặc STAFF, không ADMIN)
+  userRole?: "CUSTOMER" | "STAFF" | "ARTISAN"; // Role user từ backend
 }
 
 export default function ArtisanManagement() {
@@ -142,10 +142,9 @@ export default function ArtisanManagement() {
       createdAt: (a.createdAt as string) ?? "",
       userId: user?.id,
       userStatus: user?.status as "ACTIVE" | "INACTIVE" | undefined,
-      userRole:
-        user?.role === "STAFF" || user?.role === "CUSTOMER"
-          ? (user.role as "CUSTOMER" | "STAFF")
-          : undefined,
+      userRole: ["CUSTOMER", "STAFF", "ARTISAN"].includes(user?.role as string)
+        ? (user.role as "CUSTOMER" | "STAFF" | "ARTISAN")
+        : "ARTISAN",
     };
   };
 
@@ -156,7 +155,7 @@ export default function ArtisanManagement() {
       setFallbackNotice(null);
 
       try {
-        const { data } = await getAdminArtisans();
+        const { data } = await getAdminArtisans({ limit: 500 });
         const rawList = (data || []) as unknown[];
         setArtisans(rawList.map(mapApiToArtisan));
       } catch (adminErr: unknown) {
@@ -183,20 +182,13 @@ export default function ArtisanManagement() {
     fetchArtisans();
   }, []);
 
-  // Ẩn nghệ nhân đã chuyển role sang CUSTOMER hoặc STAFF (đã cập nhật thành công)
-  const artisansInScope = artisans.filter(
-    (a) => a.userRole !== "CUSTOMER" && a.userRole !== "STAFF",
-  );
-
   const provinceOptions = [
     ...provinces.map((p) => p.name),
-    ...Array.from(
-      new Set(artisansInScope.map((a) => a.location).filter(Boolean)),
-    ),
+    ...Array.from(new Set(artisans.map((a) => a.location).filter(Boolean))),
   ].filter(Boolean);
   const uniqueProvinces = Array.from(new Set(provinceOptions)).sort();
 
-  const filteredArtisans = artisansInScope.filter((artisan) => {
+  const filteredArtisans = artisans.filter((artisan) => {
     if (filter.location !== "all" && artisan.location !== filter.location)
       return false;
     if (filter.status !== "all" && artisan.status !== filter.status)
@@ -250,7 +242,7 @@ export default function ArtisanManagement() {
       workshopAddress: record.workshopAddress || "",
       provinceId: record.provinceId,
       userStatus: record.userStatus || "ACTIVE",
-      userRole: record.userRole || "CUSTOMER",
+      userRole: record.userRole || "ARTISAN",
     };
 
     if (fromDetail) {
@@ -266,20 +258,28 @@ export default function ArtisanManagement() {
     }
 
     try {
-      const artisanDetail = await getAdminArtisanById(parseInt(record.id));
+      let artisanDetail: { user?: { id?: number; status?: string; role?: string; dateOfBirth?: string }; province?: { id?: number }; dateOfBirth?: string; ethnicity?: string; heroSubtitle?: string; panoramaImageUrl?: string; images?: string | string[]; narrativeContent?: string };
+      try {
+        artisanDetail = await getAdminArtisanById(parseInt(record.id));
+      } catch {
+        const detail = await getAdminArtisanDetail(parseInt(record.id));
+        artisanDetail = { ...detail } as typeof artisanDetail;
+        const byLocation = provinces.find((p) => p.name === (detail as { location?: string }).location);
+        if (byLocation) editData.provinceId = byLocation.id;
+      }
       editData.userStatus =
         (artisanDetail.user?.status as "ACTIVE" | "INACTIVE") ||
         editData.userStatus;
-      editData.userId = artisanDetail.user?.id;
-      const userRole = (artisanDetail.user as { role?: string })?.role;
-      editData.userRole =
-        userRole === "STAFF" || userRole === "CUSTOMER" ? userRole : "CUSTOMER";
-      editData.provinceId = artisanDetail.province?.id ?? record.provinceId;
+      editData.userId = artisanDetail.user?.id ?? record.userId;
+      const userRole = artisanDetail.user?.role;
+      editData.userRole = ["CUSTOMER", "STAFF", "ARTISAN"].includes(userRole || "")
+        ? (userRole as "CUSTOMER" | "STAFF" | "ARTISAN")
+        : "ARTISAN";
+      editData.provinceId = (artisanDetail as { province?: { id?: number } }).province?.id ?? record.provinceId ?? editData.provinceId;
 
-      // dateOfBirth: ưu tiên artisan, fallback user, fallback từ age (nếu có fromDetail)
       let dateOfBirth =
         artisanDetail.dateOfBirth ||
-        (artisanDetail.user as { dateOfBirth?: string })?.dateOfBirth ||
+        artisanDetail.user?.dateOfBirth ||
         "";
       if (!dateOfBirth && fromDetail?.age != null) {
         const birthYear = new Date().getFullYear() - fromDetail.age;
@@ -334,7 +334,7 @@ export default function ArtisanManagement() {
       setCreateLoading(true);
 
       const payload: CreateArtisanRequest = {
-        userId: values.userId,
+        user: { id: values.userId },
         fullName:
           values.fullName?.trim() || selectedUser?.fullName || "Nghệ nhân",
         specialization: values.specialization?.trim() || "",
@@ -350,30 +350,56 @@ export default function ArtisanManagement() {
       if (values.panoramaImageUrl?.trim())
         payload.panoramaImageUrl = values.panoramaImageUrl.trim();
       if (values.ethnicity?.trim()) payload.ethnicity = values.ethnicity.trim();
-      if (values.dateOfBirth)
-        payload.dateOfBirth = dayjs(values.dateOfBirth).format("YYYY-MM-DD");
+      if (values.dateOfBirth) {
+        const dob = dayjs(values.dateOfBirth);
+        if (dob.isAfter(dayjs(), "day")) {
+          message.error("Ngày sinh phải trong quá khứ.");
+          setCreateLoading(false);
+          return;
+        }
+        if (dayjs().diff(dob, "year") < 16) {
+          message.error("Nghệ nhân phải ít nhất 16 tuổi.");
+          setCreateLoading(false);
+          return;
+        }
+        payload.dateOfBirth = dob.format("YYYY-MM-DD");
+      }
 
       if (values.images?.trim()) {
         const imgVal = values.images.trim();
-        payload.images = imgVal.startsWith("[")
-          ? imgVal
-          : imgVal
+        if (imgVal.startsWith("[")) {
+          try {
+            const parsed = JSON.parse(imgVal);
+            const arr = Array.isArray(parsed) ? parsed : [];
+            payload.images = arr.length > 0 ? JSON.stringify(arr) : undefined;
+          } catch {
+            const arr = imgVal
               .split(/[\n,]+/)
               .map((s: string) => s.trim())
               .filter(Boolean);
+            payload.images = arr.length > 0 ? JSON.stringify(arr) : undefined;
+          }
+        } else {
+          const arr = imgVal
+            .split(/[\n,]+/)
+            .map((s: string) => s.trim())
+            .filter(Boolean);
+          payload.images = arr.length > 0 ? JSON.stringify(arr) : undefined;
+        }
       }
 
       if (values.narrativeContent?.trim()) {
+        const nc = values.narrativeContent.trim();
         try {
-          JSON.parse(values.narrativeContent.trim());
-          payload.narrativeContent = values.narrativeContent.trim();
+          JSON.parse(nc);
+          payload.narrativeContent = nc;
         } catch {
           message.warning("Narrative content phải là JSON hợp lệ. Đã bỏ qua.");
         }
       }
 
       if (values.provinceId) {
-        payload.provinceId = Number(values.provinceId);
+        payload.province = { id: Number(values.provinceId) };
       }
 
       await createArtisan(payload);
@@ -384,7 +410,9 @@ export default function ArtisanManagement() {
     } catch (err: unknown) {
       if ((err as { errorFields?: unknown[] })?.errorFields) return;
       const msg = getApiErrorMessage(err);
+      const axiosErr = err as { response?: { data?: unknown } };
       console.error("[ArtisanManagement] createArtisan error:", err);
+      console.error("[ArtisanManagement] Backend response:", axiosErr.response?.data);
       message.error(msg || "Thêm nghệ nhân thất bại. Vui lòng thử lại.");
     } finally {
       setCreateLoading(false);
@@ -490,15 +518,13 @@ export default function ArtisanManagement() {
         | "ACTIVE"
         | "INACTIVE"
         | undefined;
-      const newUserRole = values.userRole as "CUSTOMER" | "STAFF" | undefined;
+      const newUserRole = values.userRole as "CUSTOMER" | "STAFF" | "ARTISAN" | undefined;
       const oldUserStatus = selectedArtisan.userStatus;
-      const oldUserRole = (selectedArtisan as Artisan & { userRole?: string })
-        ?.userRole;
+      const oldUserRole = (selectedArtisan as Artisan & { userRole?: string })?.userRole;
+      const oldR = oldUserRole || "ARTISAN";
+      const newR = newUserRole || "ARTISAN";
 
-      const roleChanged =
-        newUserRole &&
-        (newUserRole === "CUSTOMER" || newUserRole === "STAFF") &&
-        newUserRole !== oldUserRole;
+      const roleChanged = Boolean(newUserRole && newR !== oldR);
       const statusChanged = newUserStatus && newUserStatus !== oldUserStatus;
 
       // Cập nhật role/status TRƯỚC (đúng flow như UserManagement - PUT /api/admin/users/{id}/role, status)
@@ -507,11 +533,11 @@ export default function ArtisanManagement() {
           if (roleChanged && statusChanged) {
             await updateUserRoleAndStatus(
               userId,
-              newUserRole!,
+              newUserRole! as "CUSTOMER" | "STAFF" | "ARTISAN",
               newUserStatus!,
             );
           } else if (roleChanged) {
-            await updateUserRole(userId, newUserRole!);
+            await updateUserRole(userId, newUserRole! as "CUSTOMER" | "STAFF" | "ARTISAN");
           } else if (statusChanged) {
             await updateUserStatus(userId, newUserStatus!);
           }
@@ -528,8 +554,9 @@ export default function ArtisanManagement() {
         }
       }
 
-      // Khi đã chuyển role sang CUSTOMER/STAFF thì không cần cập nhật thông tin nghệ nhân
-      if (!roleChanged) {
+      // Chỉ bỏ qua update artisan khi chuyển role sang CUSTOMER/STAFF (không còn là nghệ nhân)
+      const skipArtisanUpdate = roleChanged && (newR === "CUSTOMER" || newR === "STAFF");
+      if (!skipArtisanUpdate) {
         try {
           await updateArtisan(artisanId, payload);
         } catch (err) {
@@ -559,16 +586,16 @@ export default function ArtisanManagement() {
 
   /** Thống kê tính từ danh sách artisans (đã loại trừ CUSTOMER/STAFF) */
   const stats = {
-    total: artisansInScope.length,
-    active: artisansInScope.filter((a) => a.status === "ACTIVE").length,
-    inactive: artisansInScope.filter((a) => a.status === "INACTIVE").length,
+    total: artisans.length,
+    active: artisans.filter((a) => a.status === "ACTIVE").length,
+    inactive: artisans.filter((a) => a.status === "INACTIVE").length,
     avgRating:
-      artisansInScope.length > 0
+      artisans.length > 0
         ? (
-            artisansInScope.reduce(
+            artisans.reduce(
               (sum, a) => sum + (a.averageRating || 0),
               0,
-            ) / artisansInScope.length
+            ) / artisans.length
           ).toFixed(1)
         : "0.0",
   };
@@ -1347,9 +1374,10 @@ export default function ArtisanManagement() {
           <Form.Item
             label="Vai trò tài khoản"
             name="userRole"
-            tooltip="Chỉ áp dụng nếu nghệ nhân có tài khoản user. Không thể chọn Admin."
+            tooltip="Vai trò từ backend: ARTISAN (mặc định), CUSTOMER, STAFF. Không thể chọn ADMIN."
           >
             <Select placeholder="Chọn vai trò">
+              <Select.Option value="ARTISAN">Nghệ nhân</Select.Option>
               <Select.Option value="CUSTOMER">Khách hàng</Select.Option>
               <Select.Option value="STAFF">Nhân viên</Select.Option>
             </Select>

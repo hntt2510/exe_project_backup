@@ -12,43 +12,44 @@ import {
   Input,
   Modal,
   Alert,
-  Tooltip,
   Table,
   Empty,
+  Spin,
 } from "antd";
 import {
   EyeOutlined,
   EnvironmentOutlined,
   TrophyOutlined,
-  TeamOutlined,
   UserOutlined,
-  StarOutlined,
   CalendarOutlined,
   HomeOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
 import PersonDetailCard from "../admin/PersonDetailCard";
 import ArtisanSummaryCards from "../admin/ArtisanSummaryCards";
-import { getAdminArtisans } from "../../services/adminApi";
-import { getArtisans, getProvinces } from "../../services/api";
+import {
+  getAdminArtisans,
+  getAdminArtisanDetail,
+  getTourSchedules,
+  type AdminTourSchedule,
+  type AdminArtisanDetail,
+} from "../../services/adminApi";
+import { getProvinces } from "../../services/api";
 import dayjs from "dayjs";
 
+/** Khớp Admin - field từ API /api/artisans/public */
 interface Artisan {
   id: string;
   name: string;
-  title: string;
   specialty: string;
   location: string;
   provinceId?: number;
-  experience: string;
-  tours: string[];
   status: "ACTIVE" | "INACTIVE";
   profileImageUrl?: string;
   bio?: string;
   workshopAddress?: string;
   totalTours?: number;
   averageRating?: number;
-  images?: string[];
   createdAt?: string;
 }
 
@@ -71,38 +72,33 @@ export default function ArtisanManagement() {
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedArtisan, setSelectedArtisan] = useState<Artisan | null>(null);
+  const [detailData, setDetailData] = useState<AdminArtisanDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [artisanSchedules, setArtisanSchedules] = useState<AdminTourSchedule[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
   const [provinces, setProvinces] = useState<{ id: number; name: string }[]>([]);
 
   const mapApiToArtisan = (item: unknown): Artisan => {
     const a = item as Record<string, unknown>;
     const province = a.province as { id?: number; name?: string } | undefined;
-    const provinceName = province?.name ?? (a.provinceName as string);
+    const user = a.user as { id?: number; avatarUrl?: string; status?: string } | undefined;
+    const provinceName = province?.name ?? (a.provinceName as string) ?? "";
     const provinceId = province?.id ?? (a.provinceId as number);
-    const totalCount = (a.totalTours as number) ?? (a.totalReviews as number) ?? 0;
     const isActive = a.isActive as boolean | undefined;
     const status = isActive === false ? "INACTIVE" : "ACTIVE";
-    const fullName = (a.fullName as string) ?? (a.name as string);
-    const specialization = (a.specialization as string) ?? (a.specialty as string);
-    const createdAt = (a.createdAt as string) ?? "";
-    const yearsSince = dayjs().diff(dayjs(createdAt), "year");
-    const experience = yearsSince > 0 ? `${yearsSince} năm` : "Mới";
     return {
       id: String(a.id),
-      name: fullName,
-      title: `Nghệ nhân ${specialization}`,
-      specialty: specialization,
-      location: provinceName || "Tây Nguyên",
+      name: (a.fullName as string) ?? (a.name as string) ?? "",
+      specialty: (a.specialization as string) ?? (a.specialty as string) ?? "",
+      location: provinceName,
       provinceId,
-      experience,
-      tours: totalCount > 0 ? [`${totalCount} tour`] : [],
       status: status as "ACTIVE" | "INACTIVE",
-      profileImageUrl: (a.profileImageUrl as string) ?? (a.avatarUrl as string),
+      profileImageUrl: (a.profileImageUrl as string) ?? (user?.avatarUrl as string) ?? "",
       bio: a.bio as string,
       workshopAddress: a.workshopAddress as string,
-      totalTours: totalCount,
+      totalTours: (a.totalTours as number) ?? 0,
       averageRating: (a.averageRating as number) ?? 0,
-      images: (a.images as string[]) ?? [],
-      createdAt,
+      createdAt: (a.createdAt as string) ?? "",
     };
   };
 
@@ -110,15 +106,9 @@ export default function ArtisanManagement() {
     try {
       setLoading(true);
       setError(null);
-      try {
-        const { data } = await getAdminArtisans();
-        const rawList = (data || []) as unknown[];
-        setArtisans(rawList.map(mapApiToArtisan));
-      } catch {
-        const raw = await getArtisans();
-        const apiArtisans = Array.isArray(raw) ? raw : [];
-        setArtisans(apiArtisans.map(mapApiToArtisan));
-      }
+      const { data } = await getAdminArtisans({ limit: 500 });
+      const rawList = (data || []) as unknown[];
+      setArtisans(rawList.map(mapApiToArtisan));
     } catch (err) {
       console.error("Error fetching artisans:", err);
       setError("Không thể tải dữ liệu nghệ nhân. Vui lòng thử lại sau.");
@@ -156,9 +146,61 @@ export default function ArtisanManagement() {
     return true;
   });
 
-  const handleViewDetail = (record: Artisan) => {
+  const handleViewDetail = async (record: Artisan) => {
     setSelectedArtisan(record);
     setDetailModalOpen(true);
+    setDetailData(null);
+    setArtisanSchedules([]);
+    const artisanId = Number(record.id);
+    if (isNaN(artisanId)) return;
+    setDetailLoading(true);
+    setScheduleLoading(true);
+    try {
+      const [detailRes, schedulesRes] = await Promise.all([
+        getAdminArtisanDetail(artisanId),
+        getTourSchedules({ limit: 500 }),
+      ]);
+      setDetailData(detailRes);
+      const forArtisan = (schedulesRes.data ?? []).filter((s) => {
+        const aid = s.tour?.artisan?.id ?? (s.tour as { artisanId?: number })?.artisanId;
+        return aid === artisanId;
+      });
+      forArtisan.sort((a, b) =>
+        dayjs(a.tourDate).valueOf() - dayjs(b.tourDate).valueOf()
+      );
+      setArtisanSchedules(forArtisan);
+    } catch (err) {
+      console.error("Error fetching artisan detail:", err);
+      message.error("Không thể tải chi tiết nghệ nhân");
+    } finally {
+      setDetailLoading(false);
+      setScheduleLoading(false);
+    }
+  };
+
+  const formatStartTime = (
+    st?: { hour?: number; minute?: number } | string
+  ): string => {
+    if (!st) return "-";
+    let h: number, m: number;
+    if (typeof st === "string") {
+      const parts = st.split(":").map(Number);
+      h = parts[0] ?? 0;
+      m = parts[1] ?? 0;
+    } else {
+      h = st.hour ?? 0;
+      m = st.minute ?? 0;
+    }
+    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    const ampm = h < 12 ? "AM" : "PM";
+    return `${String(hour12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
+  };
+
+  const scheduleStatusLabel: Record<string, string> = {
+    SCHEDULED: "Đã lên lịch",
+    CANCELLED: "Đã hủy",
+    COMPLETED: "Hoàn thành",
+    FULL: "Đã đầy",
   };
 
   const stats = {
@@ -193,7 +235,7 @@ export default function ArtisanManagement() {
               {record.name}
             </div>
             <div style={{ fontSize: 12, color: "#8B0000", fontWeight: 500 }}>
-              {record.title}
+              {record.specialty ? `Nghệ nhân ${record.specialty}` : "Nghệ nhân"}
             </div>
           </div>
         </div>
@@ -378,6 +420,7 @@ export default function ArtisanManagement() {
         onCancel={() => {
           setDetailModalOpen(false);
           setSelectedArtisan(null);
+          setDetailData(null);
         }}
         footer={[
           <Button
@@ -385,6 +428,7 @@ export default function ArtisanManagement() {
             onClick={() => {
               setDetailModalOpen(false);
               setSelectedArtisan(null);
+              setDetailData(null);
             }}
           >
             Đóng
@@ -392,47 +436,297 @@ export default function ArtisanManagement() {
         ]}
         width={800}
       >
-        {selectedArtisan && (
-          <PersonDetailCard
-            avatarUrl={selectedArtisan.profileImageUrl}
-            name={selectedArtisan.name}
-            subtitle={selectedArtisan.title}
-            status={selectedArtisan.status}
-            infoSections={[
-              {
-                rows: [
-                  { label: "Chuyên môn", value: selectedArtisan.specialty, icon: <TrophyOutlined /> },
-                  { label: "Địa điểm", value: selectedArtisan.location, icon: <EnvironmentOutlined /> },
-                  { label: "Địa chỉ xưởng", value: selectedArtisan.workshopAddress || "Chưa có", icon: <HomeOutlined /> },
-                  {
-                    label: "Kinh nghiệm / Đánh giá",
-                    value: (
-                      <>
-                        {selectedArtisan.experience} · {(selectedArtisan.averageRating || 0).toFixed(1)}/5 (
-                        {selectedArtisan.totalTours || 0} tour)
-                      </>
-                    ),
-                    icon: <CalendarOutlined />,
-                  },
-                ],
-              },
-              {
-                title: "Giới thiệu",
-                rows: [{ label: "", value: selectedArtisan.bio || "Chưa có" }],
-              },
-            ]}
-            extraContent={
-              selectedArtisan.images && selectedArtisan.images.length > 0 ? (
-                <Card size="small" title="Hình ảnh" style={{ marginTop: 20, borderRadius: 12, border: "1px solid #e8e8e8" }} styles={{ body: { padding: 16 } }}>
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                    {selectedArtisan.images.map((img, i) => (
-                      <img key={i} src={img} alt="" style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 8 }} />
-                    ))}
+        {detailLoading ? (
+          <div style={{ textAlign: "center", padding: 48 }}>
+            <Spin tip="Đang tải chi tiết..." />
+          </div>
+        ) : (detailData || selectedArtisan) && (
+          <>
+            <PersonDetailCard
+              avatarUrl={
+                detailData?.profileImageUrl ?? selectedArtisan?.profileImageUrl
+              }
+              name={detailData?.fullName ?? selectedArtisan?.name ?? ""}
+              subtitle={
+                detailData?.heroSubtitle
+                  ? detailData.heroSubtitle
+                  : detailData?.specialization
+                    ? `Nghệ nhân ${detailData.specialization}`
+                    : selectedArtisan?.specialty
+                      ? `Nghệ nhân ${selectedArtisan.specialty}`
+                      : "Nghệ nhân"
+              }
+              status={selectedArtisan?.status}
+              infoSections={[
+                {
+                  rows: [
+                    {
+                      label: "Chuyên môn",
+                      value:
+                        detailData?.specialization ??
+                        selectedArtisan?.specialty ??
+                        "",
+                      icon: <TrophyOutlined />,
+                    },
+                    {
+                      label: "Địa điểm",
+                      value:
+                        detailData?.location ?? selectedArtisan?.location ?? "",
+                      icon: <EnvironmentOutlined />,
+                    },
+                    {
+                      label: "Dân tộc",
+                      value: detailData?.ethnicity || "—",
+                      icon: <UserOutlined />,
+                    },
+                    {
+                      label: "Tuổi",
+                      value:
+                        detailData?.age != null ? String(detailData.age) : "—",
+                      icon: <UserOutlined />,
+                    },
+                    {
+                      label: "Địa chỉ xưởng",
+                      value:
+                        selectedArtisan?.workshopAddress || "Chưa có",
+                      icon: <HomeOutlined />,
+                    },
+                    {
+                      label: "Đánh giá",
+                      value: `${(selectedArtisan?.averageRating ?? 0).toFixed(1)}/5 · ${detailData?.relatedTours?.length ?? selectedArtisan?.totalTours ?? 0} tour`,
+                      icon: <TrophyOutlined />,
+                    },
+                  ],
+                },
+                {
+                  title: "Giới thiệu",
+                  rows: [
+                    {
+                      label: "",
+                      value:
+                        detailData?.bio ?? selectedArtisan?.bio ?? "Chưa có",
+                    },
+                  ],
+                },
+                ...(detailData?.relatedTours && detailData.relatedTours.length > 0
+                  ? [
+                      {
+                        title: "Tour liên quan",
+                        rows: detailData.relatedTours.slice(0, 5).map((t) => ({
+                          label: t.title,
+                          value: `${t.location} · ${t.price.toLocaleString("vi-VN")}đ`,
+                          icon: <TrophyOutlined />,
+                        })),
+                      },
+                    ]
+                  : []),
+                ...(detailData?.relatedCultureItems &&
+                detailData.relatedCultureItems.length > 0
+                  ? [
+                      {
+                        title: "Văn hoá liên quan",
+                        rows: detailData.relatedCultureItems
+                          .slice(0, 3)
+                          .map((c) => ({
+                            label: c.title,
+                            value: c.description || "—",
+                          })),
+                      },
+                    ]
+                  : []),
+              ]}
+              extraContent={
+                detailData ? (
+                  <div style={{ marginTop: 24 }}>
+                    {detailData.panoramaImageUrl && (
+                      <Card
+                        size="small"
+                        style={{
+                          marginBottom: 20,
+                          borderRadius: 12,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <img
+                          src={detailData.panoramaImageUrl}
+                          alt="Panorama"
+                          style={{
+                            width: "100%",
+                            maxHeight: 240,
+                            objectFit: "cover",
+                            display: "block",
+                          }}
+                        />
+                      </Card>
+                    )}
+                    {detailData.images && detailData.images.length > 0 && (
+                      <Card
+                        size="small"
+                        style={{ marginBottom: 20, borderRadius: 12 }}
+                        styles={{ body: { padding: 16 } }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: "#8c8c8c",
+                            marginBottom: 12,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Hình ảnh
+                        </div>
+                        <Row gutter={[8, 8]}>
+                          {detailData.images.slice(0, 6).map((url, i) => (
+                            <Col xs={12} sm={8} key={i}>
+                              <img
+                                src={url}
+                                alt={`Ảnh ${i + 1}`}
+                                style={{
+                                  width: "100%",
+                                  aspectRatio: 1,
+                                  objectFit: "cover",
+                                  borderRadius: 8,
+                                }}
+                              />
+                            </Col>
+                          ))}
+                        </Row>
+                      </Card>
+                    )}
+                    {detailData.narrativeContent &&
+                      detailData.narrativeContent.length > 0 && (
+                        <div style={{ marginBottom: 20 }}>
+                          {detailData.narrativeContent.map((item, idx) => (
+                            <Card
+                              key={idx}
+                              size="small"
+                              style={{
+                                marginBottom: 12,
+                                borderRadius: 12,
+                              }}
+                              styles={{ body: { padding: 20 } }}
+                            >
+                              {item.title && (
+                                <div
+                                  style={{
+                                    fontSize: 16,
+                                    fontWeight: 600,
+                                    color: "#1a1a1a",
+                                    marginBottom: 8,
+                                  }}
+                                >
+                                  {item.title}
+                                </div>
+                              )}
+                              {item.imageUrl && (
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.title}
+                                  style={{
+                                    width: "100%",
+                                    maxHeight: 200,
+                                    objectFit: "cover",
+                                    borderRadius: 8,
+                                    marginBottom: 8,
+                                  }}
+                                />
+                              )}
+                              <div
+                                style={{
+                                  fontSize: 14,
+                                  color: "#595959",
+                                  lineHeight: 1.6,
+                                }}
+                              >
+                                {item.content}
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
                   </div>
-                </Card>
-              ) : undefined
-            }
-          />
+                ) : undefined
+              }
+            />
+            <Card
+              size="small"
+              title={
+                <span>
+                  <CalendarOutlined style={{ marginRight: 8 }} />
+                  Lịch làm việc
+                </span>
+              }
+              style={{ marginTop: 20, borderRadius: 12, border: "1px solid #e8e8e8" }}
+              styles={{ body: { padding: 16 } }}
+            >
+              {scheduleLoading ? (
+                <div style={{ textAlign: "center", padding: 32 }}>
+                  <Spin tip="Đang tải lịch làm việc..." />
+                </div>
+              ) : artisanSchedules.length === 0 ? (
+                <div style={{ padding: 24, textAlign: "center", color: "#8c8c8c" }}>
+                  Chưa có lịch làm việc
+                </div>
+              ) : (
+                <Table
+                  dataSource={artisanSchedules}
+                  rowKey="id"
+                  size="small"
+                  pagination={false}
+                  columns={[
+                    {
+                      title: "Tour",
+                      key: "tour",
+                      render: (_, r) => r.tour?.title ?? "-",
+                    },
+                    {
+                      title: "Ngày",
+                      dataIndex: "tourDate",
+                      key: "tourDate",
+                      width: 110,
+                      render: (d: string) =>
+                        d ? dayjs(d).format("DD/MM/YYYY") : "-",
+                    },
+                    {
+                      title: "Giờ",
+                      key: "startTime",
+                      width: 90,
+                      render: (_, r) => formatStartTime(r.startTime),
+                    },
+                    {
+                      title: "Slots",
+                      key: "slots",
+                      width: 90,
+                      render: (_, r) =>
+                        `${r.bookedSlots ?? 0}/${r.maxSlots ?? 0}`,
+                    },
+                    {
+                      title: "Trạng thái",
+                      dataIndex: "status",
+                      key: "status",
+                      width: 110,
+                      render: (s: string) => (
+                        <Tag
+                          color={
+                            s === "SCHEDULED"
+                              ? "blue"
+                              : s === "COMPLETED"
+                                ? "green"
+                                : s === "CANCELLED"
+                                  ? "red"
+                                  : "default"
+                          }
+                        >
+                          {scheduleStatusLabel[s] ?? s}
+                        </Tag>
+                      ),
+                    },
+                  ]}
+                />
+              )}
+            </Card>
+          </>
         )}
       </Modal>
     </Space>
