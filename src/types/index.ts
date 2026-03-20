@@ -337,7 +337,6 @@ export interface User {
   phone?: string;
   avatarUrl?: string;
   dateOfBirth?: string;
-  gender?: "MALE" | "FEMALE" | "OTHER";
   role: "CUSTOMER" | "ADMIN" | "STAFF" | "ARTISAN";
   status: string;
   createdAt: string;

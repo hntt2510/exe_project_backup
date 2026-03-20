@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowLeft, Eye, MapPin, Calendar, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, MapPin, Calendar, ChevronRight, X } from "lucide-react";
 import { getBlogPostById } from "../../../services/api";
 import type { BlogPost } from "../../../types";
 import "../../../styles/components/blog/_blog-detail.scss";
 
 const FALLBACK_IMG = "/dauvao.png";
+
+export interface NarrativeSection {
+  title: string;
+  content: string;
+  imageUrl: string;
+}
 
 function formatDate(dateStr?: string): string {
   if (!dateStr) return "";
@@ -16,67 +22,70 @@ function formatDate(dateStr?: string): string {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     });
   } catch {
     return "";
   }
 }
 
-/** Trích xuất nội dung HTML từ blocksJson (Editor.js format: data.text) hoặc content */
-function extractHtmlContent(post: BlogPost): string {
-  if (post.blocksJson) {
-    try {
-      const blocks = JSON.parse(post.blocksJson) as Array<{
-        type?: string;
-        content?: string;
-        data?: { text?: string };
-      }>;
-      if (!Array.isArray(blocks)) return post.content;
-
-      const parts = blocks.map((b) => {
-        if (!b || typeof b !== "object") return "";
-
-        // Editor.js: paragraph/heading có data.text
-        if (b.data?.text) return b.data.text;
-
-        // Fallback: một số format dùng content
-        if (b.content) return b.content;
-
-        return "";
-      });
-
-      const html = parts.filter(Boolean).join("\n\n");
-      return html || post.content;
-    } catch {
-      return post.content;
-    }
+/** Parse narrativeContent JSON: [{title, content, imageUrl}, ...] */
+function parseNarrativeContent(raw?: string): NarrativeSection[] {
+  if (!raw?.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (x): x is NarrativeSection =>
+          x && typeof x.title === "string" && typeof x.content === "string"
+      )
+      .map((x) => ({
+        title: x.title,
+        content: x.content,
+        imageUrl: x.imageUrl || "",
+      }));
+  } catch {
+    return [];
   }
-  // Ưu tiên narrativeContent nếu có (nội dung kể chuyện)
-  if (post.narrativeContent?.trim()) return post.narrativeContent;
-  return post.content;
 }
 
-/** Parse chuỗi images (phân cách bởi dấu phẩy hoặc JSON array) */
-function parseImages(imagesStr?: string): string[] {
-  if (!imagesStr?.trim()) return [];
-  const trimmed = imagesStr.trim();
-  if (trimmed.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === "string") : [];
-    } catch {
-      // fallback to comma split
+/** Thu thập tất cả ảnh: images field (single/comma) + narrativeContent.imageUrl */
+function collectImages(post: BlogPost): string[] {
+  const urls: string[] = [];
+
+  // images field: single URL hoặc comma-separated
+  if (post.images?.trim()) {
+    const trimmed = post.images.trim();
+    if (trimmed.startsWith("[")) {
+      try {
+        const arr = JSON.parse(trimmed);
+        if (Array.isArray(arr))
+          arr.forEach((u) => typeof u === "string" && urls.push(u));
+      } catch {
+        urls.push(trimmed);
+      }
+    } else {
+      trimmed.split(",").forEach((s) => {
+        const u = s.trim();
+        if (u) urls.push(u);
+      });
     }
   }
-  return trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+
+  // narrativeContent imageUrl
+  const sections = parseNarrativeContent(post.narrativeContent);
+  sections.forEach((s) => {
+    if (s.imageUrl && !urls.includes(s.imageUrl)) urls.push(s.imageUrl);
+  });
+
+  return urls;
 }
 
 export default function BlogDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -121,21 +130,13 @@ export default function BlogDetailPage() {
   const featuredImg = post.featuredImageUrl || FALLBACK_IMG;
   const publishedDate = formatDate(post.publishedAt || post.createdAt);
   const provinceName = post.province?.name ?? post.provinceName;
-  const contentHtml = extractHtmlContent(post);
-  const images = parseImages(post.images);
-  const viewCount = post.viewCount ?? 0;
-  const hasPanorama = Boolean(post.panoramaImageUrl?.trim());
-
-  const sectionMotion = {
-    initial: { opacity: 0, y: 24 },
-    whileInView: { opacity: 1, y: 0 },
-    viewport: { once: true, margin: "-60px" },
-    transition: { duration: 0.5 },
-  };
+  const narrativeSections = parseNarrativeContent(post.narrativeContent);
+  const hasNarrative = narrativeSections.length > 0;
+  const images = collectImages(post);
 
   return (
     <div className="blog-detail">
-      {/* Hero banner - featuredImageUrl + title + heroSubtitle */}
+      {/* Hero */}
       <motion.section
         className="blog-detail-hero"
         initial={{ opacity: 0 }}
@@ -143,12 +144,13 @@ export default function BlogDetailPage() {
         transition={{ duration: 0.6 }}
       >
         <motion.img
-          className="blog-detail-hero__bg"
+          className="blog-detail-hero__bg blog-detail-hero__bg--clickable"
           src={featuredImg}
           alt={post.title}
           initial={{ scale: 1.05 }}
           animate={{ scale: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
+          onClick={() => setLightboxImage(featuredImg)}
           onError={(e) => {
             (e.target as HTMLImageElement).src = FALLBACK_IMG;
           }}
@@ -165,6 +167,15 @@ export default function BlogDetailPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
+          {provinceName && (
+            <Link
+              to={`/tours?province=${post.province?.id || ""}`}
+              className="blog-detail-hero__location"
+            >
+              <MapPin size={16} />
+              {provinceName}
+            </Link>
+          )}
           <h1 className="blog-detail-hero__title">{post.title}</h1>
           {post.heroSubtitle && (
             <p className="blog-detail-hero__subtitle">{post.heroSubtitle}</p>
@@ -182,31 +193,11 @@ export default function BlogDetailPage() {
                 {publishedDate}
               </span>
             )}
-            <span className="blog-detail-hero__meta-item">
-              <Eye size={14} />
-              {viewCount} lượt xem
-            </span>
           </div>
         </motion.div>
       </motion.section>
 
-      {/* Panorama full-width (panoramaImageUrl) */}
-      {hasPanorama && (
-        <motion.section
-          className="blog-detail-panorama"
-          {...sectionMotion}
-        >
-          <img
-            src={post.panoramaImageUrl!}
-            alt={`${post.title} - Toàn cảnh`}
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
-          />
-        </motion.section>
-      )}
-
-      {/* Article body - layout 2 cột: nội dung + sidebar */}
+      {/* Body */}
       <motion.div
         className="blog-detail-body-wrap"
         initial={{ opacity: 0, y: 24 }}
@@ -219,15 +210,65 @@ export default function BlogDetailPage() {
             <ChevronRight size={14} />
             <Link to="/blog">Blog</Link>
             <ChevronRight size={14} />
-            <span className="blog-detail-body__breadcrumb-current">{post.title}</span>
+            <span className="blog-detail-body__breadcrumb-current">
+              {post.title}
+            </span>
           </nav>
 
-          <div
-            className="blog-detail-body__content prose"
-            dangerouslySetInnerHTML={{ __html: contentHtml }}
-          />
+          {/* Intro content (HTML) - luôn hiện trước */}
+          {post.content && (
+            <div
+              className="blog-detail-body__content prose blog-detail-body__content--intro"
+              dangerouslySetInnerHTML={{ __html: post.content }}
+            />
+          )}
 
-          {/* Gallery - bố cục ảnh thông minh theo số lượng */}
+          {/* Narrative sections - layout đẹp: ảnh + tiêu đề + nội dung */}
+          {hasNarrative && (
+            <div className="blog-detail-narrative">
+              {narrativeSections.map((section, idx) => (
+                <motion.section
+                  key={idx}
+                  className={`blog-detail-narrative__item blog-detail-narrative__item--${idx % 2 === 0 ? "image-left" : "image-right"}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
+                >
+                  {section.imageUrl && (
+                    <div
+                      className="blog-detail-narrative__img"
+                      onClick={() => setLightboxImage(section.imageUrl)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) =>
+                        e.key === "Enter" && setLightboxImage(section.imageUrl)
+                      }
+                    >
+                      <img
+                        src={section.imageUrl}
+                        alt={section.title}
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = FALLBACK_IMG;
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="blog-detail-narrative__text">
+                    <h3 className="blog-detail-narrative__title">
+                      {section.title}
+                    </h3>
+                    <p className="blog-detail-narrative__content">
+                      {section.content}
+                    </p>
+                  </div>
+                </motion.section>
+              ))}
+            </div>
+          )}
+
+          {/* Gallery */}
           {images.length > 0 && (
             <motion.div
               className={`blog-detail-body__gallery blog-detail-gallery--count-${images.length <= 8 ? images.length : "many"}`}
@@ -241,11 +282,17 @@ export default function BlogDetailPage() {
                 {images.map((url, idx) => (
                   <motion.div
                     key={idx}
-                    className="blog-detail-body__gallery-item"
+                    className="blog-detail-body__gallery-item blog-detail-body__gallery-item--clickable"
                     initial={{ opacity: 0, scale: 0.95 }}
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.4, delay: idx * 0.05 }}
+                    onClick={() => setLightboxImage(url)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && setLightboxImage(url)
+                    }
                   >
                     <img
                       src={url}
@@ -262,7 +309,7 @@ export default function BlogDetailPage() {
           )}
         </article>
 
-        {/* Sidebar - thông tin tỉnh (province đầy đủ từ API) */}
+        {/* Sidebar - Địa điểm nổi bật */}
         {post.province && (
           <motion.aside
             className="blog-detail-sidebar"
@@ -271,6 +318,12 @@ export default function BlogDetailPage() {
             transition={{ duration: 0.5, delay: 0.3 }}
           >
             <div className="blog-detail-sidebar__card">
+              <div className="blog-detail-sidebar__location-header">
+                <MapPin size={20} className="blog-detail-sidebar__location-icon" />
+                <span className="blog-detail-sidebar__location-label">
+                  Địa điểm
+                </span>
+              </div>
               {post.province.thumbnailUrl && (
                 <div className="blog-detail-sidebar__thumb">
                   <img
@@ -287,10 +340,14 @@ export default function BlogDetailPage() {
                 {post.province.name}
               </h3>
               {post.province.region && (
-                <p className="blog-detail-sidebar__region">{post.province.region}</p>
+                <p className="blog-detail-sidebar__region">
+                  {post.province.region}
+                </p>
               )}
               {post.province.description && (
-                <p className="blog-detail-sidebar__desc">{post.province.description}</p>
+                <p className="blog-detail-sidebar__desc">
+                  {post.province.description}
+                </p>
               )}
               {post.province.bestSeason && (
                 <div className="blog-detail-sidebar__meta">
@@ -307,10 +364,48 @@ export default function BlogDetailPage() {
                   <strong>Lưu ý văn hóa:</strong> {post.province.culturalTips}
                 </div>
               )}
+              <Link
+                to={`/tours?province=${post.province.id}`}
+                className="blog-detail-sidebar__cta"
+              >
+                Xem tour tại {post.province.name}
+              </Link>
             </div>
           </motion.aside>
         )}
       </motion.div>
+
+      {/* Lightbox - phóng to ảnh khi click */}
+      <AnimatePresence>
+        {lightboxImage && (
+          <motion.div
+            className="blog-detail-lightbox"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setLightboxImage(null)}
+          >
+            <button
+              type="button"
+              className="blog-detail-lightbox__close"
+              onClick={() => setLightboxImage(null)}
+              aria-label="Đóng"
+            >
+              <X size={28} />
+            </button>
+            <motion.img
+              src={lightboxImage}
+              alt="Phóng to"
+              className="blog-detail-lightbox__img"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

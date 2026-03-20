@@ -5,9 +5,10 @@ import Footer from "./Footer";
 export default function Layout() {
   const { pathname } = useLocation();
   const isTourDetail = /^\/tours\/\d+$/.test(pathname);
+  const isProfile = pathname === "/profile";
 
   return (
-    <div className={`main-layout ${isTourDetail ? 'main-layout--tour-detail' : ''}`}>
+    <div className={`main-layout ${isTourDetail ? 'main-layout--tour-detail' : ''} ${isProfile ? 'main-layout--profile' : ''}`}>
       <Navbar />
       <main className="main-layout__content">
         <Outlet />

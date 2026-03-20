@@ -54,17 +54,21 @@
   background: $color-gray-50;
 }
 
-// Hero banner
+// Hero banner - cao hơn để ảnh nổi bật
 .blog-detail-hero {
   position: relative;
   width: 100%;
-  min-height: 420px;
+  min-height: 560px;
   overflow: hidden;
   display: flex;
   align-items: flex-end;
 
   @media (max-width: $breakpoint-md) {
-    min-height: 320px;
+    min-height: 420px;
+  }
+
+  @media (max-width: $breakpoint-sm) {
+    min-height: 360px;
   }
 
   &__bg {
@@ -73,7 +77,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center 30%;
+    object-position: center center;
   }
 
   &__overlay {
@@ -85,6 +89,11 @@
       rgba(0, 0, 0, 0.4) 50%,
       rgba(0, 0, 0, 0.15) 100%
     );
+    pointer-events: none; // cho phép click qua để mở lightbox ảnh
+  }
+
+  &__bg--clickable {
+    cursor: pointer;
   }
 
   &__back {
@@ -119,6 +128,27 @@
 
     @media (max-width: $breakpoint-sm) {
       padding: $spacing-2xl $spacing-lg;
+    }
+  }
+
+  &__location {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding: 0.35rem 0.85rem;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    border-radius: $radius-full;
+    color: $color-white;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    text-decoration: none;
+    margin-bottom: $spacing-md;
+    transition: background $transition-base;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.35);
+      color: $color-white;
     }
   }
 
@@ -179,12 +209,94 @@
   }
 }
 
-// Main layout: content + sidebar
+// Narrative sections - alternating image/text layout
+.blog-detail-narrative {
+  margin: $spacing-2xl 0;
+}
+
+.blog-detail-narrative__item {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-2xl;
+  align-items: center;
+  margin-bottom: $spacing-3xl;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  @media (max-width: $breakpoint-md) {
+    grid-template-columns: 1fr;
+    gap: $spacing-lg;
+  }
+
+  &--image-right {
+    .blog-detail-narrative__img {
+      order: 2;
+    }
+    .blog-detail-narrative__text {
+      order: 1;
+    }
+
+    @media (max-width: $breakpoint-md) {
+      .blog-detail-narrative__img {
+        order: 1;
+      }
+      .blog-detail-narrative__text {
+        order: 2;
+      }
+    }
+  }
+}
+
+.blog-detail-narrative__img {
+  border-radius: $radius-xl;
+  overflow: hidden;
+  box-shadow: $shadow-md;
+  aspect-ratio: 4/3;
+  background: $color-gray-100;
+  cursor: pointer;
+  transition: transform $transition-base;
+
+  &:hover {
+    transform: scale(1.02);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.blog-detail-narrative__text {
+  padding: $spacing-md 0;
+}
+
+.blog-detail-narrative__title {
+  font-family: 'iCiel Lodestone', 'Georgia', serif;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+  margin: 0 0 $spacing-md;
+  line-height: 1.3;
+}
+
+.blog-detail-narrative__content {
+  font-family: 'Afacad', 'Be Vietnam Pro', sans-serif;
+  font-size: $font-size-base;
+  line-height: 1.8;
+  color: $color-gray-700;
+  margin: 0;
+}
+
+// Main layout: content + sidebar (content rộng hơn)
 .blog-detail-body-wrap {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1.8fr) 280px;
   gap: $spacing-2xl;
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: $spacing-2xl $spacing-lg $spacing-4xl;
 
@@ -358,6 +470,10 @@
     &:hover img {
       transform: scale(1.05);
     }
+
+    &--clickable {
+      cursor: pointer;
+    }
   }
 }
 
@@ -440,6 +556,26 @@
   }
 }
 
+.blog-detail-sidebar__location-header {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  margin-bottom: $spacing-md;
+}
+
+.blog-detail-sidebar__location-icon {
+  color: $color-primary;
+  flex-shrink: 0;
+}
+
+.blog-detail-sidebar__location-label {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: $color-gray-500;
+}
+
 .blog-detail-sidebar__thumb {
   width: 100%;
   aspect-ratio: 16/9;
@@ -505,4 +641,69 @@
     display: block;
     margin-bottom: 4px;
   }
+}
+
+.blog-detail-sidebar__cta {
+  display: block;
+  margin-top: $spacing-lg;
+  padding: $spacing-md $spacing-lg;
+  background: $color-primary;
+  color: $color-white;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  text-align: center;
+  border-radius: $radius-md;
+  text-decoration: none;
+  transition: background $transition-base;
+
+  &:hover {
+    background: $color-primary-hover;
+    color: $color-white;
+  }
+}
+
+// Lightbox - phóng to ảnh khi click
+.blog-detail-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-2xl;
+  cursor: zoom-out;
+}
+
+.blog-detail-lightbox__close {
+  position: absolute;
+  top: $spacing-lg;
+  right: $spacing-lg;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: $color-white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background $transition-base;
+  z-index: 10;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
+.blog-detail-lightbox__img {
+  max-width: 95vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: $radius-md;
+  box-shadow: $shadow-xl;
+  cursor: default;
 }

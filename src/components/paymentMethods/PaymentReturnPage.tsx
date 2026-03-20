@@ -31,12 +31,21 @@ export default function PaymentReturnPage() {
 
         // Call appropriate payment return API
         if (isVnpayReturn) {
+          if (!queryString || !queryString.includes('vnp_')) {
+            setError('Thiếu thông tin từ VNPay. Vui lòng thử lại từ trang thanh toán.');
+            return;
+          }
           try {
             console.log('[PaymentReturn] VNPay return, processing...');
-            const response = await getVnpayReturn(queryString);
-            paymentResponse = response;
-            paymentStatus = response.status?.toUpperCase() || 'FAILED';
-            console.log('[PaymentReturn] VNPay payment response:', response);
+            const { redirectUrl, paymentResponse: vnpayResult } = await getVnpayReturn(queryString);
+            paymentResponse = vnpayResult;
+            paymentStatus = vnpayResult.status?.toUpperCase() || 'FAILED';
+            console.log('[PaymentReturn] VNPay payment response:', vnpayResult);
+
+            if (redirectUrl) {
+              window.location.href = redirectUrl;
+              return;
+            }
           } catch (err) {
             console.error('[PaymentReturn] VNPay return error:', err);
             const errorMsg = axios.isAxiosError(err)
@@ -68,6 +77,24 @@ export default function PaymentReturnPage() {
         if (!paymentResponse) {
           setError('Không nhận được kết quả từ cổng thanh toán');
           return;
+        }
+
+        // Fallback: lấy bookingCode từ sessionStorage (lastBooking) nếu VNPay không trả vnp_OrderInfo
+        let effectiveBookingCode = paymentResponse.bookingCode;
+        if (!effectiveBookingCode && isVnpayReturn) {
+          try {
+            const lastBooking = sessionStorage.getItem('lastBooking');
+            if (lastBooking) {
+              const parsed = JSON.parse(lastBooking) as { bookingCode?: string; tourId?: number };
+              effectiveBookingCode = parsed.bookingCode ?? '';
+              if (parsed.tourId) tourId = parsed.tourId;
+            }
+          } catch {
+            // ignore
+          }
+        }
+        if (effectiveBookingCode) {
+          paymentResponse = { ...paymentResponse, bookingCode: effectiveBookingCode };
         }
 
         // Fetch booking details to get complete info

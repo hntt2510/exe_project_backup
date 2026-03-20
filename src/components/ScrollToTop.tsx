@@ -9,13 +9,14 @@ function scrollToTop() {
 
 /**
  * Scroll lên đầu trang mỗi khi navigate sang route mới.
- * Dùng requestAnimationFrame + setTimeout để xử lý lazy-loaded components
- * render sau khi pathname đổi.
+ * Bỏ qua khi có hash #dang-ky-tu-van (để HomePage scroll tới section Đăng ký tư vấn).
  */
 export default function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
 
   useEffect(() => {
+    if (hash === '#dang-ky-tu-van') return;
+
     scrollToTop();
     const raf = requestAnimationFrame(() => {
       scrollToTop();
@@ -26,7 +27,7 @@ export default function ScrollToTop() {
       cancelAnimationFrame(raf);
       clearTimeout(t);
     };
-  }, [pathname]);
+  }, [pathname, hash]);
 
   return null;
 }

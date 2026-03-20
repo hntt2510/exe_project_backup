@@ -18,6 +18,7 @@ import BookingSidebar from './BookingSidebar';
 import GallerySection from './GallerySection';
 import FourBlockGrid from './FourBlockGrid';
 import ReviewsSection from './ReviewsSection';
+import CTABanner from './CTABanner';
 
 export default function TourDetail() {
   const { id } = useParams<{ id: string }>();
@@ -167,6 +168,8 @@ export default function TourDetail() {
               sectionRef={() => {}}
             />
           )}
+
+          <CTABanner tour={tour} province={effectiveProvince} />
         </div>
       </div>
     </div>

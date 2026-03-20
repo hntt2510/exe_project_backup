@@ -53,7 +53,6 @@ interface User {
   phone?: string;
   avatarUrl?: string;
   dateOfBirth?: string;
-  gender?: "MALE" | "FEMALE" | "OTHER";
   role: "CUSTOMER" | "STAFF" | "ADMIN" | "ARTISAN";
   status: "ACTIVE" | "INACTIVE";
   createdAt: string;
@@ -70,12 +69,6 @@ const roleConfig: Record<string, { label: string; color: string }> = {
 const statusConfig: Record<string, { label: string; color: string }> = {
   ACTIVE: { label: "Hoạt động", color: "green" },
   INACTIVE: { label: "Không hoạt động", color: "default" },
-};
-
-const genderMap: Record<string, string> = {
-  MALE: "Nam",
-  FEMALE: "Nữ",
-  OTHER: "Khác",
 };
 
 export default function UserManagement() {
@@ -135,7 +128,6 @@ export default function UserManagement() {
             phone: user.phone,
             avatarUrl: user.avatarUrl,
             dateOfBirth: user.dateOfBirth,
-            gender: user.gender,
             role: (user.role || "CUSTOMER") as User["role"],
             status: user.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
             createdAt: user.createdAt
@@ -365,13 +357,6 @@ export default function UserManagement() {
         record.dateOfBirth
           ? new Date(record.dateOfBirth).toLocaleDateString("vi-VN")
           : "-",
-    },
-    {
-      title: "Giới tính",
-      key: "gender",
-      width: 100,
-      render: (_, record) =>
-        record.gender ? genderMap[record.gender] || record.gender : "-",
     },
     {
       title: "Thao tác",
@@ -605,17 +590,6 @@ export default function UserManagement() {
                           "vi-VN",
                         )
                       : "Chưa có",
-                  },
-                  {
-                    label: "Giới tính",
-                    value:
-                      selectedUser.gender === "MALE"
-                        ? "Nam"
-                        : selectedUser.gender === "FEMALE"
-                          ? "Nữ"
-                          : selectedUser.gender === "OTHER"
-                            ? "Khác"
-                            : "Chưa có",
                   },
                 ],
               },

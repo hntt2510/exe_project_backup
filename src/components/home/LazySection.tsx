@@ -6,12 +6,14 @@ interface LazySectionProps {
   rootMargin?: string;
   /** minHeight placeholder khi chưa load */
   minHeight?: number;
+  /** id cho wrapper - dùng để scroll tới section (vd: #dang-ky-tu-van) */
+  id?: string;
 }
 
 /**
  * Chỉ render children khi section sắp vào viewport - giảm work ban đầu, mượt hơn khi scroll
  */
-export default function LazySection({ children, rootMargin = '150px', minHeight = 200 }: LazySectionProps) {
+export default function LazySection({ children, rootMargin = '150px', minHeight = 200, id }: LazySectionProps) {
   const [inView, setInView] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -30,7 +32,7 @@ export default function LazySection({ children, rootMargin = '150px', minHeight 
   }, [rootMargin]);
 
   return (
-    <div ref={ref} style={{ minHeight: inView ? undefined : minHeight }}>
+    <div ref={ref} id={id} style={{ minHeight: inView ? undefined : minHeight }}>
       {inView && children}
     </div>
   );

@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Eye } from "lucide-react";
 import type { BlogPost } from "../../types";
 import "../../styles/components/blog/_blog-card.scss";
 
@@ -26,9 +25,9 @@ function formatDate(dateStr?: string): string {
 }
 
 function getExcerpt(content: string, maxLen: number): string {
-  const text = content.replace(/\s+/g, " ").trim();
-  if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen).trim() + "...";
+  const stripped = content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  if (stripped.length <= maxLen) return stripped;
+  return stripped.slice(0, maxLen).trim() + "...";
 }
 
 export default function BlogCard({ post }: Props) {
@@ -54,13 +53,11 @@ export default function BlogCard({ post }: Props) {
         <h3 className="blog-card__title">{post.title}</h3>
         <p className="blog-card__excerpt">{excerpt}</p>
         <div className="blog-card__meta">
-          {post.provinceName && (
-            <span className="blog-card__badge">{post.provinceName}</span>
+          {(post.province?.name ?? post.provinceName) && (
+            <span className="blog-card__badge">
+              {post.province?.name ?? post.provinceName}
+            </span>
           )}
-          <span className="blog-card__views">
-            <Eye size={12} />
-            {post.viewCount}
-          </span>
           {publishedDate && (
             <span className="blog-card__date">{publishedDate}</span>
           )}

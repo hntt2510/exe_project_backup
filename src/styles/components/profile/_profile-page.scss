@@ -4,6 +4,11 @@
 @use '../../variables' as *;
 @use '../../mixins' as mixins;
 
+// Override layout overflow để sidebar sticky hoạt động (overflow-x: hidden phá sticky)
+.main-layout--profile .main-layout__content {
+  overflow-x: visible;
+}
+
 .profile-page {
   max-width: 1400px;
   width: 100%;

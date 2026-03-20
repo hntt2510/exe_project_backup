@@ -98,9 +98,9 @@ const Login = () => {
       // Lưu token vào localStorage
       persistAuthSession(response);
 
-      // Fallback: nếu response không có avatarUrl, fetch profile để đồng bộ
-      if (!response.avatarUrl && response.userId) {
-        syncUserInfoFromProfile(response.userId).catch(() => {});
+      // Đồng bộ avatar & thông tin từ profile (đảm bảo avatar lưu lại sau khi login)
+      if (response.userId) {
+        await syncUserInfoFromProfile(response.userId);
       }
 
       // Lưu thông tin nhớ tài khoản
@@ -153,8 +153,9 @@ const Login = () => {
       const response = await authGoogleLogin({ idToken });
       persistAuthSession(response);
 
-      if (!response.avatarUrl && response.userId) {
-        syncUserInfoFromProfile(response.userId).catch(() => {});
+      // Đồng bộ avatar & thông tin từ profile (đảm bảo avatar lưu lại sau khi login)
+      if (response.userId) {
+        await syncUserInfoFromProfile(response.userId);
       }
 
       message.success("Đăng nhập Google thành công!");
