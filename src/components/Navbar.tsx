@@ -63,28 +63,33 @@ export default function Navbar() {
     }
   };
 
+  const refreshUserInfo = () => {
+    const token = localStorage.getItem("accessToken");
+    setIsLoggedIn(Boolean(token));
+    if (!token) {
+      setUserInfo(null);
+      return;
+    }
+    const raw = localStorage.getItem("userInfo");
+    if (!raw) {
+      setUserInfo(null);
+      return;
+    }
+    try {
+      setUserInfo(JSON.parse(raw) as UserInfo);
+    } catch (error) {
+      console.error("[Navbar] Failed to parse userInfo:", error);
+      setUserInfo(null);
+    }
+  };
+
   useEffect(() => {
-    const handleStorage = () => {
-      const token = localStorage.getItem("accessToken");
-      setIsLoggedIn(Boolean(token));
-      if (!token) {
-        setUserInfo(null);
-        return;
-      }
-      const raw = localStorage.getItem("userInfo");
-      if (!raw) {
-        setUserInfo(null);
-        return;
-      }
-      try {
-        setUserInfo(JSON.parse(raw) as UserInfo);
-      } catch (error) {
-        console.error("[Navbar] Failed to parse userInfo:", error);
-        setUserInfo(null);
-      }
+    window.addEventListener("storage", refreshUserInfo);
+    window.addEventListener("auth-login", refreshUserInfo);
+    return () => {
+      window.removeEventListener("storage", refreshUserInfo);
+      window.removeEventListener("auth-login", refreshUserInfo);
     };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   const getInitials = (name?: string) => {

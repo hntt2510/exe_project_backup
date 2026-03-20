@@ -151,15 +151,67 @@ export const getPaymentById = async (id: number): Promise<CreatePaymentResponse>
   return response.data.data;
 };
 
+/** Parse VNPay params từ URL query string */
+export function parseVnpayParams(queryString: string): {
+  bookingCode: string;
+  status: 'PAID' | 'FAILED';
+  vnpResponseCode: string;
+  amount: number;
+} {
+  const params = new URLSearchParams(queryString);
+  const vnpOrderInfo = params.get('vnp_OrderInfo') || params.get('vnp_Orderinfo') || '';
+  const bookingCode = vnpOrderInfo.replace(/^Thanh toan tour\s+/i, '').trim();
+  const vnpResponseCode = params.get('vnp_ResponseCode') || '';
+  const vnpAmount = parseInt(params.get('vnp_Amount') || '0', 10);
+  return {
+    bookingCode,
+    status: vnpResponseCode === '00' ? 'PAID' : 'FAILED',
+    vnpResponseCode,
+    amount: vnpAmount / 100,
+  };
+}
+
 /**
  * GET /api/payments/vnpay/return
- * VNPay payment return callback (browser redirect).
+ * Backend trả 302 redirect (success) hoặc 200 plain text (failure), KHÔNG trả JSON.
+ * Gọi backend để xử lý + verify, sau đó FE redirect theo kết quả.
  */
-export const getVnpayReturn = async (queryString: string): Promise<CreatePaymentResponse> => {
-  const response = await api.get<ApiResponse<CreatePaymentResponse>>(
-    `/api/payments/vnpay/return?${queryString}`,
-  );
-  return response.data.data;
+export const getVnpayReturn = async (
+  queryString: string,
+): Promise<{ redirectUrl?: string; paymentResponse: CreatePaymentResponse }> => {
+  const parsed = parseVnpayParams(queryString);
+  const fallbackResponse: CreatePaymentResponse = {
+    id: 0,
+    bookingId: 0,
+    bookingCode: parsed.bookingCode,
+    transactionId: '',
+    paymentMethod: 'VNPAY',
+    amount: parsed.amount,
+    status: parsed.status,
+    gatewayTransactionId: '',
+    paymentUrl: '',
+    paidAt: null,
+    createdAt: '',
+  };
+
+  try {
+    const response = await api.get<unknown>(`/api/payments/vnpay/return?${queryString}`, {
+      maxRedirects: 0,
+      validateStatus: (s) => s === 200 || s === 302,
+    });
+
+    if (response.status === 302) {
+      const loc = response.headers.location;
+      const redirectUrl = typeof loc === 'string' ? loc : Array.isArray(loc) ? loc[0] : undefined;
+      if (redirectUrl) {
+        return { redirectUrl, paymentResponse: { ...fallbackResponse, status: 'PAID' } };
+      }
+    }
+
+    return { paymentResponse: { ...fallbackResponse, status: 'FAILED' } };
+  } catch (err) {
+    return { paymentResponse: fallbackResponse };
+  }
 };
 
 /**

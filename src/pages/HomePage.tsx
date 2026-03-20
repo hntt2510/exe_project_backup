@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
     HeroSection,
     LazyMapSection,
@@ -15,6 +16,8 @@ import { getHomePageData } from '../services/api';
 import type { HomePageResponse } from '../types';
 
 export default function HomePage() {
+    const { hash } = useLocation();
+
     // Chỉ hiển thị dữ liệu từ API
     const [data, setData] = useState<HomePageResponse>({
         provinces: [],
@@ -27,6 +30,20 @@ export default function HomePage() {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // Scroll tới section Đăng ký tư vấn khi có hash #dang-ky-tu-van
+    useEffect(() => {
+        if (hash !== '#dang-ky-tu-van') return;
+        const scrollToSection = () => {
+            const el = document.getElementById('dang-ky-tu-van');
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        };
+        scrollToSection();
+        const t = setTimeout(scrollToSection, 200);
+        return () => clearTimeout(t);
+    }, [hash]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -90,7 +107,7 @@ export default function HomePage() {
             <LazySection minHeight={350}>
               <WhyChooseSection />
             </LazySection>
-            <LazySection minHeight={450}>
+            <LazySection id="dang-ky-tu-van" minHeight={450}>
               <LeadFormSection />
             </LazySection>
         </main>

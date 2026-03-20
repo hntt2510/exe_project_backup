@@ -196,6 +196,11 @@
     flex-wrap: wrap;
   }
 
+  &__hero-link {
+    text-decoration: none;
+    display: inline-flex;
+  }
+
   &__hero-btn {
     display: inline-flex !important;
     align-items: center;
@@ -753,6 +758,11 @@
     gap: variables.$spacing-md;
     justify-content: center;
     flex-wrap: wrap;
+  }
+
+  &__cta-link {
+    text-decoration: none;
+    display: inline-flex;
   }
 
   &__cta-btn {

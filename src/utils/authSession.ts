@@ -28,7 +28,7 @@ export const persistAuthSession = (response: AuthLoginResponse) => {
 
 /**
  * Đồng bộ userInfo (đặc biệt avatarUrl) từ profile API.
- * Gọi sau khi đăng nhập (OAuth) khi response không có avatarUrl.
+ * Gọi sau khi đăng nhập để đảm bảo avatar và thông tin profile được lưu đúng.
  */
 export const syncUserInfoFromProfile = async (userId: number): Promise<void> => {
   try {
@@ -39,9 +39,11 @@ export const syncUserInfoFromProfile = async (userId: number): Promise<void> => 
     const updated = {
       ...parsed,
       fullName: profile.fullName || parsed.fullName,
-      avatarUrl: profile.avatarUrl || parsed.avatarUrl,
+      avatarUrl: profile.avatarUrl || parsed.avatarUrl || "",
+      phone: profile.phone ?? parsed.phone,
     };
     localStorage.setItem("userInfo", JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent("auth-login"));
   } catch {
     // ignore - token có thể chưa sẵn sàng
   }

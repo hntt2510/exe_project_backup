@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, ShoppingBag, BookOpen, Ticket } from "lucide-react";
 import Breadcrumbs from "../Breadcrumbs";
@@ -44,7 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "voucher", label: "Ví Voucher", icon: <Ticket size={18} /> },
 ];
 
-const SCROLL_OFFSET = 120; // navbar + sticky nav height buffer
+const SCROLL_OFFSET = 120; // navbar + buffer
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -61,43 +61,50 @@ export default function ProfilePage() {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
 
-  // Section refs
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const isScrollingRef = useRef(false);
 
-  /* ---------- Scroll spy ---------- */
-  const handleScroll = useCallback(() => {
-    if (isScrollingRef.current) return;
-
-    const scrollY = window.scrollY + SCROLL_OFFSET + 40;
-    let current = "overview";
-
-    for (const item of NAV_ITEMS) {
-      const el = sectionRefs.current[item.id];
-      if (el && el.offsetTop <= scrollY) {
-        current = item.id;
-      }
-    }
-    setActiveSection(current);
-  }, []);
-
+  /* ---------- Scroll spy: IntersectionObserver ---------- */
   useEffect(() => {
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
+    const ids = NAV_ITEMS.map((i) => i.id);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (isScrollingRef.current) return;
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .map((e) => ({
+            id: (e.target as HTMLElement).id.replace("section-", ""),
+            top: e.boundingClientRect.top,
+          }))
+          .filter((x) => ids.includes(x.id));
+        if (visible.length === 0) return;
+        const topmost = visible.reduce((a, b) => (a.top < b.top ? a : b));
+        setActiveSection(topmost.id);
+      },
+      { root: null, rootMargin: `-${SCROLL_OFFSET}px 0px -50% 0px`, threshold: 0 }
+    );
 
-  /* ---------- Scroll to section ---------- */
+    const raf = requestAnimationFrame(() => {
+      ids.forEach((id) => {
+        const el = sectionRefs.current[id];
+        if (el) observer.observe(el);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
+  }, [loading]);
+
+  /* ---------- Navigate to section ---------- */
   const scrollToSection = (id: string) => {
     const el = sectionRefs.current[id];
     if (!el) return;
 
     isScrollingRef.current = true;
     setActiveSection(id);
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    const top = el.offsetTop - SCROLL_OFFSET;
-    window.scrollTo({ top, behavior: "smooth" });
-
-    // Re-enable scroll spy after animation
     setTimeout(() => {
       isScrollingRef.current = false;
     }, 800);
@@ -169,7 +176,6 @@ export default function ProfilePage() {
             fullName: parsed.fullName,
             avatarUrl: parsed.avatarUrl || "",
             dateOfBirth: "",
-            gender: "OTHER",
             role: parsed.role,
             status: "ACTIVE",
             createdAt: parsed.createdAt || new Date().toISOString(),

@@ -52,12 +52,6 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   INACTIVE: { label: "Không hoạt động", color: "default" },
 };
 
-const genderMap: Record<string, string> = {
-  MALE: "Nam",
-  FEMALE: "Nữ",
-  OTHER: "Khác",
-};
-
 interface StaffUser {
   key: string;
   id: string;
@@ -67,7 +61,6 @@ interface StaffUser {
   phone?: string;
   avatarUrl?: string;
   dateOfBirth?: string;
-  gender?: "MALE" | "FEMALE" | "OTHER";
   role: "STAFF" | "ADMIN";
   status: "ACTIVE" | "INACTIVE";
   createdAt: string;
@@ -124,7 +117,6 @@ export default function StaffManagement() {
           phone: u.phone,
           avatarUrl: u.avatarUrl,
           dateOfBirth: u.dateOfBirth,
-          gender: u.gender,
           role: "STAFF" as StaffUser["role"],
           status: u.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
           createdAt: u.createdAt
@@ -341,13 +333,6 @@ export default function StaffManagement() {
         record.dateOfBirth
           ? new Date(record.dateOfBirth).toLocaleDateString("vi-VN")
           : "-",
-    },
-    {
-      title: "Giới tính",
-      key: "gender",
-      width: 100,
-      render: (_, record) =>
-        record.gender ? genderMap[record.gender] || record.gender : "-",
     },
     {
       title: "Thao tác",
@@ -581,17 +566,6 @@ export default function StaffManagement() {
                           "vi-VN",
                         )
                       : "Chưa có",
-                  },
-                  {
-                    label: "Giới tính",
-                    value:
-                      selectedStaff.gender === "MALE"
-                        ? "Nam"
-                        : selectedStaff.gender === "FEMALE"
-                          ? "Nữ"
-                          : selectedStaff.gender === "OTHER"
-                            ? "Khác"
-                            : "Chưa có",
                   },
                 ],
               },

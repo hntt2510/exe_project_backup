@@ -24,7 +24,7 @@ import type {
 // API Base Configuration
 // Must use ngrok URL directly - backend requires auth and redirects to OAuth2/Google.
 // Vite proxy cannot bypass this CORS requirement.
-export const API_BASE_URL = "https://exe-1-k8ma.onrender.com/";
+export const API_BASE_URL = "https://legally-actual-mollusk.ngrok-free.app/";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

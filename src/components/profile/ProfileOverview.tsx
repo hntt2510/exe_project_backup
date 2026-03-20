@@ -12,12 +12,6 @@ interface ProfileOverviewProps {
   vouchers: UserVoucher[];
 }
 
-const GENDER_MAP: Record<string, string> = {
-  MALE: 'Nam',
-  FEMALE: 'Nữ',
-  OTHER: 'Khác',
-};
-
 function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return '—';
   const d = new Date(dateStr);
@@ -39,7 +33,6 @@ export default function ProfileOverview({
 
   const infoRows = [
     { label: 'Họ và tên', value: user.fullName },
-    { label: 'Giới tính', value: GENDER_MAP[user.gender] || '—' },
     { label: 'Ngày sinh', value: formatDate(user.dateOfBirth) },
     { label: 'Điện thoại', value: user.phone || '—' },
     { label: 'Email', value: user.email },

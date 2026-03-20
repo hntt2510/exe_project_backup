@@ -139,67 +139,70 @@ const GoogleAuthCallback = () => {
   const location = useLocation();
 
   useEffect(() => {
-    const payload = getPayloadFromUrl(location.search, location.hash);
+    const run = async () => {
+      const payload = getPayloadFromUrl(location.search, location.hash);
 
-    if (!payload.success || !payload.accessToken) {
-      clearAuthSession();
-      const errorMsg = payload.message || "Đăng nhập Google thất bại";
-      message.error(errorMsg);
-      navigate(`/login?oauth_error=${encodeURIComponent(errorMsg)}`, { replace: true });
-      return;
-    }
+      if (!payload.success || !payload.accessToken) {
+        clearAuthSession();
+        const errorMsg = payload.message || "Đăng nhập Google thất bại";
+        message.error(errorMsg);
+        navigate(`/login?oauth_error=${encodeURIComponent(errorMsg)}`, { replace: true });
+        return;
+      }
 
-    const jwt = decodeJwtPayload(payload.accessToken);
-    if (jwt?.exp && jwt.exp * 1000 <= Date.now()) {
-      clearAuthSession();
-      const errorMsg = "Token đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
-      message.error(errorMsg);
-      navigate(`/login?oauth_error=${encodeURIComponent(errorMsg)}`, { replace: true });
-      return;
-    }
+      const jwt = decodeJwtPayload(payload.accessToken);
+      if (jwt?.exp && jwt.exp * 1000 <= Date.now()) {
+        clearAuthSession();
+        const errorMsg = "Token đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+        message.error(errorMsg);
+        navigate(`/login?oauth_error=${encodeURIComponent(errorMsg)}`, { replace: true });
+        return;
+      }
 
-    persistAuthSession({
-      accessToken: payload.accessToken,
-      refreshToken: payload.refreshToken || "google_oauth",
-      tokenType: payload.tokenType,
-      userId: payload.userId || 0,
-      username: payload.username,
-      email: payload.email,
-      role: payload.role,
-      expiresIn: payload.expiresIn,
-      avatarUrl: payload.avatarUrl,
-    });
-
-    // OAuth redirect không có avatarUrl → fetch profile để đồng bộ
-    const userId = payload.userId || 0;
-    if (userId) {
-      syncUserInfoFromProfile(userId).catch(() => {});
-    }
-
-    const storedToken = localStorage.getItem("accessToken");
-    if (!storedToken) {
-      clearAuthSession();
-      const errorMsg = "Không thể lưu phiên đăng nhập. Vui lòng thử lại.";
-      message.error(errorMsg);
-      navigate(`/login?oauth_error=${encodeURIComponent(errorMsg)}`, { replace: true });
-      return;
-    }
-
-    message.success("Đăng nhập Google thành công!");
-
-    // Ưu tiên redirect về trang thanh toán (từ cookie) nếu có
-    const redirect = consumeLoginRedirect();
-    if (redirect?.path) {
-      navigate(redirect.path, {
-        replace: true,
-        state: redirect.state ? {
-          contactInfo: redirect.state.contactInfo,
-          bookingDetails: redirect.state.bookingDetails,
-        } : undefined,
+      persistAuthSession({
+        accessToken: payload.accessToken,
+        refreshToken: payload.refreshToken || "google_oauth",
+        tokenType: payload.tokenType,
+        userId: payload.userId || 0,
+        username: payload.username,
+        email: payload.email,
+        role: payload.role,
+        expiresIn: payload.expiresIn,
+        avatarUrl: payload.avatarUrl,
       });
-    } else {
-      navigate("/", { replace: true });
-    }
+
+      // Đồng bộ avatar & thông tin từ profile (đảm bảo avatar lưu lại sau khi login)
+      const userId = payload.userId || 0;
+      if (userId) {
+        await syncUserInfoFromProfile(userId);
+      }
+
+      const storedToken = localStorage.getItem("accessToken");
+      if (!storedToken) {
+        clearAuthSession();
+        const errorMsg = "Không thể lưu phiên đăng nhập. Vui lòng thử lại.";
+        message.error(errorMsg);
+        navigate(`/login?oauth_error=${encodeURIComponent(errorMsg)}`, { replace: true });
+        return;
+      }
+
+      message.success("Đăng nhập Google thành công!");
+
+      // Ưu tiên redirect về trang thanh toán (từ cookie) nếu có
+      const redirect = consumeLoginRedirect();
+      if (redirect?.path) {
+        navigate(redirect.path, {
+          replace: true,
+          state: redirect.state ? {
+            contactInfo: redirect.state.contactInfo,
+            bookingDetails: redirect.state.bookingDetails,
+          } : undefined,
+        });
+      } else {
+        navigate("/", { replace: true });
+      }
+    };
+    run();
   }, [location.hash, location.search, navigate]);
 
   return (

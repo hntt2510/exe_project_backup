@@ -1,4 +1,5 @@
 import { Typography, Button } from 'antd';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
     Map, Heart, BookOpen, Users, Mail, Compass, 
@@ -121,13 +122,17 @@ const About: React.FC = () => {
                             từ những tour trải nghiệm thực tế đến kho tàng kiến thức về 54 dân tộc anh em.
                         </Paragraph>
                         <div className="about-page__hero-actions">
-                            <Button type="primary" size="large" className="about-page__hero-btn">
-                                Khám phá ngay
-                                <ArrowRight size={20} />
-                            </Button>
-                            <Button size="large" className="about-page__hero-btn about-page__hero-btn--outline">
-                                Xem tour
-                            </Button>
+                            <Link to="/blog" className="about-page__hero-link">
+                                <Button type="primary" size="large" className="about-page__hero-btn">
+                                    Khám phá ngay
+                                    <ArrowRight size={20} />
+                                </Button>
+                            </Link>
+                            <Link to="/tours" className="about-page__hero-link">
+                                <Button size="large" className="about-page__hero-btn about-page__hero-btn--outline">
+                                    Xem tour
+                                </Button>
+                            </Link>
                         </div>
                     </motion.div>
                 </div>
@@ -428,13 +433,17 @@ const About: React.FC = () => {
                             Hàng trăm tour trải nghiệm và bài học văn hóa đang chờ bạn.
                         </Paragraph>
                         <div className="about-page__cta-actions">
-                            <Button type="primary" size="large" className="about-page__cta-btn">
-                                Đăng ký miễn phí
-                                <ArrowRight size={20} />
-                            </Button>
-                            <Button size="large" className="about-page__cta-btn about-page__cta-btn--ghost">
-                                Tìm hiểu thêm
-                            </Button>
+                            <Link to="/#dang-ky-tu-van" className="about-page__cta-link">
+                                <Button type="primary" size="large" className="about-page__cta-btn">
+                                    Đăng ký miễn phí
+                                    <ArrowRight size={20} />
+                                </Button>
+                            </Link>
+                            <Link to="/tours" className="about-page__cta-link">
+                                <Button size="large" className="about-page__cta-btn about-page__cta-btn--ghost">
+                                    Tìm hiểu thêm
+                                </Button>
+                            </Link>
                         </div>
                     </motion.div>
                 </div>

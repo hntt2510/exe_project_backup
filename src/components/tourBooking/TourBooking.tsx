@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Breadcrumbs from '../Breadcrumbs';
 import BookingSteps from './BookingSteps';
@@ -21,9 +21,20 @@ export default function TourBooking() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [tour, setTour] = useState<Tour | null>(null);
   const [province, setProvince] = useState<Province | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Đọc số người tham gia từ URL (?participants=N)
+  const participantsFromUrl = searchParams.get('participants');
+  const initialParticipants = (() => {
+    if (participantsFromUrl) {
+      const n = parseInt(participantsFromUrl, 10);
+      if (!Number.isNaN(n) && n >= 1) return n;
+    }
+    return 2;
+  })();
 
   // Restore state when coming back from Step 2
   const incoming = location.state as BookingLocationState | undefined;
@@ -44,7 +55,7 @@ export default function TourBooking() {
     }
     return {
       departureDate: null,
-      participants: 2,
+      participants: initialParticipants,
       specialRequirements: '',
       tourType: 'individual',
       notes: '',

@@ -208,7 +208,7 @@ export default function HeroSection() {
             <button
               type="button"
               className="hero-section__button hero-section__button--primary"
-              onClick={() => navigate('/tours')}
+              onClick={() => navigate('/blog')}
             >
               Khám phá ngay
               <ArrowRight size={18} />
@@ -216,9 +216,9 @@ export default function HeroSection() {
             <button
               type="button"
               className="hero-section__button hero-section__button--secondary"
-              onClick={() => navigate('/about')}
+              onClick={() => navigate('/tours')}
             >
-              Về chúng tôi
+              Xem tour
             </button>
           </div>
         </div>

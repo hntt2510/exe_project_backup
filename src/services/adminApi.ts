@@ -515,7 +515,6 @@ export interface AdminUser {
   fullName: string;
   avatarUrl?: string;
   dateOfBirth?: string;
-  gender?: "MALE" | "FEMALE" | "OTHER";
   role: "CUSTOMER" | "ADMIN" | "STAFF" | "ARTISAN";
   status: "ACTIVE" | "INACTIVE";
   createdAt: string;
@@ -1208,7 +1207,6 @@ export interface AdminArtisan {
     fullName: string;
     avatarUrl?: string;
     dateOfBirth?: string;
-    gender?: string;
     role: string;
     status: string;
     createdAt?: string;

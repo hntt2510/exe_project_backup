@@ -11,7 +11,6 @@ export interface UserProfile {
   fullName: string;
   avatarUrl: string;
   dateOfBirth: string;
-  gender: "MALE" | "FEMALE" | "OTHER";
   role: "CUSTOMER" | "ADMIN" | "STAFF" | "ARTISAN";
   status: string;
   createdAt: string;
@@ -153,7 +152,6 @@ export const getCurrentUser = async (): Promise<UserProfile> => {
     fullName: (raw.fullName as string) ?? "",
     avatarUrl: (raw.avatarUrl as string) ?? "",
     dateOfBirth: raw.dateOfBirth ? String(raw.dateOfBirth).split("T")[0] : "",
-    gender: (raw.gender as UserProfile["gender"]) ?? "OTHER",
     role: (raw.role as UserProfile["role"]) ?? "CUSTOMER",
     status: (raw.status as string) ?? "ACTIVE",
     createdAt: (raw.createdAt as string) ?? "",
@@ -282,13 +280,9 @@ export function filterOutLearnVouchers<T extends { code?: string }>(vouchers: T[
   return vouchers.filter((v) => !isLearnVoucher(v.code ?? ""));
 }
 
-/** Lấy voucher đã claim của user. Loại bỏ voucher từ Learn. */
-export const getUserVouchers = async (): Promise<UserVoucher[]> => {
-  const res = await api.get<ApiResponse<unknown[]>>("/api/vouchers/me");
-  const raw = res.data.data ?? [];
-  const mapped = raw.map((item) => {
-    const v = item as Record<string, unknown>;
-    return {
+/** Map raw voucher object sang UserVoucher */
+function mapRawToUserVoucher(v: Record<string, unknown>): UserVoucher {
+  return {
     id: Number(v.id ?? 0),
     code: (v.code as string) ?? "",
     discountType: (v.discountType as string) ?? "PERCENTAGE",
@@ -299,16 +293,31 @@ export const getUserVouchers = async (): Promise<UserVoucher[]> => {
     validFrom: (v.validFrom as string) ?? "",
     validUntil: (v.validUntil as string) ?? "",
     isActive: (v.isActive as boolean) ?? true,
-    createdAt: (v as any).claimedAt ?? (v.createdAt as string) ?? "",
+    createdAt: (v.claimedAt as string) ?? (v.createdAt as string) ?? "",
     usedAt: (v.usedAt as string | null | undefined) ?? null,
-    };
-  });
-  return filterOutLearnVouchers(mapped);
+  };
+}
+
+/** API /api/vouchers/my trả về { userVouchers: [], systemVouchers: [] } */
+interface VouchersMyResponse {
+  userVouchers?: Array<Record<string, unknown>>;
+  systemVouchers?: Array<Record<string, unknown>>;
+}
+
+/** Lấy voucher từ /api/vouchers/my — userVouchers + systemVouchers */
+export const getUserVouchers = async (): Promise<UserVoucher[]> => {
+  const res = await api.get<ApiResponse<VouchersMyResponse>>("/api/vouchers/my");
+  const data = (res.data.data ?? {}) as VouchersMyResponse;
+  const userList = data.userVouchers ?? [];
+  const systemList = data.systemVouchers ?? [];
+  const userMapped = userList.map((v) => mapRawToUserVoucher(v));
+  const systemMapped = systemList.map((v) => mapRawToUserVoucher(v));
+  return [...userMapped, ...systemMapped];
 };
 
-/** Gộp voucher từ my-claimed (quiz) và my (hệ thống). Hiển thị tất cả với source. */
+/** Gộp voucher từ my-claimed (quiz) và my (hệ thống + learn). Hiển thị tất cả với source. */
 export const getAllUserVouchers = async (): Promise<UserVoucherWithSource[]> => {
-  const [claimed, system] = await Promise.all([
+  const [claimed, fromMy] = await Promise.all([
     import("./learnApi").then((m) => m.getMyClaimedVouchers()).catch(() => []),
     getUserVouchers().catch(() => [] as UserVoucher[]),
   ]);
@@ -316,6 +325,7 @@ export const getAllUserVouchers = async (): Promise<UserVoucherWithSource[]> => 
   const seen = new Set<string>();
   const result: UserVoucherWithSource[] = [];
 
+  // Thêm voucher từ my-claimed (quiz) trước
   for (const v of claimed) {
     const code = (v.code ?? "").toUpperCase();
     if (seen.has(code)) continue;
@@ -338,11 +348,13 @@ export const getAllUserVouchers = async (): Promise<UserVoucherWithSource[]> => 
     });
   }
 
-  for (const v of system) {
+  // Thêm voucher từ /api/vouchers/my (hệ thống + learn chưa có trong claimed)
+  for (const v of fromMy) {
     const code = (v.code ?? "").toUpperCase();
     if (seen.has(code)) continue;
     seen.add(code);
-    result.push({ ...v, source: "SYSTEM" as const });
+    const source: VoucherSource = isLearnVoucher(v.code ?? "") ? "LEARN" : "SYSTEM";
+    result.push({ ...v, source });
   }
 
   return result;
