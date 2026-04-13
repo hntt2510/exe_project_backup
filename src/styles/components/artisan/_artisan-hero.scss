@@ -39,25 +39,26 @@
     min-height: 0;
   }
 
-  // ── full-width image ──
   &__img {
     width: 100%;
     height: auto;
     min-height: 280px;
     display: block;
     object-fit: cover;
-    object-position: center top;
+    // Neo vùng sáng (tam giác trắng) cao hơn trong khung — khớp overlay chữ
+    object-position: center 28%;
 
     @media (min-width: $breakpoint-md) {
       min-height: 380px;
+      object-position: center 26%;
     }
 
     @media (min-width: $breakpoint-lg) {
       min-height: 0;
+      object-position: center 24%;
     }
   }
 
-  // ── text overlay sits on the natural light area at top ──
   &__overlay {
     position: absolute;
     top: 0;
@@ -67,69 +68,85 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    // Căn trên: cụm chữ + nút nằm trong band trắng, không bị kéo xuống giữa ảnh
+    justify-content: flex-start;
     text-align: center;
-    padding: calc(var(--navbar-h, 88px) + 1rem) $spacing-md $spacing-lg;
     z-index: 2;
     line-height: normal;
-    // Gradient overlay nhẹ để text dễ đọc trên nền phức tạp
+    box-sizing: border-box;
+    padding-top: calc(var(--navbar-h, 72px) + clamp(0.35rem, 2vmin, 1.1rem));
+    padding-left: clamp(1rem, 4vw, 2rem);
+    padding-right: clamp(1rem, 4vw, 2rem);
+    padding-bottom: clamp(2rem, 12vmin, 5rem);
     background: linear-gradient(
       to bottom,
-      rgba(255, 255, 255, 0.4) 0%,
-      rgba(255, 255, 255, 0.15) 50%,
-      transparent 100%
+      rgba(255, 255, 255, 0.32) 0%,
+      rgba(255, 255, 255, 0.1) 48%,
+      transparent 78%
     );
 
     @media (min-width: $breakpoint-md) {
-      padding: calc(var(--navbar-h, 88px) + 1.5rem) $spacing-xl $spacing-xl;
+      padding-top: calc(var(--navbar-h, 80px) + clamp(0.5rem, 2.5vmin, 1.35rem));
+      padding-left: clamp(1.25rem, 5vw, 3rem);
+      padding-right: clamp(1.25rem, 5vw, 3rem);
       background: linear-gradient(
         to bottom,
-        rgba(255, 255, 255, 0.25) 0%,
-        transparent 60%
+        rgba(255, 255, 255, 0.26) 0%,
+        rgba(255, 255, 255, 0.07) 42%,
+        transparent 72%
       );
     }
   }
 
+  &__inner {
+    width: 100%;
+    max-width: min(46rem, 94vw);
+    margin-inline: auto;
+    box-sizing: border-box;
+    // Lệch nhẹ sang trái cho cân với tam giác trắng trong ảnh + giữ offset lên trên
+    transform: translate(
+      clamp(-0.85rem, -2.2vw, -0.2rem),
+      clamp(-0.5rem, -2.5vmin, -0.15rem)
+    );
+  }
+
   &__title {
     font-family: 'iCiel Lodestone', 'Georgia', serif;
-    font-size: clamp(1.25rem, 5vw, 3.5rem);
     font-weight: $font-weight-bold;
     color: $color-primary;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: $spacing-sm;
-    line-height: 1.2;
+    letter-spacing: 0.04em;
+    margin: 0 auto $spacing-md;
+    line-height: 1.12;
     text-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
-    word-break: break-word;
+    word-break: normal;
+    overflow-wrap: normal;
+    hyphens: none;
+    // Luôn một dòng — co chữ theo vw để không tràn màn hẹp
+    white-space: nowrap;
+    font-size: clamp(0.62rem, 2.35vw + 0.42rem, 3.75rem);
+    max-width: 100%;
 
     @media (min-width: $breakpoint-md) {
-      font-size: clamp(2rem, 4vw, 3.5rem);
       margin-bottom: $spacing-md;
-      text-shadow: 0 1px 4px rgba(255, 255, 255, 0.95);
     }
   }
 
   &__subtitle {
-    max-width: 620px;
-    font-family: 'Afacad Italic', 'Afacad', sans-serif;
-    font-style: italic;
-    font-size: clamp(0.8rem, 2.5vw, $font-size-lg);
-    color: $color-text-secondary;
-    line-height: 1.6;
-    margin-bottom: $spacing-lg;
-    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
-
-    @media (max-width: $breakpoint-sm) {
-      margin-bottom: $spacing-md;
-      -webkit-line-clamp: 3;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
+    margin: 0 auto $spacing-md;
+    font-family: 'Afacad', 'Be Vietnam Pro', sans-serif;
+    font-style: normal;
+    font-weight: 400;
+    color: #1f2937;
+    line-height: 1.65;
+    text-wrap: pretty;
+    word-break: normal;
+    // Đoạn dài, cỡ chữ body chuẩn đọc (≈16–20px desktop)
+    font-size: clamp(0.95rem, 1.35vw + 0.4rem, 1.25rem);
+    max-width: min(48rem, 100%);
 
     @media (min-width: $breakpoint-md) {
-      font-size: clamp($font-size-sm, 1.4vw, $font-size-lg);
-      margin-bottom: $spacing-xl;
+      margin-bottom: $spacing-lg;
     }
   }
 
@@ -138,28 +155,28 @@
     align-items: center;
     justify-content: center;
     gap: $spacing-sm;
-    padding: 0.6rem 1.5rem;
-    background: transparent;
-    color: $color-primary;
+    padding: 0.55rem 1.35rem;
+    background: $color-primary;
+    color: $color-white;
     border: 2px solid $color-primary;
-    border-radius: $radius-md;
-    font-family: 'Afacad Italic', 'Afacad', sans-serif;
+    border-radius: 9999px;
+    font-family: 'Afacad', 'Be Vietnam Pro', sans-serif;
+    font-style: normal;
     font-size: $font-size-sm;
     font-weight: $font-weight-semibold;
     cursor: pointer;
     transition: background $transition-base, color $transition-base,
-      transform $transition-base;
-    // Nền nhẹ trên mobile để dễ nhìn
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      border-color $transition-base, transform $transition-base;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
 
     @media (min-width: $breakpoint-md) {
-      padding: 0.7rem 2rem;
+      padding: 0.65rem 1.75rem;
       font-size: $font-size-base;
-      box-shadow: none;
     }
 
     &:hover {
-      background: $color-primary;
+      background: $color-primary-hover;
+      border-color: $color-primary-hover;
       color: $color-white;
       transform: translateY(-2px);
     }

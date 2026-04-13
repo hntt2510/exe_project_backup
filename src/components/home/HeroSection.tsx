@@ -36,10 +36,11 @@ const slides = [
   },
 ];
 
-const ZOOM_DURATION_MS = 700;
+const ZOOM_DURATION_MS = 480;
 
 export default function HeroSection() {
   const navigate = useNavigate();
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [progressKey, setProgressKey] = useState(0);
   const [contentKey, setContentKey] = useState(0); // Trigger fade-in cho chữ khi đổi slide
@@ -82,6 +83,10 @@ export default function HeroSection() {
   const handleThumbClick = useCallback(
     (idx: number, el: HTMLDivElement | null) => {
       if (idx === currentSlide) return;
+      if (prefersReducedMotion) {
+        handleThumbClickFallback(idx);
+        return;
+      }
       if (!el) {
         handleThumbClickFallback(idx);
         return;
@@ -117,7 +122,13 @@ export default function HeroSection() {
         setContentKey((k) => k + 1);
       }, ZOOM_DURATION_MS);
     },
-    [currentSlide, resetAutoTimer, resetProgressBar, handleThumbClickFallback]
+    [
+      currentSlide,
+      prefersReducedMotion,
+      resetAutoTimer,
+      resetProgressBar,
+      handleThumbClickFallback,
+    ]
   );
 
   const handleThumbRef = useCallback((el: HTMLDivElement | null, idx: number) => {
@@ -170,6 +181,14 @@ export default function HeroSection() {
     });
   }, []);
 
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mq.matches);
+    const onChange = () => setPrefersReducedMotion(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   const activeSlide = slides[currentSlide];
 
   return (
@@ -193,8 +212,10 @@ export default function HeroSection() {
           />
         )}
 
-        {/* Progress bar */}
-        <div key={progressKey} className="hero-section__progress" />
+        {/* Progress bar — scaleX (GPU) thay vì animate width */}
+        <div key={progressKey} className="hero-section__progress" aria-hidden>
+          <span className="hero-section__progress-inner" />
+        </div>
 
         {/* Left content - fade in khi đổi slide */}
         <div key={contentKey} className="hero-section__content">

@@ -23,56 +23,7 @@
 
 }
 
-// Navbar
-.navbar {
-  background-color: variables.$color-gray-900;
-  color: variables.$color-white;
-  box-shadow: variables.$shadow-lg;
-
-  &__container {
-    max-width: 80rem; // max-w-7xl
-    margin: 0 auto;
-    padding: 0 variables.$spacing-md;
-
-    @include mixins.respond-to(sm) {
-      padding: 0 variables.$spacing-lg;
-    }
-
-    @include mixins.respond-to(lg) {
-      padding: 0 variables.$spacing-xl;
-    }
-  }
-
-  &__content {
-    @include mixins.flex-between;
-    height: 4rem; // h-16
-  }
-
-  &__logo {
-    font-size: variables.$font-size-2xl;
-    font-weight: variables.$font-weight-bold;
-    color: variables.$color-blue-400;
-
-    &:hover {
-      color: variables.$color-blue-300;
-    }
-  }
-
-  &__links {
-    display: flex;
-    gap: variables.$spacing-xl;
-
-    a {
-      color: variables.$color-white;
-      transition: color variables.$transition-base;
-
-      &:hover {
-        color: variables.$color-blue-400;
-        text-decoration: none;
-      }
-    }
-  }
-}
+// Navbar: toàn bộ style nằm trong components/_navbar.scss (tránh max-width 80rem + margin auto làm cụm header vào giữa)
 
 // Footer
 .footer {

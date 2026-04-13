@@ -4,9 +4,11 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { getArtisanDetail } from "../../../services/artisanApi";
 import type { ArtisanDetail, ArtisanNarrativeBlock } from "../../../types";
+import ArtisanPagination from "../ArtisanPagination";
 import "../../../styles/components/artisan/artisanDetailscss/_artisan-detail.scss";
 
 const FALLBACK_IMG = "/dauvao.png";
+const CONNECT_PAGE_SIZE = 3;
 
 /* ── Sticky tab definitions ── */
 const TABS = [
@@ -42,6 +44,8 @@ export default function ArtisanDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>("narrative");
   const [panoramaIdx, setPanoramaIdx] = useState(0);
+  const [culturePage, setCulturePage] = useState(1);
+  const [tourPage, setTourPage] = useState(1);
 
   const sectionRefs = useRef<Record<TabKey, HTMLElement | null>>({
     narrative: null,
@@ -69,6 +73,23 @@ export default function ArtisanDetailPage() {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    setCulturePage(1);
+    setTourPage(1);
+  }, [id]);
+
+  useEffect(() => {
+    const n = artisan?.relatedCultureItems?.length ?? 0;
+    const tp = Math.max(1, Math.ceil(n / CONNECT_PAGE_SIZE));
+    setCulturePage((p) => Math.min(p, tp));
+  }, [artisan?.relatedCultureItems?.length]);
+
+  useEffect(() => {
+    const n = artisan?.relatedTours?.length ?? 0;
+    const tp = Math.max(1, Math.ceil(n / CONNECT_PAGE_SIZE));
+    setTourPage((p) => Math.min(p, tp));
+  }, [artisan?.relatedTours?.length]);
 
   /* ── Scroll to section ── */
   const scrollTo = useCallback((key: TabKey) => {
@@ -116,6 +137,28 @@ export default function ArtisanDetailPage() {
 
   /* ---------- Derived ---------- */
   const narrativeBlocks = parseNarrative(artisan.narrativeContent);
+
+  const cultureItems = artisan.relatedCultureItems ?? [];
+  const cultureTotalPages = Math.max(
+    1,
+    Math.ceil(cultureItems.length / CONNECT_PAGE_SIZE)
+  );
+  const culturePageSafe = Math.min(culturePage, cultureTotalPages);
+  const cultureSlice = cultureItems.slice(
+    (culturePageSafe - 1) * CONNECT_PAGE_SIZE,
+    culturePageSafe * CONNECT_PAGE_SIZE
+  );
+
+  const tourItems = artisan.relatedTours ?? [];
+  const tourTotalPages = Math.max(
+    1,
+    Math.ceil(tourItems.length / CONNECT_PAGE_SIZE)
+  );
+  const tourPageSafe = Math.min(tourPage, tourTotalPages);
+  const tourSlice = tourItems.slice(
+    (tourPageSafe - 1) * CONNECT_PAGE_SIZE,
+    tourPageSafe * CONNECT_PAGE_SIZE
+  );
 
   const sectionMotion = {
     initial: { opacity: 0, y: 24 },
@@ -316,18 +359,18 @@ export default function ArtisanDetailPage() {
         <div className="ad-connect__container">
           <h2 className="ad-connect__heading">Kết nối văn hoá</h2>
 
-          {artisan.relatedCultureItems && artisan.relatedCultureItems.length > 0 && (
+          {cultureItems.length > 0 && (
             <>
               <h3 className="ad-connect__subheading">Văn hoá liên quan</h3>
-              <div className="ad-connect__grid">
-                {artisan.relatedCultureItems.map((item, i) => (
+              <div className="ad-connect__grid ad-connect__grid--3">
+                {cultureSlice.map((item, i) => (
                   <motion.div
                     key={item.id}
                     className="ad-connect__card"
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.45, delay: i * 0.1 }}
+                    transition={{ duration: 0.45, delay: i * 0.08 }}
                   >
                     <div className="ad-connect__card-img-wrap">
                       <img
@@ -344,20 +387,29 @@ export default function ArtisanDetailPage() {
                   </motion.div>
                 ))}
               </div>
+              {cultureTotalPages > 1 && (
+                <div className="ad-connect__pagination">
+                  <ArtisanPagination
+                    currentPage={culturePageSafe}
+                    totalPages={cultureTotalPages}
+                    onPageChange={setCulturePage}
+                  />
+                </div>
+              )}
             </>
           )}
 
-          {artisan.relatedTours && artisan.relatedTours.length > 0 && (
+          {tourItems.length > 0 && (
             <>
               <h3 className="ad-connect__subheading">Tour liên quan</h3>
-              <div className="ad-connect__grid">
-                {artisan.relatedTours.map((tour, i) => (
+              <div className="ad-connect__grid ad-connect__grid--3">
+                {tourSlice.map((tour, i) => (
                   <motion.div
                     key={tour.id}
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.45, delay: i * 0.1 }}
+                    transition={{ duration: 0.45, delay: i * 0.08 }}
                   >
                     <Link to={`/tours/${tour.id}`} className="ad-connect__card ad-connect__card--tour">
                       <div className="ad-connect__card-img-wrap">
@@ -378,6 +430,15 @@ export default function ArtisanDetailPage() {
                   </motion.div>
                 ))}
               </div>
+              {tourTotalPages > 1 && (
+                <div className="ad-connect__pagination">
+                  <ArtisanPagination
+                    currentPage={tourPageSafe}
+                    totalPages={tourTotalPages}
+                    onPageChange={setTourPage}
+                  />
+                </div>
+              )}
             </>
           )}
 

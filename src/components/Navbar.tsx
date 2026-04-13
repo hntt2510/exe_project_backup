@@ -145,66 +145,72 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Right: Auth Buttons */}
-        <div className="navbar__auth">
-          {isLoggedIn ? (
-            <div className="navbar__auth-logged-in">
-              <Link
-                to="/profile"
-                className="navbar__auth-avatar"
-                aria-label="Tài khoản"
-              >
-                {userInfo?.avatarUrl ? (
-                  <img
-                    src={userInfo.avatarUrl}
-                    alt={userInfo.fullName || "Tài khoản"}
-                    className="navbar__auth-avatar-image"
-                  />
-                ) : (
-                  <span className="navbar__auth-avatar-fallback">
-                    {getInitials(userInfo?.fullName)}
-                  </span>
-                )}
-              </Link>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="navbar__auth-button navbar__auth-button--logout"
-              >
-                Đăng xuất
-              </button>
-            </div>
-          ) : (
-            <>
-              <Link
-                to="/login"
-                className="navbar__auth-button navbar__auth-button--login"
-              >
-                Đăng nhập
-              </Link>
-              <Link
-                to="/register"
-                className="navbar__auth-button navbar__auth-button--register"
-              >
-                Đăng ký
-              </Link>
-            </>
-          )}
-        </div>
+        {/* Right: auth + menu toggle (grouped so they never stack on the same fixed corner) */}
+        <div className="navbar__right">
+          <div className="navbar__auth">
+            {isLoggedIn ? (
+              <div className="navbar__auth-logged-in">
+                <Link
+                  to="/profile"
+                  className="navbar__auth-avatar"
+                  aria-label="Tài khoản"
+                >
+                  {userInfo?.avatarUrl ? (
+                    <img
+                      src={userInfo.avatarUrl}
+                      alt={userInfo.fullName || "Tài khoản"}
+                      className="navbar__auth-avatar-image"
+                    />
+                  ) : (
+                    <span className="navbar__auth-avatar-fallback">
+                      {getInitials(userInfo?.fullName)}
+                    </span>
+                  )}
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="navbar__auth-button navbar__auth-button--logout"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="navbar__auth-button navbar__auth-button--login"
+                >
+                  Đăng nhập
+                </Link>
+                <Link
+                  to="/register"
+                  className="navbar__auth-button navbar__auth-button--register"
+                >
+                  Đăng ký
+                </Link>
+              </>
+            )}
+          </div>
 
-        {/* Mobile: Hamburger */}
-        <div className="navbar__mobile-toggle">
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="navbar__mobile-toggle-button"
-          >
-            {isOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          <div className="navbar__mobile-toggle">
+            <button
+              type="button"
+              onClick={() => setIsOpen(!isOpen)}
+              className="navbar__mobile-toggle-button"
+              aria-expanded={isOpen}
+              aria-controls="navbar-mobile-drawer"
+              aria-label={isOpen ? "Đóng menu" : "Mở menu"}
+            >
+              {isOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Mobile Menu (Drawer) */}
       <Drawer
+        id="navbar-mobile-drawer"
         open={isOpen}
         onClose={() => setIsOpen(false)}
         placement="right"

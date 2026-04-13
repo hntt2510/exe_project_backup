@@ -6,7 +6,7 @@
 @use '../variables';
 @use '../mixins';
 
-$anim-duration: 0.4s;
+$anim-duration: 0.28s;
 $content-width: 30%; // 3/10 bức ảnh
 
 @font-face {
@@ -25,12 +25,13 @@ $content-width: 30%; // 3/10 bức ảnh
   font-display: swap;
 }
 
-@keyframes hero-progress {
+// Dùng transform: scaleX — tránh layout/reflow mỗi frame (width % rất nặng)
+@keyframes hero-progress-transform {
   from {
-    width: 0%;
+    transform: scaleX(0);
   }
   to {
-    width: 100%;
+    transform: scaleX(1);
   }
 }
 
@@ -44,27 +45,23 @@ $content-width: 30%; // 3/10 bức ảnh
 }
 
 @keyframes hero-thumb-click {
-  0% {
-    transform: scale(1);
-  }
-  40% {
-    transform: scale(0.92);
-  }
+  0%,
   100% {
     transform: scale(1);
   }
+  50% {
+    transform: scale(0.97);
+  }
 }
 
-// Zoom overlay: dùng transform (GPU-accelerated) thay vì left/top/width/height
+// Chỉ animate transform — không đổi border-radius trong keyframe (tránh repaint mỗi frame)
 @keyframes hero-zoom-expand {
   0% {
     transform: translate(var(--zoom-from-left, 0), var(--zoom-from-top, 0))
       scale(var(--zoom-scale-x, 0.2), var(--zoom-scale-y, 0.15));
-    border-radius: 12px;
   }
   100% {
     transform: translate(0, 0) scale(1, 1);
-    border-radius: 0;
   }
 }
 
@@ -86,6 +83,7 @@ $content-width: 30%; // 3/10 bức ảnh
     height: 100vh;
     min-height: 360px; // Điện thoại nhỏ (iPhone SE 320x568)
     contain: layout;
+    isolation: isolate;
 
     @include mixins.respond-to(sm) {
       min-height: 420px;
@@ -105,7 +103,7 @@ $content-width: 30%; // 3/10 bức ảnh
     overflow: hidden;
   }
 
-  // Zoom overlay - dùng transform (GPU-accelerated), will-change chỉ khi animate
+  // Zoom overlay — chỉ transform + một layer; border-radius cố định để không paint thêm
   &__zoom-overlay {
     position: absolute;
     left: 0;
@@ -113,25 +111,35 @@ $content-width: 30%; // 3/10 bức ảnh
     width: 100%;
     height: 100%;
     z-index: 50;
+    border-radius: 0;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     transform-origin: 0 0;
-    animation: hero-zoom-expand 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    will-change: transform;
+    backface-visibility: hidden;
+    animation: hero-zoom-expand 0.48s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 
-  // Progress bar (time running) - ref: .carousel .timeRunning
+  // Progress track + thanh scaleX (compositor-friendly)
   &__progress {
     position: absolute;
     left: 0;
     top: 0;
     z-index: 100;
-    width: 0%;
+    width: 100%;
     height: 4px;
-    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    overflow: hidden;
     pointer-events: none;
-    animation: hero-progress 7s linear 1 forwards;
+  }
+
+  &__progress-inner {
+    display: block;
+    height: 100%;
+    width: 100%;
+    transform-origin: left center;
+    transform: scaleX(0);
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    animation: hero-progress-transform 7s linear 1 forwards;
   }
 
   // Chữ in trực tiếp lên ảnh - fade in khi đổi slide
@@ -145,7 +153,7 @@ $content-width: 30%; // 3/10 bức ảnh
     max-width: 420px;
     padding: 2rem 3rem 2rem 0;
     z-index: 10;
-    animation: hero-fade-in 0.4s ease forwards;
+    animation: hero-fade-in 0.22s ease forwards;
     // Gradient nhẹ phía sau để text dễ đọc trên ảnh phức tạp
     background: linear-gradient(
       135deg,
@@ -473,7 +481,9 @@ $content-width: 30%; // 3/10 bức ảnh
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 
     &:hover {
-      transform: translateY(-2px);
+      @media (hover: hover) and (pointer: fine) {
+        transform: translateY(-2px);
+      }
     }
 
     &--active {
@@ -481,7 +491,7 @@ $content-width: 30%; // 3/10 bức ảnh
     }
 
     &--clicked {
-      animation: hero-thumb-click 0.4s ease;
+      animation: hero-thumb-click 0.22s ease;
     }
 
     @include mixins.respond-to(lg) {
@@ -544,6 +554,28 @@ $content-width: 30%; // 3/10 bức ảnh
     &--active {
       background: #f59e0b;
       transform: scale(1.2);
+    }
+  }
+
+  // Giảm motion theo cài đặt hệ thống (không chạy progress tick, không ép animation chữ)
+  @media (prefers-reduced-motion: reduce) {
+    &__progress-inner {
+      animation: none !important;
+      transform: none;
+      opacity: 0;
+    }
+
+    &__content {
+      animation: none;
+      opacity: 1;
+    }
+
+    &__zoom-overlay {
+      animation: none !important;
+    }
+
+    &__thumb-item:hover {
+      transform: none;
     }
   }
 }

@@ -62,13 +62,14 @@
 .ad-hero-banner {
   position: relative;
   width: 100%;
-  min-height: 520px;
+  // ~70% chiều cao màn hình — ảnh hero lớn, full-bleed ngang
+  min-height: 70vh;
   overflow: hidden;
   display: flex;
   align-items: flex-end;
 
   @media (max-width: $breakpoint-md) {
-    min-height: 400px;
+    min-height: max(70vh, 360px);
   }
 
   &__bg {
@@ -77,7 +78,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center 30%;
+    object-position: center 28%;
   }
 
   &__overlay {
@@ -454,11 +455,25 @@
       grid-template-columns: repeat(2, 1fr);
     }
 
+    // Tối đa 3 card một hàng (desktop); tablet 2, mobile 1
+    &--3 {
+      @media (min-width: $breakpoint-lg) {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
     &--artisans {
       @media (min-width: $breakpoint-md) {
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       }
     }
+  }
+
+  &__pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: $spacing-xl;
+    width: 100%;
   }
 
   &__card {
