@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/oauth2/:path*", "destination": "/index.html" },
+    { "source": "/auth/google/:path*", "destination": "/index.html" },
+    { "source": "/login/oauth2/:path*", "destination": "/index.html" }
+  ]
+}
