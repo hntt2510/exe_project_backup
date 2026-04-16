@@ -96,7 +96,7 @@ function StaffLayoutContent({ children }: StaffLayoutProps) {
       clearAuthSession(); // Xóa accessToken, refreshToken, userInfo...
       localStorage.removeItem("rememberAccount");
       message.success("Đăng xuất thành công");
-      window.location.href = "/login";
+      window.location.href = "/";
     }
   };
 

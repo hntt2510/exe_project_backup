@@ -1,4 +1,2 @@
-# OAuth / SPA: trả index.html để React Router xử lý (tránh 404 /oauth2/callback)
-/oauth2/* /index.html 200
-/auth/google/* /index.html 200
-/login/oauth2/* /index.html 200
+# SPA: file tĩnh (assets/, *.js, …) Netlify vẫn ưu tiên nếu tồn tại; còn lại về index.html
+/* /index.html 200

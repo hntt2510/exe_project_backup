@@ -5,6 +5,29 @@ import { Loader } from 'lucide-react';
 import { getVnpayReturn, getMomoReturn, getBookingByCode, type BookingResponse, type CreatePaymentResponse } from '../../services/paymentApi';
 import './PaymentReturnPage.scss';
 
+function readLastBooking(): { bookingCode?: string; tourId?: number } | null {
+  try {
+    const raw = sessionStorage.getItem('lastBooking');
+    if (!raw) return null;
+    return JSON.parse(raw) as { bookingCode?: string; tourId?: number };
+  } catch {
+    return null;
+  }
+}
+
+function isPaymentSuccess(status: string | undefined): boolean {
+  if (!status) return false;
+  const s = status.toUpperCase().trim();
+  return (
+    s === 'PAID' ||
+    s === 'SUCCESS' ||
+    s === 'COMPLETED' ||
+    s === 'CONFIRMED' ||
+    s === 'SUCCEEDED' ||
+    s === 'DONE'
+  );
+}
+
 export default function PaymentReturnPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -79,49 +102,53 @@ export default function PaymentReturnPage() {
           return;
         }
 
-        // Fallback: lấy bookingCode từ sessionStorage (lastBooking) nếu VNPay không trả vnp_OrderInfo
-        let effectiveBookingCode = paymentResponse.bookingCode;
-        if (!effectiveBookingCode && isVnpayReturn) {
-          try {
-            const lastBooking = sessionStorage.getItem('lastBooking');
-            if (lastBooking) {
-              const parsed = JSON.parse(lastBooking) as { bookingCode?: string; tourId?: number };
-              effectiveBookingCode = parsed.bookingCode ?? '';
-              if (parsed.tourId) tourId = parsed.tourId;
-            }
-          } catch {
-            // ignore
-          }
+        const lastBooking = readLastBooking();
+        let effectiveBookingCode = (paymentResponse.bookingCode || '').trim();
+
+        // Fallback session (MoMo/VNPay): backend đôi khi không trả bookingCode; tourId cần cho URL /tours/:id/...
+        if (!effectiveBookingCode && lastBooking?.bookingCode) {
+          effectiveBookingCode = lastBooking.bookingCode;
         }
+        if (lastBooking?.tourId) {
+          tourId = lastBooking.tourId;
+        }
+
         if (effectiveBookingCode) {
           paymentResponse = { ...paymentResponse, bookingCode: effectiveBookingCode };
         }
 
-        // Fetch booking details to get complete info
         if (paymentResponse.bookingCode) {
           try {
             bookingData = await getBookingByCode(paymentResponse.bookingCode);
             paymentStatus = bookingData.paymentStatus?.toUpperCase() || paymentStatus;
-            tourId = bookingData.tourId || tourId;
+            if (bookingData.tourId) {
+              tourId = bookingData.tourId;
+            }
             console.log('[PaymentReturn] Booking data fetched:', bookingData);
           } catch (err) {
             console.warn('[PaymentReturn] Could not fetch booking details:', err);
-            // Try to get tourId from other sources or use fallback
-            tourId = tourId || paymentResponse.bookingId; // Use bookingId as fallback
           }
         }
 
-        console.log('[PaymentReturn] Final payment status:', paymentStatus);
+        if (!tourId && lastBooking?.tourId) {
+          tourId = lastBooking.tourId;
+        }
 
-        // Redirect based on payment status
-        if (paymentStatus === 'PAID' || paymentStatus === 'SUCCESS' || paymentStatus === 'COMPLETED') {
-          // Payment succeeded → navigate to e-ticket with bookingCode query param
+        console.log('[PaymentReturn] Final payment status:', paymentStatus, 'tourId:', tourId);
+
+        const hasCode = Boolean(paymentResponse.bookingCode);
+
+        if (isPaymentSuccess(paymentStatus) && hasCode && tourId > 0) {
           console.log('[PaymentReturn] Payment succeeded ✓, navigating to e-ticket');
           navigate(
             `/tours/${tourId}/booking/e-ticket?bookingCode=${encodeURIComponent(
               paymentResponse.bookingCode,
             )}`,
             { replace: true },
+          );
+        } else if (isPaymentSuccess(paymentStatus) && hasCode && tourId === 0) {
+          setError(
+            'Thanh toán thành công nhưng thiếu thông tin tour. Vui lòng vào Hồ sơ → Đơn của tôi để xem e-ticket.',
           );
         } else {
           // Payment failed or pending → navigate to failure page

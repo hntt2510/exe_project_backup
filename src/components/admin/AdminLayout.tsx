@@ -193,7 +193,7 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
       clearAuthSession();
       localStorage.removeItem("rememberAccount");
       message.success("Đăng xuất thành công");
-      window.location.href = "/login";
+      window.location.href = "/";
     }
   };
 

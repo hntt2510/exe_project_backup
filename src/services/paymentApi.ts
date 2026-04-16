@@ -222,7 +222,11 @@ export const getMomoReturn = async (queryString: string): Promise<CreatePaymentR
   const response = await api.get<ApiResponse<CreatePaymentResponse>>(
     `/api/payments/momo/return?${queryString}`,
   );
-  return response.data.data;
+  const payload = response.data?.data;
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Không nhận được dữ liệu kết quả thanh toán MoMo');
+  }
+  return payload;
 };
 
 /**

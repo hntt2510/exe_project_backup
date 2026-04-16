@@ -59,7 +59,7 @@ export default function Navbar() {
       setIsLoggedIn(false);
       setUserInfo(null);
       setIsOpen(false);
-      navigate("/login?expired=true");
+      navigate("/", { replace: true });
     }
   };
 
