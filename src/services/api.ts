@@ -20,11 +20,13 @@ import type {
   Lead,
   LeadRequest,
 } from "../types";
+import { ensureHttpsBaseUrl, ensureTrailingSlash } from "../utils/baseUrl";
 
-// API Base Configuration
-// Must use ngrok URL directly - backend requires auth and redirects to OAuth2/Google.
-// Vite proxy cannot bypass this CORS requirement.
-export const API_BASE_URL = "https://coiviet.onrender.com/";
+// API Base — env có thể gõ nhầm http://; chuẩn hóa https (trừ localhost).
+const API_BASE_RAW =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ||
+  "https://legally-actual-mollusk.ngrok-free.app/";
+export const API_BASE_URL = ensureTrailingSlash(ensureHttpsBaseUrl(API_BASE_RAW));
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

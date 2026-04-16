@@ -102,6 +102,16 @@
     }
   }
 
+  &__pagination {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+
+    .ant-pagination {
+      margin: 0;
+    }
+  }
+
   // Card (ticket style)
   &__card {
     display: flex;

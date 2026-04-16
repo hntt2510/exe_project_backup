@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { Pagination } from 'antd';
 import { Ticket, Clock, AlertCircle, Filter, CheckCircle } from 'lucide-react';
 import { isVoucherUsed, type UserVoucherWithSource, type VoucherSource } from '../../services/profileApi';
 import '../../styles/components/profile/_profile-voucher.scss';
@@ -33,11 +34,14 @@ const STATUS_OPTIONS = [
   { value: 'used', label: 'Đã sử dụng' },
 ] as const;
 
+const PAGE_SIZE = 6;
+
 export default function ProfileVoucher({ vouchers }: ProfileVoucherProps) {
   const now = new Date();
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [typeFilter, setTypeFilter] = useState<'' | VoucherSource>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'used'>('all');
+  const [page, setPage] = useState(1);
 
   const filteredVouchers = useMemo(() => {
     let list = vouchers;
@@ -56,6 +60,21 @@ export default function ProfileVoucher({ vouchers }: ProfileVoucherProps) {
     });
     return sorted;
   }, [vouchers, sortBy, typeFilter, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredVouchers.length / PAGE_SIZE));
+
+  useEffect(() => {
+    setPage(1);
+  }, [sortBy, typeFilter, statusFilter]);
+
+  useEffect(() => {
+    setPage((p) => Math.min(p, totalPages));
+  }, [totalPages]);
+
+  const pagedVouchers = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredVouchers.slice(start, start + PAGE_SIZE);
+  }, [filteredVouchers, page]);
 
   return (
     <div className="profile-voucher">
@@ -105,7 +124,7 @@ export default function ProfileVoucher({ vouchers }: ProfileVoucherProps) {
             </div>
           </div>
           <div className="profile-voucher__grid">
-            {filteredVouchers.map((v) => {
+            {pagedVouchers.map((v) => {
               const expired = new Date(v.validUntil) < now;
               const used = isVoucherUsed(v);
               const disabled = expired || used || !v.isActive;
@@ -158,6 +177,22 @@ export default function ProfileVoucher({ vouchers }: ProfileVoucherProps) {
               );
             })}
           </div>
+
+          {filteredVouchers.length > 0 && (
+            <div className="profile-voucher__pagination">
+              <Pagination
+                current={page}
+                pageSize={PAGE_SIZE}
+                total={filteredVouchers.length}
+                onChange={setPage}
+                showSizeChanger={false}
+                hideOnSinglePage
+                size="small"
+                showTotal={(total, range) =>
+                  `${range[0]}-${range[1]} / ${total} voucher`}
+              />
+            </div>
+          )}
 
           <div className="profile-voucher__footer">
             <p className="profile-voucher__footer-title">Cách nhận thêm Voucher</p>

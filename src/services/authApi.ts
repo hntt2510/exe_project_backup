@@ -1,9 +1,11 @@
 import type { ApiResponse, User } from "../types";
 import { API_BASE_URL, api } from "./api";
+import { ensureHttpsBaseUrl, ensureTrailingSlash } from "../utils/baseUrl";
 
-const OAUTH2_BASE_URL =
-  (import.meta as { env?: { VITE_OAUTH2_BASE_URL?: string } }).env?.VITE_OAUTH2_BASE_URL ||
+const OAUTH2_RAW =
+  (import.meta as { env?: { VITE_OAUTH2_BASE_URL?: string } }).env?.VITE_OAUTH2_BASE_URL?.trim() ||
   API_BASE_URL;
+const OAUTH2_BASE_URL = ensureTrailingSlash(ensureHttpsBaseUrl(OAUTH2_RAW));
 
 export type LoginRequest = {
   username: string;
